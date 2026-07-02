@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stdlib Guide — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link active">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="standard-library-guide">Standard Library Guide</h1>
+
+<blockquote>
+  <p><strong>Looking for the full API reference?</strong> Every stdlib module, type, and function — with
+signatures and docstrings, generated from source — lives at <strong><a href="/docs/stdlib/">/docs/stdlib/</a></strong>.
+This page is a hand-written tour of the most commonly used modules.</p>
+</blockquote>
+
+<p>March ships with 107 stdlib modules covering collections, strings, I/O, HTTP, cryptography, and more. This page provides an overview and quick reference for the most commonly used modules.</p>
+
+<p>All stdlib modules are available without any import statement — use qualified access (<code class="language-plaintext highlighter-rouge">List.map</code>, <code class="language-plaintext highlighter-rouge">String.length</code>, etc.) or <code class="language-plaintext highlighter-rouge">import</code>/<code class="language-plaintext highlighter-rouge">use</code> to bring names into scope.</p>
+
+<hr />
+
+<h2 id="what-do-i-use-for">What do I use for…?</h2>
+
+<p>You know the task; this maps it to the module(s) that do it. (Don’t see your task? The <a href="/docs/stdlib/">full reference</a> is searchable.)</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>I want to…</th>
+      <th>Reach for</th>
+      <th>Recipe</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Parse CLI args</td>
+      <td><code class="language-plaintext highlighter-rouge">System</code> / <code class="language-plaintext highlighter-rouge">Process</code> (<code class="language-plaintext highlighter-rouge">argv</code>)</td>
+      <td><a href="/docs/cookbook/cli/">CLI</a>, <a href="/docs/build-a-cli/">Build a CLI</a></td>
+    </tr>
+    <tr>
+      <td>Read / write files</td>
+      <td><code class="language-plaintext highlighter-rouge">File</code>, <code class="language-plaintext highlighter-rouge">Dir</code>, <code class="language-plaintext highlighter-rouge">Path</code></td>
+      <td><a href="/docs/cookbook/files/">Files</a></td>
+    </tr>
+    <tr>
+      <td>Parse a CSV</td>
+      <td><code class="language-plaintext highlighter-rouge">Csv</code></td>
+      <td><a href="/docs/cookbook/files/">Files</a></td>
+    </tr>
+    <tr>
+      <td>Call an HTTP API</td>
+      <td><code class="language-plaintext highlighter-rouge">HttpClient</code>, <code class="language-plaintext highlighter-rouge">Http</code></td>
+      <td><a href="/docs/cookbook/http/">HTTP</a></td>
+    </tr>
+    <tr>
+      <td>Parse a JSON response</td>
+      <td><code class="language-plaintext highlighter-rouge">Json</code></td>
+      <td><a href="/docs/cookbook/json-api/">JSON API</a></td>
+    </tr>
+    <tr>
+      <td>Parse TOML / YAML config</td>
+      <td><code class="language-plaintext highlighter-rouge">Toml</code>, <code class="language-plaintext highlighter-rouge">Yaml</code></td>
+      <td><a href="/docs/cookbook/config/">Config</a></td>
+    </tr>
+    <tr>
+      <td>Read environment variables</td>
+      <td><code class="language-plaintext highlighter-rouge">Env</code>, <code class="language-plaintext highlighter-rouge">Config</code></td>
+      <td><a href="/docs/cookbook/config/">Config</a></td>
+    </tr>
+    <tr>
+      <td>Run a subprocess</td>
+      <td><code class="language-plaintext highlighter-rouge">Process</code> (<code class="language-plaintext highlighter-rouge">run</code>, <code class="language-plaintext highlighter-rouge">run_stream</code>)</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Hash / encode data</td>
+      <td><code class="language-plaintext highlighter-rouge">Crypto</code>, <code class="language-plaintext highlighter-rouge">Base64</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Work with dates / durations</td>
+      <td><code class="language-plaintext highlighter-rouge">DateTime</code>, <code class="language-plaintext highlighter-rouge">Duration</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Structured logging</td>
+      <td><code class="language-plaintext highlighter-rouge">Logger</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Run work concurrently</td>
+      <td><code class="language-plaintext highlighter-rouge">Task</code>, <code class="language-plaintext highlighter-rouge">actor</code>, <code class="language-plaintext highlighter-rouge">Flow</code></td>
+      <td><a href="/docs/cookbook/concurrency/">Concurrency</a></td>
+    </tr>
+    <tr>
+      <td>Transform a big collection in parallel</td>
+      <td><code class="language-plaintext highlighter-rouge">List.pmap</code> / <code class="language-plaintext highlighter-rouge">pmap_n</code></td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="prelude-auto-imported">Prelude (Auto-imported)</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">Prelude</code> module is automatically imported into every March program. These names are always in scope:</p>
+
+<pre><code class="language-march">-- Diverging
+panic("invariant violated")   -- terminates with an error
+todo("not yet implemented")   -- typechecks as any type
+unreachable()                 -- asserts a branch can't be reached
+
+-- Option helpers
+unwrap(Some(42))              -- 42, panics if None
+unwrap_or(None, 0)            -- 0
+unwrap_or_else(opt, fn () -&gt; compute_default())
+
+-- List basics
+head([1, 2, 3])               -- 1, panics if empty
+tail([1, 2, 3])               -- [2, 3], panics if empty
+is_nil([])                    -- true
+
+-- Combinators
+identity(x)                   -- x
+compose(f, g)                 -- fn x -&gt; f(g(x))
+flip(f)                       -- fn a b -&gt; f(b, a)
+const(x)                      -- fn _ -&gt; x
+</code></pre>
+
+<hr />
+
+<h2 id="list">List</h2>
+
+<p><code class="language-plaintext highlighter-rouge">list.march</code> — the standard singly-linked list.</p>
+
+<pre><code class="language-march">-- Construction
+List.empty()                         -- []
+List.singleton(42)                   -- [42]
+List.repeat("hi", 3)                 -- ["hi", "hi", "hi"]
+List.range(0, 5)                     -- [0, 1, 2, 3, 4]
+List.range_step(0, 10, 2)            -- [0, 2, 4, 6, 8]
+
+-- Access
+List.head([1, 2, 3])                 -- 1  (panics if empty)
+List.head_opt([1, 2, 3])             -- Some(1)
+List.last([1, 2, 3])                 -- 3
+List.nth([10, 20, 30], 1)            -- 20  (0-indexed)
+List.nth_opt([10, 20], 5)            -- None
+
+-- Predicates
+List.is_empty([])                    -- true
+List.length([1, 2, 3])               -- 3
+List.any([1, 2, 3], fn x -&gt; x &gt; 2)  -- true
+List.all([2, 4, 6], fn x -&gt; x % 2 == 0)  -- true
+List.member(2, [1, 2, 3])           -- true
+
+-- Transformation
+List.map([1, 2, 3], fn x -&gt; x * 2)          -- [2, 4, 6]
+List.filter([1, 2, 3, 4], fn x -&gt; x % 2 == 0) -- [2, 4]
+List.filter_map(xs, fn x -&gt; if x &gt; 0 do Some(x * 2) else None end)
+List.flat_map([1, 2, 3], fn x -&gt; [x, x * 10])  -- [1, 10, 2, 20, 3, 30]
+List.reverse([1, 2, 3])              -- [3, 2, 1]
+List.append([1, 2], [3, 4])         -- [1, 2, 3, 4]
+List.concat([[1, 2], [3], [4, 5]])   -- [1, 2, 3, 4, 5]
+
+-- Folds
+List.fold_left([1, 2, 3], 0, fn (acc, x) -&gt; acc + x)   -- 6
+List.fold_right([1, 2, 3], 0, fn (x, acc) -&gt; x + acc)  -- 6
+List.scan_left([1, 2, 3], 0, fn (acc, x) -&gt; acc + x)   -- [0, 1, 3, 6]
+
+-- Search
+List.find([1, 2, 3], fn x -&gt; x &gt; 1)      -- Some(2)
+List.find_index([10, 20, 30], fn x -&gt; x == 20)  -- Some(1)
+
+-- Iteration (side effects)
+List.iter([1, 2, 3], fn x -&gt; println(int_to_string(x)))
+
+-- Sorting
+List.sort_by([3, 1, 2], fn (a, b) -&gt; a &lt; b)   -- [1, 2, 3]
+
+-- Zipping
+List.zip([1, 2, 3], ["a", "b", "c"])  -- [(1, "a"), (2, "b"), (3, "c")]
+List.unzip([(1, "a"), (2, "b")])       -- ([1, 2], ["a", "b"])
+List.with_index([10, 20, 30])          -- [(0, 10), (1, 20), (2, 30)]
+
+-- Grouping
+List.intersperse([1, 2, 3], 0)         -- [1, 0, 2, 0, 3]
+List.take([1, 2, 3, 4, 5], 3)         -- [1, 2, 3]
+List.drop([1, 2, 3, 4], 2)            -- [3, 4]
+List.take_while([1, 2, 3, 4], fn x -&gt; x &lt; 3)   -- [1, 2]
+List.drop_while([1, 2, 3, 4], fn x -&gt; x &lt; 3)   -- [3, 4]
+
+-- Parallel (real multi-core parallelism in compiled code; the supplied
+-- function MUST be safe to run concurrently)
+List.pmap([1, 2, 3], fn x -&gt; x * 2)              -- [2, 4, 6]  (parallel map)
+List.pmap_n(urls, fn u -&gt; fetch(u), 8)           -- parallel map, ≤8 tasks at once
+List.pfilter([1, 2, 3, 4], fn x -&gt; x % 2 == 0)  -- [2, 4]     (parallel filter)
+List.preduce([1, 2, 3, 4], 0, fn (a, b) -&gt; a + b)  -- 10  (combine MUST be associative)
+</code></pre>
+
+<p>The parallel operations are order-preserving and return exactly what their
+sequential counterparts (<code class="language-plaintext highlighter-rouge">map</code>/<code class="language-plaintext highlighter-rouge">filter</code>/<code class="language-plaintext highlighter-rouge">fold_left</code>) do. Below a configurable
+cutoff they fall back to the sequential version (no task-spawn overhead); above
+it the list is split into chunks, one task per chunk, run on the multithreaded
+scheduler. Real CPU parallelism happens in <strong>compiled</strong> code — the interpreter
+runs the tasks eagerly on one thread (correct, but sequential).</p>
+
+<ul>
+  <li>The cutoff is <code class="language-plaintext highlighter-rouge">pmap_threshold()</code> (default <strong>1024</strong>), set at compile time with
+<code class="language-plaintext highlighter-rouge">--pmap-threshold=N</code> (forge passes it through via <code class="language-plaintext highlighter-rouge">MARCH_PMAP_THRESHOLD</code>).</li>
+  <li><code class="language-plaintext highlighter-rouge">pmap_n</code> caps concurrency explicitly — use it when each element does heavy
+work (few elements, expensive per-element) so the size heuristic doesn’t apply.</li>
+  <li><code class="language-plaintext highlighter-rouge">preduce</code> is a <strong>tree reduction</strong>: <code class="language-plaintext highlighter-rouge">combine</code> must be associative
+(<code class="language-plaintext highlighter-rouge">combine(combine(x, y), z) == combine(x, combine(y, z))</code>) with <code class="language-plaintext highlighter-rouge">identity</code> as
+its unit. Sum, product, max, min, string concat, set union qualify;
+subtraction and average do not. The compiler cannot check this — it’s the
+caller’s contract.</li>
+</ul>
+
+<blockquote>
+  <p><strong>Tip:</strong> the LSP flags a pure <code class="language-plaintext highlighter-rouge">List.map</code>/<code class="language-plaintext highlighter-rouge">List.filter</code> as a <code class="language-plaintext highlighter-rouge">pmap</code>/<code class="language-plaintext highlighter-rouge">pfilter</code>
+candidate with a one-click “Convert to <code class="language-plaintext highlighter-rouge">List.pmap</code>” quick-fix.</p>
+</blockquote>
+
+<p>See the <a href="/docs/parallel-collections/">Parallel Collections guide</a>
+for how chunking works, the <code class="language-plaintext highlighter-rouge">--pmap-threshold</code> flag, when to parallelize, and the
+editor-driven detection.</p>
+
+<hr />
+
+<h2 id="string">String</h2>
+
+<p><code class="language-plaintext highlighter-rouge">string.march</code> — String operations.</p>
+
+<pre><code class="language-march">String.length("hello")              -- 5
+String.concat(["a", "b", "c"])      -- "abc"
+String.join(["a", "b", "c"], ", ")  -- "a, b, c"
+String.split("a,b,c", ",")          -- ["a", "b", "c"]
+String.trim("  hello  ")            -- "hello"
+String.trim_left("  hi")            -- "hi"
+String.trim_right("hi  ")           -- "hi"
+String.upcase("hello")              -- "HELLO"
+String.downcase("HELLO")            -- "hello"
+String.starts_with("hello", "he")   -- true
+String.ends_with("hello", "lo")     -- true
+String.contains("hello world", "world")  -- true
+String.replace("hello", "l", "r")   -- "herro"
+String.slice("hello", 1, 3)         -- "el"
+String.to_int("42")                 -- Some(42)
+String.to_float("3.14")             -- Some(3.14)
+String.repeat("ab", 3)              -- "ababab"
+String.reverse("hello")             -- "olleh"
+String.chars("hi")                  -- ["h", "i"]
+</code></pre>
+
+<hr />
+
+<h2 id="map">Map</h2>
+
+<p><code class="language-plaintext highlighter-rouge">map.march</code> — HAMT-backed persistent map. O(log n) amortized operations.</p>
+
+<p>Map operations that need key identity take an explicit comparator:
+<code class="language-plaintext highlighter-rouge">cmp : k -&gt; k -&gt; Bool</code> where <code class="language-plaintext highlighter-rouge">cmp(a)(b) = true</code> means <code class="language-plaintext highlighter-rouge">a &lt; b</code>.</p>
+
+<blockquote>
+  <p><strong>No comparator?</strong> If your keys are strings, ints, or any type where structural
+<code class="language-plaintext highlighter-rouge">==</code> is the right equality, use <a href="#hashmap"><code class="language-plaintext highlighter-rouge">HashMap</code></a> instead — identical API,
+no <code class="language-plaintext highlighter-rouge">cmp</code> argument anywhere.</p>
+</blockquote>
+
+<pre><code class="language-march">let cmp = fn a -&gt; fn b -&gt; a &lt; b   -- comparator for String keys
+
+-- Construction
+let m = Map.empty()
+let m2 = Map.singleton("key", 42)
+let m3 = Map.from_list([("a", 1), ("b", 2), ("c", 3)], cmp)
+
+-- Access
+Map.get(m3, "a", cmp)          -- Some(1)
+Map.get_or(m3, "z", 0, cmp)   -- 0
+Map.contains_key(m3, "b", cmp) -- true
+Map.size(m3)                   -- 3
+Map.is_empty(m)                -- true
+
+-- Modification (returns new map)
+let m4 = Map.insert(m3, "d", 4, cmp)
+let m5 = Map.remove(m4, "a", cmp)
+
+-- Traversal
+Map.keys(m3)     -- ["a", "b", "c"] (hash order)
+Map.values(m3)   -- [1, 2, 3]
+Map.entries(m3)  -- [("a", 1), ("b", 2), ("c", 3)]
+Map.fold(m3, 0, fn (acc, _k, v) -&gt; acc + v)   -- 6
+
+-- Transformation
+Map.map_values(m3, fn v -&gt; v * 10)            -- {"a": 10, "b": 20, "c": 30}
+Map.filter(m3, fn _k -&gt; fn v -&gt; v &gt; 1, cmp)  -- {"b": 2, "c": 3}
+Map.merge(m3, m4, cmp)                        -- right takes precedence on conflict
+Map.merge_with(m3, m4, fn a -&gt; fn b -&gt; a + b, cmp)  -- custom merge
+
+-- Converting
+Map.to_list(m3)   -- [("a", 1), ("b", 2), ("c", 3)]
+</code></pre>
+
+<hr />
+
+<h2 id="hashmap">HashMap</h2>
+
+<p><code class="language-plaintext highlighter-rouge">hash_map.march</code> — HAMT-backed persistent map using structural <code class="language-plaintext highlighter-rouge">==</code> for key
+equality and the built-in polymorphic <code class="language-plaintext highlighter-rouge">hash</code> function. No comparator needed at
+any call site. Key iteration order is hash-traversal order (not sorted, not
+insertion order).</p>
+
+<p>Use <code class="language-plaintext highlighter-rouge">Map</code> when you need sorted output or a custom comparator. Use <code class="language-plaintext highlighter-rouge">HashMap</code>
+when you don’t want to thread a comparator everywhere — especially for
+string/int keys or for Enum.uniq / Enum.frequencies patterns.</p>
+
+<pre><code class="language-march">-- Construction (no comparator arg anywhere)
+let m = HashMap.new()
+let m2 = HashMap.from_list([("a", 1), ("b", 2), ("c", 3)])
+
+-- Access
+HashMap.get(m2, "a")           -- Some(1)
+HashMap.get_or(m2, "z", 0)    -- 0
+HashMap.has(m2, "b")           -- true
+HashMap.size(m2)               -- 3
+HashMap.is_empty(m)            -- true
+
+-- Modification (returns new map)
+let m3 = HashMap.put(m2, "d", 4)
+let m4 = HashMap.delete(m3, "a")
+
+-- Counter pattern (no get-then-put dance)
+let counts = List.fold_left(words, HashMap.new(), fn (acc, w) -&gt;
+  HashMap.update(acc, w, fn opt -&gt;
+    match opt do
+    None    -&gt; 1
+    Some(n) -&gt; n + 1
+    end
+  )
+)
+
+-- Traversal
+HashMap.keys(m2)     -- ["a", "b", "c"] (hash order)
+HashMap.values(m2)   -- [1, 2, 3]
+HashMap.entries(m2)  -- [("a", 1), ("b", 2), ("c", 3)]
+HashMap.fold(m2, 0, fn (acc, _k, v) -&gt; acc + v)  -- 6
+
+-- Transformation
+HashMap.map_values(m2, fn v -&gt; v * 10)
+HashMap.filter(m2, fn _k -&gt; fn v -&gt; v &gt; 1)
+HashMap.merge(m2, m3)                               -- right takes precedence
+HashMap.merge_with(m2, m3, fn va -&gt; fn vb -&gt; va + vb)
+
+-- Converting
+HashMap.to_list(m2)  -- [("a", 1), ("b", 2), ("c", 3)] (hash order)
+</code></pre>
+
+<hr />
+
+<h2 id="set">Set</h2>
+
+<p><code class="language-plaintext highlighter-rouge">set.march</code> — HAMT-backed persistent set. The set is always the <strong>first</strong>
+argument, and operations that need element identity take a trailing comparator
+<code class="language-plaintext highlighter-rouge">cmp : a -&gt; a -&gt; Bool</code> where <code class="language-plaintext highlighter-rouge">cmp(a)(b) = true</code> means <code class="language-plaintext highlighter-rouge">a &lt; b</code> (same convention
+as <code class="language-plaintext highlighter-rouge">Map</code>).</p>
+
+<pre><code class="language-march">let cmp = fn a -&gt; fn b -&gt; a &lt; b
+
+let s = Set.from_list([1, 2, 3, 4, 5], cmp)
+Set.contains(s, 3, cmp)    -- true
+Set.insert(s, 6, cmp)      -- {1,2,3,4,5,6}
+Set.remove(s, 3, cmp)      -- {1,2,4,5}
+Set.size(s)                -- 5
+Set.is_empty(Set.empty())  -- true
+
+let s1 = Set.from_list([1, 2, 3], cmp)
+let s2 = Set.from_list([2, 3, 4], cmp)
+Set.union(s1, s2, cmp)         -- {1,2,3,4}
+Set.intersection(s1, s2, cmp)  -- {2,3}
+Set.difference(s1, s2, cmp)    -- {1}
+Set.is_subset(s1, s2, cmp)     -- false
+
+Set.to_list(s)                       -- [1, 2, 3, 4, 5]
+Set.fold(s, 0, fn (acc, x) -&gt; acc + x)  -- 15
+</code></pre>
+
+<hr />
+
+<h2 id="option">Option</h2>
+
+<p><code class="language-plaintext highlighter-rouge">option.march</code> — <code class="language-plaintext highlighter-rouge">Option(a) = None | Some(a)</code>.</p>
+
+<pre><code class="language-march">Option.map(Some(5), fn x -&gt; x + 1)     -- Some(6)
+Option.map(None, fn x -&gt; x + 1)        -- None
+Option.and_then(Some(5), fn x -&gt; if x &gt; 3 do Some(x) else None end)
+Option.or(None, Some(42))              -- Some(42)
+Option.or_else(None, fn () -&gt; Some(0)) -- Some(0)
+Option.unwrap_or(None, 0)              -- 0
+Option.unwrap_or_else(None, fn () -&gt; compute())
+Option.is_some(Some(1))               -- true
+Option.is_none(None)                  -- true
+Option.to_list(Some(42))              -- [42]
+Option.to_list(None)                  -- []
+Option.filter(Some(5), fn x -&gt; x &gt; 3)  -- Some(5)
+Option.filter(Some(2), fn x -&gt; x &gt; 3)  -- None
+</code></pre>
+
+<hr />
+
+<h2 id="result">Result</h2>
+
+<p><code class="language-plaintext highlighter-rouge">result.march</code> — <code class="language-plaintext highlighter-rouge">Result(a, e) = Ok(a) | Err(e)</code>.</p>
+
+<pre><code class="language-march">Result.map(Ok(5), fn x -&gt; x + 1)      -- Ok(6)
+Result.map(Err("oops"), fn x -&gt; x + 1) -- Err("oops")
+Result.map_err(Err("x"), String.upcase) -- Err("X")
+Result.and_then(Ok(5), fn x -&gt; Ok(x * 2))   -- Ok(10)
+Result.or(Err("x"), Ok(0))            -- Ok(0)
+Result.unwrap(Ok(42))                 -- 42  (panics on Err)
+Result.unwrap_or(Err("e"), 0)         -- 0
+Result.is_ok(Ok(1))                   -- true
+Result.is_err(Err("e"))               -- true
+Result.to_option(Ok(42))              -- Some(42)
+Result.to_option(Err("e"))            -- None
+</code></pre>
+
+<p>For lightweight error propagation in chains, use the <code class="language-plaintext highlighter-rouge">let?</code> binding instead of <code class="language-plaintext highlighter-rouge">Result.and_then</code>:</p>
+
+<pre><code class="language-march">-- with Result.and_then
+Result.and_then(parse_int(s), fn n -&gt; Result.and_then(fetch(n), fn v -&gt; Ok(v + 1)))
+
+-- with let?
+fn run(s : String) : Result(Int, String) do
+  let? n = parse_int(s)
+  let? v = fetch(n)
+  Ok(v + 1)
+end
+</code></pre>
+
+<hr />
+
+<h2 id="io">IO</h2>
+
+<p><code class="language-plaintext highlighter-rouge">io.march</code> — Explicit I/O operations.</p>
+
+<pre><code class="language-march">IO.puts("Hello, World!")         -- print with newline
+IO.write("no newline")           -- print without newline
+IO.warn("warning message")       -- print to stderr
+IO.read_line()                   -- read a line from stdin -&gt; String
+IO.gets("&gt; ")                    -- print prompt, read line
+IO.inspect(any_value)            -- pretty-print any value with type info
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">println</code> and <code class="language-plaintext highlighter-rouge">print</code> builtins are also always available.</p>
+
+<hr />
+
+<h2 id="math">Math</h2>
+
+<p><code class="language-plaintext highlighter-rouge">math.march</code> — Mathematical functions.</p>
+
+<pre><code class="language-march">Math.abs(-5)          -- 5
+Math.abs_f(-3.14)     -- 3.14
+Math.min(3, 5)        -- 3
+Math.max(3, 5)        -- 5
+Math.clamp(15, 0, 10) -- 10
+Math.sqrt(16.0)       -- 4.0
+Math.pow(2.0, 10.0)   -- 1024.0
+Math.exp(1.0)         -- 2.718...
+Math.log(Math.e)      -- 1.0
+Math.log2(8.0)        -- 3.0
+Math.log10(1000.0)    -- 3.0
+Math.floor(3.7)       -- 3.0
+Math.ceil(3.2)        -- 4.0
+Math.round(3.5)       -- 4.0
+Math.sin(Math.pi /. 2.0)   -- 1.0
+Math.cos(0.0)              -- 1.0
+Math.pi                    -- 3.14159...
+Math.e                     -- 2.71828...
+Math.infinity              -- Float infinity
+Math.is_nan(0.0 /. 0.0)   -- true
+</code></pre>
+
+<hr />
+
+<h2 id="crypto">Crypto</h2>
+
+<p><code class="language-plaintext highlighter-rouge">crypto.march</code> — Cryptographic primitives.</p>
+
+<pre><code class="language-march">-- Hashing
+Crypto.sha256("hello")              -- hex string
+Crypto.sha512("hello")              -- hex string
+Crypto.hmac(:sha256, key, message)  -- HMAC; algo is :sha256 or :sha512
+
+-- Password hashing (PBKDF2 under the hood; stores salt + iterations)
+let h = Crypto.hash_password("hunter2")     -- "pbkdf2:sha256:..." digest string
+Crypto.verify_password("hunter2", h)         -- true (constant-time)
+
+-- Randomness
+Crypto.random_bytes(32)             -- Bytes of cryptographically random data
+Crypto.random_hex(16)               -- random hex string (32 chars)
+
+-- Encoding
+Crypto.base64_encode("hello")       -- "aGVsbG8="
+Crypto.base64_decode("aGVsbG8=")    -- Ok(Bytes)
+Crypto.base64_url_encode("hello")   -- URL-safe Base64
+Crypto.base64_url_decode(s)         -- Ok(Bytes)
+
+-- Constant-time comparison (use for secrets / MACs)
+Crypto.secure_compare(a, b)         -- Bool
+</code></pre>
+
+<hr />
+
+<h2 id="uuid">UUID</h2>
+
+<p><code class="language-plaintext highlighter-rouge">uuid.march</code> — UUID generation and parsing.</p>
+
+<pre><code class="language-march">UUID.v4()                     -- generate a random UUID string
+UUID.v5(namespace, name)      -- deterministic UUID from namespace+name
+UUID.parse("550e8400-...")    -- Option(UUID)
+UUID.to_string(uuid)          -- "550e8400-e29b-41d4-a716-446655440000"
+UUID.version(uuid)            -- 4
+UUID.is_valid("550e8400-...") -- true
+UUID.nil()                    -- "00000000-0000-0000-0000-000000000000"
+</code></pre>
+
+<hr />
+
+<h2 id="json">JSON</h2>
+
+<p><code class="language-plaintext highlighter-rouge">json.march</code> — JSON encoding and decoding.</p>
+
+<pre><code class="language-march">type JsonValue =
+  | JNull
+  | JBool(Bool)
+  | JInt(Int)
+  | JFloat(Float)
+  | JString(String)
+  | JArray(List(JsonValue))
+  | JObject(List((String, JsonValue)))
+
+JSON.parse("{\"key\": 42}")          -- Result(JsonValue, String)
+JSON.encode(JObject([("x", JInt(1))]))  -- "{\"x\":1}"
+JSON.encode_pretty(val)               -- pretty-printed JSON
+JSON.get(obj, "key")                  -- Option(JsonValue)
+</code></pre>
+
+<hr />
+
+<h2 id="http-client">HTTP Client</h2>
+
+<p><code class="language-plaintext highlighter-rouge">http_client.march</code> — Make HTTP requests.</p>
+
+<pre><code class="language-march">let resp = Http.get("https://api.example.com/data")
+let resp = Http.post("https://api.example.com/data", body)
+let resp = Http.request({
+  method:  "PUT",
+  url:     "https://api.example.com/items/1",
+  headers: [("Content-Type", "application/json")],
+  body:    Some(json_body)
+})
+
+match resp do
+  Ok(r) -&gt;
+    println("status: " ++ int_to_string(r.status))
+    println("body: " ++ r.body)
+  Err(e) -&gt;
+    println("error: " ++ e)
+end
+</code></pre>
+
+<hr />
+
+<h2 id="file-system">File System</h2>
+
+<p><code class="language-plaintext highlighter-rouge">file.march</code>, <code class="language-plaintext highlighter-rouge">dir.march</code>, <code class="language-plaintext highlighter-rouge">path.march</code>:</p>
+
+<pre><code class="language-march">-- File I/O (Result-based)
+File.read("data.txt")              -- Result(String, String)
+File.write("out.txt", "content")   -- Result((), String)
+File.append("log.txt", "line\n")   -- Result((), String)
+File.exists("config.json")         -- Bool
+File.delete("temp.txt")            -- Result((), String)
+File.copy("src.txt", "dst.txt")    -- Result((), String)
+
+-- Directory
+Dir.list("./src")                  -- Result(List(String), String)
+Dir.create("./output")             -- Result((), String)
+Dir.exists("./data")               -- Bool
+
+-- Path manipulation (pure, no I/O)
+Path.join("src", "main.march")     -- "src/main.march"
+Path.dirname("src/lib/foo.march")  -- "src/lib"
+Path.basename("src/lib/foo.march") -- "foo.march"
+Path.extension("foo.march")        -- ".march"
+Path.stem("foo.march")             -- "foo"
+Path.is_absolute("/usr/bin")       -- true
+</code></pre>
+
+<hr />
+
+<h2 id="system">System</h2>
+
+<p><code class="language-plaintext highlighter-rouge">system.march</code> — OS and runtime information.</p>
+
+<pre><code class="language-march">System.os()                -- "macos" | "linux" | "windows"
+System.arch()              -- "x86_64" | "arm64"
+System.cpu_count()         -- number of logical CPUs
+System.monotonic_time()    -- Int (nanoseconds, for timing)
+System.env("HOME")         -- Option(String)
+System.put_env("KEY", "val")
+System.argv()              -- List(String)
+System.cwd()               -- String
+System.pid()               -- Int (OS process ID)
+System.exit(0)             -- terminate with exit code
+System.cmd("ls", ["-la"])  -- Result(String, String)
+</code></pre>
+
+<hr />
+
+<h2 id="logger">Logger</h2>
+
+<p><code class="language-plaintext highlighter-rouge">logger.march</code> — Structured logging.</p>
+
+<pre><code class="language-march">Logger.info("server started")
+Logger.warn("connection retry")
+Logger.error("database unreachable")
+Logger.debug("processing request")
+Logger.with_context(fn () -&gt;
+  Logger.put_context("request_id", "abc123")
+  Logger.info("request received")
+  process_request()
+)
+</code></pre>
+
+<hr />
+
+<h2 id="vault">Vault</h2>
+
+<p><code class="language-plaintext highlighter-rouge">vault.march</code> — Process-local key-value store backed by a mutable hash table. Used extensively in the stdlib for global mutable state.</p>
+
+<pre><code class="language-march">Vault.put("counter", 0)
+Vault.get("counter")          -- Option(a)
+Vault.update("counter", fn n -&gt; n + 1)
+Vault.delete("counter")
+Vault.keys("counter_")        -- List(String) with prefix
+Vault.all()                   -- List((String, a))
+</code></pre>
+
+<hr />
+
+<h2 id="enum">Enum</h2>
+
+<p><code class="language-plaintext highlighter-rouge">enum.march</code> — Elixir-inspired lazy enumeration over any <code class="language-plaintext highlighter-rouge">Iterable</code>.</p>
+
+<pre><code class="language-march">Enum.map(items, fn x -&gt; x * 2)
+Enum.filter(items, fn x -&gt; x &gt; 0)
+Enum.fold(items, 0, fn acc -&gt; fn x -&gt; acc + x)   -- combiner is curried
+Enum.sort_by(items, fn a -&gt; fn b -&gt; a &lt; b)        -- comparator: a &lt; b
+Enum.chunk_every(items, 3)     -- group into chunks of 3
+Enum.chunk_by([1, 1, 2, 2, 3], fn x -&gt; x)  -- [(1, [1, 1]), (2, [2, 2]), (3, [3])]
+Enum.zip(items_a, items_b)
+Enum.dedup(items)              -- remove consecutive duplicates
+Enum.uniq(items)               -- remove all duplicates
+Enum.take_while(items, pred)
+Enum.drop_while(items, pred)
+Enum.sum(nums)
+Enum.product(nums)
+Enum.scan(items, 0, fn acc -&gt; fn x -&gt; acc + x)
+Enum.with_index(items)         -- [(x, 0), (y, 1), ...]
+Enum.frequencies(items)        -- List((a, Int)): count of each item
+Enum.min_by(items, fn x -&gt; x.score)   -- Option(a)
+Enum.max_by(items, fn x -&gt; x.score)   -- Option(a)
+</code></pre>
+
+<hr />
+
+<h2 id="duration">Duration</h2>
+
+<p><code class="language-plaintext highlighter-rouge">duration.march</code> — Time-span arithmetic.</p>
+
+<pre><code class="language-march">let d = Duration.seconds(30)
+let h = Duration.hours(2)
+let w = Duration.weeks(1)
+
+Duration.add(d, h)
+Duration.subtract(h, d)
+Duration.multiply(d, 3)
+Duration.compare(d, h)     -- Int: negative, 0, positive
+Duration.format(d)         -- "30s"
+Duration.milliseconds(d)   -- 30000
+</code></pre>
+
+<hr />
+
+<h2 id="uri">URI</h2>
+
+<p><code class="language-plaintext highlighter-rouge">uri.march</code> — URI parsing and construction.</p>
+
+<pre><code class="language-march">URI.parse("https://example.com/path?k=v")
+-- Result({ scheme, host, port, path, query, fragment })
+
+URI.build({ scheme: "https", host: "example.com", path: "/api", ... })
+URI.encode("hello world")     -- "hello%20world"
+URI.decode("hello%20world")   -- "hello world"
+URI.query_params("k=v&amp;a=b")   -- [("k", "v"), ("a", "b")]
+</code></pre>
+
+<hr />
+
+<h2 id="dom-js-only">Dom (JS only)</h2>
+
+<p><code class="language-plaintext highlighter-rouge">dom.march</code> — Browser DOM bindings for <code class="language-plaintext highlighter-rouge">--target js</code> builds. Auto-loaded; no import needed.</p>
+
+<pre><code class="language-march">-- Query
+Dom.find("my-id")              -- Option(Dom.Node)
+Dom.query("#nav")              -- Option(Dom.Node)
+Dom.query_all(".item")         -- List(Dom.Node)
+Dom.body()                     -- Dom.Node
+
+-- Construction
+Dom.create("div")              -- Dom.Node
+Dom.text("hello")              -- Dom.Node
+Dom.clone(el)                  -- Dom.Node
+
+-- Tree
+Dom.append(parent, child)
+Dom.prepend(parent, child)
+Dom.remove(el)
+Dom.replace(old, new)
+
+-- Content
+Dom.set_text(el, "hello")
+Dom.set_html(el, "&lt;b&gt;bold&lt;/b&gt;")
+Dom.get_text(el)               -- String
+Dom.get_html(el)               -- String
+
+-- Attributes and style
+Dom.set_attr(el, "data-x", "1")
+Dom.get_attr(el, "data-x")    -- Option(String)
+Dom.remove_attr(el, "data-x")
+Dom.add_class(el, "active")
+Dom.remove_class(el, "active")
+Dom.toggle_class(el, "open")
+Dom.set_style(el, "color", "red")
+
+-- Events
+Dom.on(el, "click", fn ev -&gt; ...)
+Dom.on_keydown(el, fn ev -&gt; ...)
+Dom.dispatch(el, "custom-event")
+Dom.prevent_default(ev)
+Dom.stop_propagation(ev)
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Dom</code> requires <code class="language-plaintext highlighter-rouge">needs Ffi</code> because DOM calls are implemented as JS externs. It is only valid in <code class="language-plaintext highlighter-rouge">--target js</code> builds.</p>
+
+<hr />
+
+<h2 id="distributed-otp-cluster-networking">Distributed OTP (cluster networking)</h2>
+
+<p>These modules implement the distributed-OTP transport layer (P1). They are stdlib modules loaded on demand via the module registry; no <code class="language-plaintext highlighter-rouge">forge.toml</code> dependency needed.</p>
+
+<h3 id="nodeidentity">NodeIdentity</h3>
+
+<p><code class="language-plaintext highlighter-rouge">node_identity.march</code> — A node’s stable identity for the cluster.</p>
+
+<pre><code class="language-march">type Identity = { name : String, node_id : String, incarnation : Int }
+
+NodeIdentity.make("worker@host", pubkey, 0)
+-- { name: "worker@host", node_id: sha256(pubkey), incarnation: 0 }
+
+NodeIdentity.encode(id)        -- List(Int)  (MessagePack bytes)
+NodeIdentity.decode(bytes)     -- Result(Identity, String)
+</code></pre>
+
+<h3 id="netframe">NetFrame</h3>
+
+<p><code class="language-plaintext highlighter-rouge">net_frame.march</code> — Length-prefixed framing over TCP.</p>
+
+<pre><code class="language-march">NetFrame.encode(payload)       -- List(Int)  (4-byte header + payload)
+NetFrame.decode(buf)           -- Option((List(Int), List(Int)))
+</code></pre>
+
+<h3 id="clusterauth">ClusterAuth</h3>
+
+<p><code class="language-plaintext highlighter-rouge">cluster_auth.march</code> — Shared-secret HMAC challenge/response.</p>
+
+<pre><code class="language-march">ClusterAuth.prove(secret, nonce)         -- String (HMAC-SHA256 hex)
+ClusterAuth.verify(secret, nonce, proof) -- Bool
+</code></pre>
+
+<h3 id="handshake">Handshake</h3>
+
+<p><code class="language-plaintext highlighter-rouge">handshake.march</code> — Pure authenticated handshake protocol (no I/O).</p>
+
+<pre><code class="language-march">Handshake.make_hello(identity, nonce)    -- Handshake.Hello
+Handshake.encode_hello(hello)            -- List(Int)
+Handshake.decode_hello(bytes)            -- Result(Hello, String)
+Handshake.authenticate(secret, our_nonce, peer, peer_proof)
+-- Result(NodeIdentity.Identity, String)
+</code></pre>
+
+<h3 id="peerregistry">PeerRegistry</h3>
+
+<p><code class="language-plaintext highlighter-rouge">peer_registry.march</code> — One-connection-per-peer table.</p>
+
+<pre><code class="language-march">type Peer = { node_id : String, identity : NodeIdentity.Identity, fd : Int }
+type Registry = Registry(Map(String, Peer))
+
+PeerRegistry.empty()
+PeerRegistry.add(reg, peer)           -- Registry
+PeerRegistry.lookup(reg, node_id)     -- Option(Peer)
+PeerRegistry.remove(reg, node_id)     -- Registry
+PeerRegistry.peers(reg)               -- List(Peer)
+</code></pre>
+
+<h3 id="netkernel">NetKernel</h3>
+
+<p><code class="language-plaintext highlighter-rouge">net_kernel.march</code> — TCP socket transport for the net-kernel (framing + handshake).</p>
+
+<pre><code class="language-march">NetKernel.fresh_nonce()               -- String (random hex)
+NetKernel.send_frame(fd, payload)     -- Result((), String)
+NetKernel.recv_frame(fd, buf)         -- Result((List(Int), List(Int)), String)
+NetKernel.handshake(fd, my_id, secret, my_nonce)
+-- Result(NodeIdentity.Identity, String)
+</code></pre>
+
+<h3 id="clusterconn">ClusterConn</h3>
+
+<p><code class="language-plaintext highlighter-rouge">cluster_conn.march</code> — Connection lifecycle: dial or accept, handshake, register.</p>
+
+<p>Requires <code class="language-plaintext highlighter-rouge">needs IO.NetListen</code> (for <code class="language-plaintext highlighter-rouge">tcp_listen</code>/<code class="language-plaintext highlighter-rouge">tcp_accept</code> builtins).</p>
+
+<pre><code class="language-march">ClusterConn.listen(port)
+-- Result(Int, String)  -- listen_fd
+
+ClusterConn.connect_to_peer(reg, host, port, my_id, secret)
+-- Result((PeerRegistry.Registry, PeerRegistry.Peer), String)
+
+ClusterConn.accept_one(reg, listen_fd, my_id, secret)
+-- Result((PeerRegistry.Registry, PeerRegistry.Peer), String)
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">tcp_listen</code> and <code class="language-plaintext highlighter-rouge">tcp_accept</code> are builtins in the <code class="language-plaintext highlighter-rouge">IO.NetListen</code> capability group:</p>
+
+<pre><code class="language-march">tcp_listen(port)       : Result(Int, String)  -- bind + listen, return fd
+tcp_accept(listen_fd)  : Result(Int, String)  -- block until client, return fd
+</code></pre>
+
+<hr />
+
+<h2 id="module-quick-reference">Module Quick Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Module</th>
+      <th>Lines</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Prelude</code></td>
+      <td>—</td>
+      <td>Auto-imported helpers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">List</code></td>
+      <td>508</td>
+      <td>Singly-linked list operations</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">String</code></td>
+      <td>364</td>
+      <td>String manipulation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Map</code></td>
+      <td>—</td>
+      <td>HAMT-backed key-value map</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Set</code></td>
+      <td>—</td>
+      <td>HAMT-backed set</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Option</code></td>
+      <td>—</td>
+      <td>Maybe type helpers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Result</code></td>
+      <td>—</td>
+      <td>Either type helpers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Enum</code></td>
+      <td>701</td>
+      <td>Lazy enumeration</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Sort</code></td>
+      <td>615</td>
+      <td>Timsort, Introsort, specialized small sorts</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Math</code></td>
+      <td>193</td>
+      <td>Arithmetic and transcendental functions</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">IO</code></td>
+      <td>72</td>
+      <td>Console I/O</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">System</code></td>
+      <td>155</td>
+      <td>OS/runtime info</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">File</code></td>
+      <td>139</td>
+      <td>File I/O</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Dir</code></td>
+      <td>50</td>
+      <td>Directory operations</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Path</code></td>
+      <td>91</td>
+      <td>Path manipulation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Crypto</code></td>
+      <td>302</td>
+      <td>SHA, HMAC, PBKDF2, random</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">UUID</code></td>
+      <td>266</td>
+      <td>UUID v4/v5</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">JSON</code></td>
+      <td>—</td>
+      <td>JSON encode/decode</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Base64</code></td>
+      <td>143</td>
+      <td>Base64 encode/decode</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">URI</code></td>
+      <td>360</td>
+      <td>URI parsing/construction</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Duration</code></td>
+      <td>208</td>
+      <td>Time-span arithmetic</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Logger</code></td>
+      <td>—</td>
+      <td>Structured logging</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Vault</code></td>
+      <td>—</td>
+      <td>Process-local KV store</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Http</code></td>
+      <td>—</td>
+      <td>HTTP client</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">HttpServer</code></td>
+      <td>—</td>
+      <td>HTTP/WebSocket server</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Task</code></td>
+      <td>—</td>
+      <td>Structured concurrency</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Seq</code></td>
+      <td>251</td>
+      <td>Lazy sequences</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">IOList</code></td>
+      <td>221</td>
+      <td>Lazy string builder</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Random</code></td>
+      <td>—</td>
+      <td>Random number generation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Regex</code></td>
+      <td>—</td>
+      <td>Regular expressions</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">BigInt</code></td>
+      <td>—</td>
+      <td>Arbitrary-precision integers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Decimal</code></td>
+      <td>—</td>
+      <td>Exact decimal arithmetic</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CSV</code></td>
+      <td>100</td>
+      <td>CSV parsing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Datetime</code></td>
+      <td>—</td>
+      <td>Date and time</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Dom</code></td>
+      <td>—</td>
+      <td>Browser DOM bindings (JS only, auto-loaded for <code class="language-plaintext highlighter-rouge">--target js</code>)</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NodeIdentity</code></td>
+      <td>—</td>
+      <td>Cluster node identity (name, node_id, incarnation)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NetFrame</code></td>
+      <td>—</td>
+      <td>Length-prefixed TCP framing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ClusterAuth</code></td>
+      <td>—</td>
+      <td>HMAC shared-secret challenge/response</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Handshake</code></td>
+      <td>—</td>
+      <td>Pure authenticated handshake protocol</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">PeerRegistry</code></td>
+      <td>—</td>
+      <td>One-connection-per-peer table</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NetKernel</code></td>
+      <td>—</td>
+      <td>TCP framing + handshake transport</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ClusterConn</code></td>
+      <td>—</td>
+      <td>Dial/accept + handshake + register lifecycle</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen</code></td>
+      <td>—</td>
+      <td>Property test generators (Hedgehog-style)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Check</code></td>
+      <td>—</td>
+      <td>Property test runner with shrinking</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Test</code></td>
+      <td>—</td>
+      <td>Test assertion helpers</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/property-testing/">Property Testing</a> — write property-based tests with <code class="language-plaintext highlighter-rouge">Gen</code> and <code class="language-plaintext highlighter-rouge">Check</code></li>
+  <li><a href="/docs/repl/">REPL</a> — explore the stdlib interactively</li>
+  <li><a href="/docs/interfaces/">Interfaces</a> — how stdlib types implement interfaces</li>
+  <li><a href="/docs/tooling/">Tooling</a> — <code class="language-plaintext highlighter-rouge">forge search</code> to find functions by type or name</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

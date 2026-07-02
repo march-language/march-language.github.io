@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LSP & Editors — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link active">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="language-server-lsp">Language Server (LSP)</h1>
+
+<p>March ships <code class="language-plaintext highlighter-rouge">march-lsp</code>, a Language Server Protocol server that gives any
+LSP-capable editor rich, <strong>always-accurate</strong> support. It is built directly on the
+compiler’s parse → desugar → typecheck pipeline — types, diagnostics, and
+completions come from the real type checker (full Hindley–Milner inference), not
+a re-implementation, so what the editor shows is exactly what the compiler sees.</p>
+
+<p>There is also a <strong>Debug Adapter Protocol</strong> server (<code class="language-plaintext highlighter-rouge">march dap</code>) for breakpoint
+debugging, and a <strong>standalone query CLI</strong> for scripts and LLMs. Both are covered
+below.</p>
+
+<hr />
+
+<h2 id="install">Install</h2>
+
+<p><code class="language-plaintext highlighter-rouge">march-lsp</code> speaks LSP over <strong>stdio</strong>. Build it and put it on your <code class="language-plaintext highlighter-rouge">PATH</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dune build lsp/bin/main.exe       <span class="c"># produces _build/default/lsp/bin/main.exe</span>
+dune <span class="nb">install </span>march-lsp            <span class="c"># installs it as `march-lsp` on PATH</span>
+</code></pre></div></div>
+
+<p>Then point your editor at the <code class="language-plaintext highlighter-rouge">march-lsp</code> command. The server reports positions
+in <strong>UTF-16</strong> (the LSP default; it advertises <code class="language-plaintext highlighter-rouge">positionEncoding: utf-16</code>) and
+uses <strong><code class="language-plaintext highlighter-rouge">forge.toml</code></strong> as the project root marker, which is how it discovers the
+other files in your project for cross-file features.</p>
+
+<hr />
+
+<h2 id="editor-setup">Editor setup</h2>
+
+<h3 id="neovim-built-in-lsp-011">Neovim (built-in LSP, 0.11+)</h3>
+
+<div class="language-lua highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">vim</span><span class="p">.</span><span class="n">lsp</span><span class="p">.</span><span class="n">config</span><span class="p">.</span><span class="n">march</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">"march-lsp"</span> <span class="p">},</span>
+  <span class="n">filetypes</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">"march"</span> <span class="p">},</span>
+  <span class="n">root_markers</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">"forge.toml"</span> <span class="p">},</span>
+<span class="p">}</span>
+<span class="n">vim</span><span class="p">.</span><span class="n">lsp</span><span class="p">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">"march"</span><span class="p">)</span>
+<span class="n">vim</span><span class="p">.</span><span class="n">filetype</span><span class="p">.</span><span class="n">add</span><span class="p">({</span> <span class="n">extension</span> <span class="o">=</span> <span class="p">{</span> <span class="n">march</span> <span class="o">=</span> <span class="s2">"march"</span> <span class="p">}</span> <span class="p">})</span>
+</code></pre></div></div>
+
+<p>On Neovim 0.10, start it per-buffer:</p>
+
+<div class="language-lua highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">vim</span><span class="p">.</span><span class="n">api</span><span class="p">.</span><span class="n">nvim_create_autocmd</span><span class="p">(</span><span class="s2">"FileType"</span><span class="p">,</span> <span class="p">{</span>
+  <span class="n">pattern</span> <span class="o">=</span> <span class="s2">"march"</span><span class="p">,</span>
+  <span class="n">callback</span> <span class="o">=</span> <span class="k">function</span><span class="p">()</span>
+    <span class="n">vim</span><span class="p">.</span><span class="n">lsp</span><span class="p">.</span><span class="n">start</span><span class="p">({</span> <span class="n">name</span> <span class="o">=</span> <span class="s2">"march"</span><span class="p">,</span> <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">"march-lsp"</span> <span class="p">},</span>
+      <span class="n">root_dir</span> <span class="o">=</span> <span class="n">vim</span><span class="p">.</span><span class="n">fs</span><span class="p">.</span><span class="n">root</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">{</span> <span class="s2">"forge.toml"</span> <span class="p">})</span> <span class="p">})</span>
+  <span class="k">end</span><span class="p">,</span>
+<span class="p">})</span>
+</code></pre></div></div>
+
+<h3 id="helix-confighelixlanguagestoml">Helix (<code class="language-plaintext highlighter-rouge">~/.config/helix/languages.toml</code>)</h3>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[[language]]</span>
+<span class="py">name</span> <span class="p">=</span> <span class="s">"march"</span>
+<span class="py">scope</span> <span class="p">=</span> <span class="s">"source.march"</span>
+<span class="py">file-types</span> <span class="p">=</span> <span class="nn">["march"]</span>
+<span class="py">roots</span> <span class="p">=</span> <span class="nn">["forge.toml"]</span>
+<span class="py">language-servers</span> <span class="p">=</span> <span class="nn">["march-lsp"]</span>
+
+<span class="nn">[language-server.march-lsp]</span>
+<span class="py">command</span> <span class="p">=</span> <span class="s">"march-lsp"</span>
+</code></pre></div></div>
+
+<h3 id="zed-configzedsettingsjson">Zed (<code class="language-plaintext highlighter-rouge">~/.config/zed/settings.json</code>)</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w"> </span><span class="nl">"lsp"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"march-lsp"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"binary"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"march-lsp"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The Zed extension in <code class="language-plaintext highlighter-rouge">zed-march/</code> also wires up the tree-sitter grammar
+(highlighting, brackets) and the DAP debugger.</p>
+
+<h3 id="emacs-eglot">Emacs (eglot)</h3>
+
+<div class="language-elisp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">(</span><span class="nv">add-to-list</span> <span class="ss">'eglot-server-programs</span> <span class="o">'</span><span class="p">(</span><span class="nv">march-mode</span> <span class="o">.</span> <span class="p">(</span><span class="s">"march-lsp"</span><span class="p">)))</span>
+</code></pre></div></div>
+
+<h3 id="vs-code">VS Code</h3>
+
+<p>Use a generic LSP client (a small <code class="language-plaintext highlighter-rouge">vscode-languageclient</code> wrapper, or an existing
+“generic LSP” extension) with:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">serverOptions</code>: <code class="language-plaintext highlighter-rouge">{ command: "march-lsp", transport: stdio }</code></li>
+  <li><code class="language-plaintext highlighter-rouge">documentSelector</code>: <code class="language-plaintext highlighter-rouge">[{ language: "march" }]</code></li>
+</ul>
+
+<p>A matching DAP debug extension lives in <code class="language-plaintext highlighter-rouge">editors/vscode-march-debug/</code>.</p>
+
+<hr />
+
+<h2 id="features">Features</h2>
+
+<h3 id="diagnostics--navigation">Diagnostics &amp; navigation</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Diagnostics</strong></td>
+      <td>Parse + type errors, warnings, hints with precise source spans — the same checks as <code class="language-plaintext highlighter-rouge">forge build</code></td>
+    </tr>
+    <tr>
+      <td><strong>Hover</strong></td>
+      <td>Inferred type at the cursor (with <code class="language-plaintext highlighter-rouge">linear</code>/<code class="language-plaintext highlighter-rouge">affine</code> qualifiers), the docstring if present, and actor state/messages on an actor name</td>
+    </tr>
+    <tr>
+      <td><strong>Go to definition</strong></td>
+      <td>Jump to a function, type, constructor, or module — <strong>across files</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Go to implementation / type definition</strong></td>
+      <td>Jump from an interface to its <code class="language-plaintext highlighter-rouge">impl</code>s, or from a value to its type</td>
+    </tr>
+    <tr>
+      <td><strong>Find references</strong></td>
+      <td>Every use of a name, <strong>across the project</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Document &amp; workspace symbols</strong></td>
+      <td>File outline, and fuzzy project-wide symbol search (<code class="language-plaintext highlighter-rouge">Cmd/Ctrl+T</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Call hierarchy</strong></td>
+      <td>Incoming/outgoing calls for a function</td>
+    </tr>
+    <tr>
+      <td><strong>Rename</strong></td>
+      <td>Rename a symbol across all its use sites</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="editing-intelligence">Editing intelligence</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Completions</strong></td>
+      <td>Context-aware: module members after <code class="language-plaintext highlighter-rouge">.</code>, constructors, interfaces, in-scope names, keywords; with snippet placeholders for function/constructor arguments</td>
+    </tr>
+    <tr>
+      <td><strong>Auto-import</strong></td>
+      <td>Completing an un-imported stdlib/dep member inserts the needed <code class="language-plaintext highlighter-rouge">import</code></td>
+    </tr>
+    <tr>
+      <td><strong>Signature help</strong></td>
+      <td>Parameter hints at call sites</td>
+    </tr>
+    <tr>
+      <td><strong>Inlay hints</strong></td>
+      <td>Inferred types inline, plus FBIP annotations (<code class="language-plaintext highlighter-rouge">♻ reused</code> / <code class="language-plaintext highlighter-rouge">⧉ copied</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Semantic tokens</strong></td>
+      <td>Type-accurate highlighting, including ownership (<code class="language-plaintext highlighter-rouge">linear</code>/<code class="language-plaintext highlighter-rouge">affine</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Folding, selection range, linked editing</strong></td>
+      <td>Block folding, expand/shrink selection by AST node, live multi-cursor rename</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cross-file--project-intelligence">Cross-file / project intelligence</h3>
+
+<p>The server discovers the rest of your project from <code class="language-plaintext highlighter-rouge">forge.toml</code>, so go-to-def,
+find-references, workspace symbols, and <strong>whole-project diagnostics</strong> all work
+across files — including resolving an <code class="language-plaintext highlighter-rouge">interface</code> declared in one file from an
+<code class="language-plaintext highlighter-rouge">impl</code> in another.</p>
+
+<hr />
+
+<h2 id="typestate-and-capability-intelligence">Typestate and capability intelligence</h2>
+
+<p>When your code uses the <a href="/docs/capabilities/#typestate-handles">typestate system</a> — <code class="language-plaintext highlighter-rouge">always_linear type</code> handles with <code class="language-plaintext highlighter-rouge">transitions</code> blocks — the LSP provides extra guidance directly in the editor.</p>
+
+<h3 id="typestate-hover">Typestate hover</h3>
+
+<p>Hovering any expression whose type is a typestate handle shows:</p>
+
+<ul>
+  <li>An <strong>always-linear</strong> badge if the handle was declared with <code class="language-plaintext highlighter-rouge">always_linear type</code> (the compiler requires it to be consumed, never dropped)</li>
+  <li>The <strong>current state</strong> the handle is in at this point in the code</li>
+  <li>Every <strong>declared transition</strong> from that state, showing which <code class="language-plaintext highlighter-rouge">via</code> function moves it to which next state</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>always-linear — must be consumed, not dropped
+
+Typestate: resource `ConnTag`, state **`Closed`**
+
+Transitions from `Closed`:
+- `Closed` → `Open`  via `connect`
+</code></pre></div></div>
+
+<p>This pairs naturally with the existing type hover — the hover card first shows
+the inferred type (<code class="language-plaintext highlighter-rouge">Handle(ConnTag, Closed)</code>), then the typestate block below the
+separator.</p>
+
+<h3 id="via-completions"><code class="language-plaintext highlighter-rouge">via</code> completions</h3>
+
+<p>Inside a <code class="language-plaintext highlighter-rouge">transitions</code> block, after typing <code class="language-plaintext highlighter-rouge">via </code>, the completion menu filters to
+functions in scope whose type matches the transition shape:</p>
+
+<pre><code class="language-march">transitions Handle do
+  ConnTag: Closed -&gt; Open  via con&lt;cursor&gt;
+                            --  ↑ only `connect`, `reconnect`, etc. offered
+end
+</code></pre>
+
+<p>Only functions with the right type are shown — <code class="language-plaintext highlighter-rouge">Handle(R, S1) -&gt; Handle(R, S2)</code> where <code class="language-plaintext highlighter-rouge">R</code> and the handle name match the enclosing <code class="language-plaintext highlighter-rouge">transitions</code> declaration. This prevents accidentally wiring a transition to an unrelated function.</p>
+
+<hr />
+
+<h2 id="code-actions">Code actions</h2>
+
+<p>The lightbulb / quick-fix menu offers a large set of refactors and fixes,
+type-directed where possible:</p>
+
+<ul>
+  <li><strong>Quick fixes</strong> — add missing match arm(s) (<code class="language-plaintext highlighter-rouge">Add all N missing cases</code>),
+prefix/remove an unused binding, remove an unused import, fix a non-exhaustive
+match across the whole file.</li>
+  <li><strong>Refactors</strong> — introduce / remove pipe (<code class="language-plaintext highlighter-rouge">f(g(x))</code> ⇄ <code class="language-plaintext highlighter-rouge">x |&gt; g() |&gt; f()</code>),
+extract variable, extract function, inline variable / function, convert
+<code class="language-plaintext highlighter-rouge">if</code> → <code class="language-plaintext highlighter-rouge">match</code>, expand / collapse a function capture (<code class="language-plaintext highlighter-rouge">f</code> ⇄ <code class="language-plaintext highlighter-rouge">fn x -&gt; f(x)</code>).</li>
+  <li><strong>Type-directed</strong> — destruct / case-split a variant value into an exhaustive
+<code class="language-plaintext highlighter-rouge">match</code>, fill a typed hole (<code class="language-plaintext highlighter-rouge">?</code>) ranked by the expected type, add a type or
+return-type annotation, organize imports.</li>
+  <li><strong>Generators</strong> — generate a doc comment, scaffold the missing methods of an
+<code class="language-plaintext highlighter-rouge">impl</code>, generate an actor client module, scaffold a session-type handler.</li>
+  <li><strong>Auto-alias</strong> — collapse a repeated module prefix into an <code class="language-plaintext highlighter-rouge">alias</code>.</li>
+</ul>
+
+<blockquote>
+  <p>Project-wide refactors that rewrite <em>every</em> call site (rename, move, codemod,
+and <strong>introduce parameter object</strong>) live in the build tool as
+<code class="language-plaintext highlighter-rouge">forge refactor …</code> — see <a href="/docs/tooling/">Tooling</a>. Cursor-driven actions above are
+the LSP’s; project-wide rewrites are forge’s.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="performance-insights">Performance insights</h2>
+
+<p>The LSP runs the full TIR optimization pipeline asynchronously and reports the
+results as inlay hints and per-function <strong>code lens</strong>:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code> — value promoted to the stack (no heap allocation)</li>
+  <li><code class="language-plaintext highlighter-rouge">♻ in-place</code> — FBIP: value reused in place without allocating</li>
+  <li><code class="language-plaintext highlighter-rouge">⚠ non-tail call</code> — a recursive call that isn’t in tail position</li>
+  <li><code class="language-plaintext highlighter-rouge">📦 closure captures N values</code> — a closure capturing several variables</li>
+  <li>allocation inside a recursive arm, actor message copies, indirect calls</li>
+</ul>
+
+<p>A per-function lens summarizes them, e.g. <code class="language-plaintext highlighter-rouge">⚡ 2 stack-allocated · ♻ 1 in-place</code>.
+Toggle the inlay annotations with the <code class="language-plaintext highlighter-rouge">march.inlayHints.performanceAnnotations</code>
+client setting.</p>
+
+<hr />
+
+<h2 id="standalone-query-cli">Standalone query CLI</h2>
+
+<p>The same analysis engine is reachable as <strong>one-shot queries</strong> that print a single
+JSON object and exit — no LSP handshake, no persistent process. Handy for
+scripts, CI, and LLM tooling:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march-lsp query hover       file.march <span class="nt">--line</span> 10 <span class="nt">--col</span> 4
+march-lsp query <span class="nb">type        </span>file.march <span class="nt">--line</span> 10 <span class="nt">--col</span> 4   <span class="c"># inferred type only</span>
+march-lsp query definition  file.march <span class="nt">--line</span> 10 <span class="nt">--col</span> 4
+march-lsp query references  file.march <span class="nt">--line</span> 10 <span class="nt">--col</span> 4
+march-lsp query completions file.march <span class="nt">--line</span> 10 <span class="nt">--col</span> 4
+march-lsp query diagnostics file.march
+march-lsp query symbols     file.march                     <span class="c"># top-level symbols</span>
+march-lsp query format      file.march                     <span class="c"># formatted source (not JSON)</span>
+
+<span class="c"># Analyse an unsaved buffer piped on stdin (the path is only used for messages):</span>
+<span class="nb">cat </span>buffer.march | march-lsp query diagnostics buffer.march <span class="nt">--stdin</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">--line</code>/<code class="language-plaintext highlighter-rouge">--col</code> are <strong>1-based</strong> on the command line (human-friendly), counted in
+UTF-16 code units, and converted to the 0-based LSP convention internally; ranges
+in the JSON output are 0-based UTF-16 (LSP). Exit status is <code class="language-plaintext highlighter-rouge">0</code> on success and
+<code class="language-plaintext highlighter-rouge">2</code> on a usage error (the JSON then has an <code class="language-plaintext highlighter-rouge">"error"</code> field).</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>march-lsp query <span class="nb">type </span>good.march <span class="nt">--line</span> 3 <span class="nt">--col</span> 6
+<span class="o">{</span><span class="s2">"type"</span>:<span class="s2">"Int"</span><span class="o">}</span>
+
+<span class="nv">$ </span>march-lsp query diagnostics bad.march
+<span class="o">{</span><span class="s2">"diagnostics"</span>:[<span class="o">{</span><span class="s2">"message"</span>:<span class="s2">"I expected </span><span class="sb">`</span>Bool<span class="sb">`</span><span class="s2"> but found </span><span class="sb">`</span>Int<span class="sb">`</span><span class="s2">."</span>,<span class="s2">"range"</span>:<span class="o">{</span><span class="s2">"start"</span>:<span class="o">{</span><span class="s2">"line"</span>:1,<span class="s2">"character"</span>:18<span class="o">}</span>,<span class="s2">"end"</span>:<span class="o">{</span><span class="s2">"line"</span>:1,<span class="s2">"character"</span>:22<span class="o">}}}]}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">symbols</code> reports every symbol visible to the analysis (open file plus loaded
+stdlib/workspace modules), matching the LSP <code class="language-plaintext highlighter-rouge">documentSymbol</code> request.</p>
+
+<hr />
+
+<h2 id="debugger-dap">Debugger (DAP)</h2>
+
+<p>March also ships a Debug Adapter Protocol server for breakpoint debugging,
+launched as a subcommand of the compiler:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march dap        <span class="c"># speaks DAP over stdio</span>
+</code></pre></div></div>
+
+<p>It supports line breakpoints, step in / over / out, a call stack, and local
+variable inspection, by pausing the interpreter at each breakpoint. Editor
+clients:</p>
+
+<ul>
+  <li><strong>VS Code</strong> — the extension in <code class="language-plaintext highlighter-rouge">editors/vscode-march-debug/</code></li>
+  <li><strong>Zed</strong> — the <code class="language-plaintext highlighter-rouge">[debug_adapters.march]</code> entry in <code class="language-plaintext highlighter-rouge">zed-march/</code></li>
+</ul>
+
+<p>This is the protocol-based debugger; for a quick inline pause you can also drop a
+<code class="language-plaintext highlighter-rouge">dbg()</code> call to open the REPL at that point (see <a href="/docs/tooling/">Tooling</a>).</p>
+
+<hr />
+
+<h2 id="why-its-accurate">Why it’s accurate</h2>
+
+<p><code class="language-plaintext highlighter-rouge">march-lsp</code> and <code class="language-plaintext highlighter-rouge">march dap</code> use the compiler’s own libraries — the same lexer,
+parser, type checker, and IR passes that build your program. There is no separate
+“editor model” to drift out of sync: a diagnostic in the editor is a diagnostic
+in the build, and a hover type is the real inferred type.</p>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

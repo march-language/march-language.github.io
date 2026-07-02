@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Design: March → JavaScript Backend (--target js) — March Lang</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM."/>
+
+  <!-- DaisyUI v4 + Tailwind v4 CDN (compatible pair) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" type="text/css"/>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <style>
+    /* ── March palette applied directly — bypasses DaisyUI theme variables ── */
+
+    /* Backgrounds */
+    html, body                       { background-color: #0B1F2A; color: #D6EEF5; }
+    #march-sidebar                   { background-color: #0F2A36; border-right: 1px solid #133847; }
+    #march-topbar                    { background-color: #0F2A36; border-bottom: 1px solid #133847; }
+    #march-footer                    { border-top: 1px solid #133847; color: #7aacbe; }
+    #march-logo-bar                  { border-bottom: 1px solid #133847; }
+    #march-github-bar                { border-top: 1px solid #133847; }
+
+    /* Nav links */
+    #march-nav a                     { color: #a8ccd8; border-radius: 6px; padding: 5px 10px; display: block; font-size: 0.875rem; text-decoration: none; }
+    #march-nav a:hover               { background-color: #133847; color: #D6EEF5; }
+    #march-nav a.active              { background-color: rgba(111,227,214,0.13); color: #6FE3D6; font-weight: 600; }
+    .march-nav-section               { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #3d6678; padding: 14px 10px 4px; }
+
+    /* Prose */
+    .prose                           { color: #D6EEF5; }
+    .prose h1, .prose h2,
+    .prose h3, .prose h4             { color: #E6FCF9; scroll-margin-top: 4rem; }
+    .prose a                         { color: #6FE3D6; text-decoration: none; }
+    .prose a:hover                   { text-decoration: underline; }
+    .prose strong                    { color: #CFF7F1; }
+    .prose table                     { display: block; overflow-x: auto; }
+    .prose td code, .prose th code   { white-space: nowrap; }
+    .prose thead                     { border-bottom-color: #133847; }
+    .prose tbody tr                  { border-bottom-color: #133847; }
+    .prose blockquote                { border-left-color: #1C5D6F; color: #a8ccd8; }
+    .prose hr                        { border-color: #133847; }
+
+    /* Inline code */
+    .prose :not(pre) > code          { background: #0F2A36; color: #6FE3D6; padding: 1px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid #133847; }
+    .prose :not(pre) > code::before,
+    .prose :not(pre) > code::after  { content: none; }
+
+    /* Fenced code blocks */
+    .highlight                       { background: #0B1F2A !important; border-radius: 8px; overflow-x: auto; border: 1px solid #133847; }
+    .highlight pre                   { background: transparent; margin: 0; padding: 1rem 1.25rem; }
+    .highlighter-rouge .highlight    { margin: 1.25rem 0; }
+
+    /* Rouge tokens (March palette) */
+    .highlight .c, .highlight .c1,
+    .highlight .cm, .highlight .cp,
+    .highlight .cs                   { color: #3d6070; font-style: italic; } /* comment */
+    .highlight .k, .highlight .kd,
+    .highlight .kn, .highlight .kp,
+    .highlight .kr                   { color: #6FE3D6; }                    /* keyword */
+    .highlight .kt                   { color: #CFF7F1; }                    /* type */
+    .highlight .s, .highlight .sb,
+    .highlight .sc, .highlight .sd,
+    .highlight .s2, .highlight .sh,
+    .highlight .si, .highlight .sx,
+    .highlight .sr, .highlight .s1,
+    .highlight .ss                   { color: #36D399; }                    /* string */
+    .highlight .m, .highlight .mf,
+    .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il   { color: #FBBF24; }                    /* number */
+    .highlight .o, .highlight .ow   { color: #3ABFF8; }                    /* operator */
+    .highlight .nf, .highlight .fm  { color: #6FE3D6; }                    /* function */
+    .highlight .nc, .highlight .nn  { color: #CFF7F1; }                    /* class/module */
+    .highlight .nb                  { color: #3ABFF8; }                    /* builtin */
+    .highlight .nt                  { color: #6FE3D6; }                    /* tag */
+    .highlight .na                  { color: #36D399; }                    /* attribute */
+    .highlight .err                 { color: #F87272; }                    /* error */
+    .highlight .n, .highlight .nx  { color: #D6EEF5; }                    /* name */
+    .highlight .p                   { color: #C7DDE5; }                    /* punctuation */
+    .highlight .gd                  { color: #F87272; }                    /* deleted */
+    .highlight .gi                  { color: #36D399; }                    /* inserted */
+
+    /* GitHub button */
+    .march-github-btn               { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #1C5D6F; color: #6FE3D6; font-size: 0.8rem; text-decoration: none; transition: background 0.15s; }
+    .march-github-btn:hover         { background-color: #133847; }
+
+    /* Logo hover */
+    .march-logo-link:hover span     { color: #6FE3D6; }
+    .march-logo-link span           { transition: color 0.15s; }
+  </style>
+</head>
+
+<body>
+  <div class="drawer lg:drawer-open">
+    <input id="nav-drawer" type="checkbox" class="drawer-toggle"/>
+
+    <!-- ── Page content ─────────────────────────────────────────────────── -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- Mobile topbar -->
+      <nav id="march-topbar" class="navbar sticky top-0 z-30 lg:hidden">
+        <div class="navbar-start">
+          <label for="nav-drawer" class="btn btn-ghost btn-square drawer-button" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#D6EEF5">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </label>
+        </div>
+        <div class="navbar-center">
+          <a href="/" class="flex items-center gap-2 font-bold text-lg" style="color:#D6EEF5; text-decoration:none;">
+            <img src="/assets/logo.webp" width="26" height="26" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            March
+          </a>
+        </div>
+        <div class="navbar-end">
+          <a href="https://github.com/march-language/march" class="btn btn-ghost btn-sm" style="color:#a8ccd8;" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="flex-1 w-full max-w-4xl mx-auto px-6 py-10 lg:px-12">
+        <article class="prose max-w-none prose-pre:p-0 prose-pre:bg-transparent prose-pre:rounded-none">
+          <h1 id="design-march--javascript-backend---target-js">Design: March → JavaScript Backend (<code class="language-plaintext highlighter-rouge">--target js</code>)</h1>
+
+<p><strong>Date:</strong> 2026-06-21
+<strong>Status:</strong> Approved (design); implementation not started</p>
+
+<h2 id="overview">Overview</h2>
+
+<p>A new compiler backend that emits readable, idiomatic ES modules from March
+source, targeting <strong>DOM-interactive browser applications</strong>: UI logic that
+handles events, manipulates the DOM through a JavaScript FFI, and <code class="language-plaintext highlighter-rouge">await</code>s
+asynchronous operations such as <code class="language-plaintext highlighter-rouge">fetch</code> and timers.</p>
+
+<p>The JS backend sits <strong>alongside</strong> the existing WebAssembly target
+(<code class="language-plaintext highlighter-rouge">--target wasm32-unknown-unknown</code>); it does not replace it. The two serve
+different purposes and are expected to coexist long-term:</p>
+
+<ul>
+  <li><strong>JS target</strong> — interactive UI logic: DOM access, awaiting async work,
+holding live JS object references, debuggable output, tiny payloads for
+small programs.</li>
+  <li><strong>WASM target</strong> — compute-heavy, boundary-light kernels (e.g. the
+<code class="language-plaintext highlighter-rouge">native_int_arr</code> / <code class="language-plaintext highlighter-rouge">native_float_arr</code> SIMD-style paths) where raw numeric
+throughput and full language fidelity (scheduler, deterministic RC) matter.</li>
+</ul>
+
+<h3 id="why-js-rather-than-wasm-for-this-use-case">Why JS rather than WASM for this use case</h3>
+
+<p>The two product decisions that frame this work — <strong>async/await</strong> as the
+concurrency model and a <strong>JS FFI for the DOM</strong> — are precisely where WASM is
+weakest:</p>
+
+<ul>
+  <li>WASM has no native async; it requires Asyncify (≈2× binary, slow stack
+unwinding) or JSPI (new, uneven browser support). JS <code class="language-plaintext highlighter-rouge">async</code>/<code class="language-plaintext highlighter-rouge">await</code> <em>is</em>
+the language.</li>
+  <li>WASM cannot hold DOM nodes or JS objects in linear memory; every DOM call
+crosses the JS↔WASM boundary with an <code class="language-plaintext highlighter-rouge">externref</code>/handle table and string
+marshalling. The JS backend has no boundary.</li>
+  <li>WASM ships its own allocator + RC (or WasmGC); the JS backend gets GC for
+free and skips reference counting entirely.</li>
+</ul>
+
+<p>WASM still wins for numeric throughput and full-fidelity concurrency, so it
+remains the right tool for a <em>different</em> shape of program. This spec does not
+remove or modify the WASM path.</p>
+
+<h2 id="goals">Goals</h2>
+
+<p>Compile the following March subset to ES modules that run in browsers and
+under Node:</p>
+
+<ul>
+  <li>ADTs (variants), pattern matching, records, tuples</li>
+  <li>First-class closures, recursion, mutual recursion</li>
+  <li>Strings, <code class="language-plaintext highlighter-rouge">List</code>, <code class="language-plaintext highlighter-rouge">Option</code>, <code class="language-plaintext highlighter-rouge">Result</code>, and the numeric / string / comparison
+builtins currently lowered inline by <code class="language-plaintext highlighter-rouge">llvm_emit.ml</code></li>
+  <li><code class="language-plaintext highlighter-rouge">js_extern</code> FFI for calling browser / JS APIs (synchronous and async)</li>
+  <li>An <code class="language-plaintext highlighter-rouge">async</code>/<code class="language-plaintext highlighter-rouge">await</code> concurrency model derived by static effect coloring</li>
+  <li>A <code class="language-plaintext highlighter-rouge">main</code> entry point plus named exports callable from host JavaScript</li>
+</ul>
+
+<h2 id="non-goals-v1">Non-Goals (v1)</h2>
+
+<p>Explicitly deferred. These are out of scope and the emitter should produce a
+clear “unsupported in JS target” diagnostic if encountered, rather than
+silently miscompiling:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">spawn</code> / actors / green threads / supervision trees</li>
+  <li><code class="language-plaintext highlighter-rouge">Chan</code> / MPST session channels</li>
+  <li>Blocking OS-thread externs (<code class="language-plaintext highlighter-rouge">blocking fn</code> in a C <code class="language-plaintext highlighter-rouge">extern</code> block)</li>
+  <li>The full native stdlib — only builtins with a JS shim are supported</li>
+  <li>True 64-bit <code class="language-plaintext highlighter-rouge">Int</code> (see <a href="#integer-semantics">Integer Semantics</a>); v1 uses
+safe 53-bit integers</li>
+  <li>WasmGC interop</li>
+</ul>
+
+<h2 id="architecture">Architecture</h2>
+
+<h3 id="pipeline-integration">Pipeline integration</h3>
+
+<p>The native/WASM compile path today is (<code class="language-plaintext highlighter-rouge">bin/main.ml</code>):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Lower → Mono → Defun → Perceus → Opt → Llvm_emit
+</code></pre></div></div>
+
+<p>The JS target branches <strong>after Mono</strong>, skipping Defun and Perceus:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Lower → Mono ─┬─ (native / wasm) → Defun → Perceus → Opt  → Llvm_emit
+              └─ (js)             → Opt' → AsyncColor → Js_emit
+</code></pre></div></div>
+
+<ul>
+  <li><strong>Skip Defun.</strong> JavaScript has first-class closures, so March closures
+emit as native JS closures. The defunctionalized <code class="language-plaintext highlighter-rouge">ECallPtr</code> /
+closure-struct representation is never produced; a native <code class="language-plaintext highlighter-rouge">EApp</code> on a
+closure value lowers to a direct JS call.</li>
+  <li><strong>Skip Perceus.</strong> JavaScript is garbage-collected, so no reference-counting
+nodes (<code class="language-plaintext highlighter-rouge">EIncRC</code>, <code class="language-plaintext highlighter-rouge">EDecRC</code>, <code class="language-plaintext highlighter-rouge">EAtomicIncRC</code>, <code class="language-plaintext highlighter-rouge">EAtomicDecRC</code>, <code class="language-plaintext highlighter-rouge">EFree</code>,
+<code class="language-plaintext highlighter-rouge">EReuse</code>) are ever inserted. The JS emitter treats any such node as a
+no-op for defensiveness, but in the normal path they are absent.</li>
+  <li><strong>Opt’</strong> reuses the existing <code class="language-plaintext highlighter-rouge">Opt.run</code> passes (join-points, known-call,
+inline, cprop, fold, simplify, fusion, dce), which operate on
+RC-free TIR. See <a href="#risks">Risk: Opt without Perceus</a>.</li>
+</ul>
+
+<h3 id="new-module">New module</h3>
+
+<p><code class="language-plaintext highlighter-rouge">lib/tir/js_emit.ml</code>, a sibling of <code class="language-plaintext highlighter-rouge">lib/tir/llvm_emit.ml</code>, consuming the same
+<code class="language-plaintext highlighter-rouge">Tir.tir_module</code>. A new target variant <code class="language-plaintext highlighter-rouge">Js</code> is added to
+<code class="language-plaintext highlighter-rouge">Llvm_emit.target_config</code> (or a shared target type if that proves cleaner —
+see Open Questions), threaded through <code class="language-plaintext highlighter-rouge">bin/main.ml</code>’s <code class="language-plaintext highlighter-rouge">parse_target</code> and the
+CAS target label.</p>
+
+<h2 id="tir--javascript-lowering">TIR → JavaScript Lowering</h2>
+
+<p>The TIR is ANF-based: function arguments are atoms, every binding is
+explicitly typed. After Mono there are no type variables. The mapping:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>TIR node</th>
+      <th>JavaScript</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EAtom (ALit l)</code></td>
+      <td>literal</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EAtom (AVar v)</code></td>
+      <td>identifier</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EApp (f, args)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">f(a0, a1, …)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ELet (v, e1, e2)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">const v = &lt;e1&gt;;</code> then <code class="language-plaintext highlighter-rouge">&lt;e2&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ELetRec (fns, body)</code></td>
+      <td>hoisted <code class="language-plaintext highlighter-rouge">function</code> declarations + <code class="language-plaintext highlighter-rouge">&lt;body&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ECase (x, brs, def)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">switch (x.$) { case "Ctor": …; default: … }</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ETuple [a; b]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[a, b]</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ERecord [("x", a)]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">{ x: a }</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EField (r, "x")</code></td>
+      <td><code class="language-plaintext highlighter-rouge">r.x</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EUpdate (r, [("x", a)])</code></td>
+      <td><code class="language-plaintext highlighter-rouge">{ ...r, x: a }</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EAlloc ("Foo", [a; b])</code></td>
+      <td><code class="language-plaintext highlighter-rouge">{ $: "Foo", _0: a, _1: b }</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EStackAlloc (…)</code></td>
+      <td>identical to <code class="language-plaintext highlighter-rouge">EAlloc</code> (the stack hint is irrelevant under GC)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ESeq (e1, e2)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;e1&gt;;</code> then <code class="language-plaintext highlighter-rouge">&lt;e2&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ECallPtr</code></td>
+      <td>not produced (Defun skipped); if present, error</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Notes:</p>
+
+<ul>
+  <li><strong>Constructor tag</strong> lives in the <code class="language-plaintext highlighter-rouge">$</code> field. March identifiers cannot
+contain <code class="language-plaintext highlighter-rouge">$</code>, so it can never collide with a user record field or
+constructor-argument slot. Constructor arguments are positional <code class="language-plaintext highlighter-rouge">_0</code>, <code class="language-plaintext highlighter-rouge">_1</code>,
+….</li>
+  <li><strong>ANF → const chain.</strong> Because TIR is ANF, the natural emission is a
+straight-line sequence of <code class="language-plaintext highlighter-rouge">const</code> bindings inside the enclosing function,
+with <code class="language-plaintext highlighter-rouge">ECase</code> / <code class="language-plaintext highlighter-rouge">ELetRec</code> introducing nested blocks or hoisted declarations
+as needed.</li>
+  <li><strong>Closures.</strong> A TIR function value emits as a JS arrow function capturing
+its free variables lexically. No closure struct, no environment record.</li>
+  <li><strong>Entry points.</strong> <code class="language-plaintext highlighter-rouge">main</code> emits as an exported <code class="language-plaintext highlighter-rouge">main()</code>. Names in
+<code class="language-plaintext highlighter-rouge">tm_exports</code> emit as named ES exports.</li>
+  <li><strong>Structural equality.</strong> ADT structural <code class="language-plaintext highlighter-rouge">==</code> reuses the same per-type
+equality logic the LLVM path generates (<code class="language-plaintext highlighter-rouge">emitted_eq_fns</code>), ported to emit a
+recursive JS comparison function per monomorphic type.</li>
+  <li><strong>Name mangling.</strong> Cross-module qualified TIR names (e.g.
+<code class="language-plaintext highlighter-rouge">Crypto.base64_encode</code>) are mangled to valid, collision-free JS identifiers
+via a deterministic scheme (<code class="language-plaintext highlighter-rouge">Crypto$base64_encode</code>). The mangler must be a
+total, injective function over the set of TIR names in the module.</li>
+</ul>
+
+<h2 id="runtime-shim--march_runtimejs">Runtime Shim — <code class="language-plaintext highlighter-rouge">march_runtime.js</code></h2>
+
+<p>A small, hand-written ES module providing the builtins that <code class="language-plaintext highlighter-rouge">llvm_emit.ml</code>
+currently lowers to LLVM instructions or runtime calls. The emitted module
+imports the subset it uses. Contents:</p>
+
+<ul>
+  <li>Arithmetic / comparison — mostly inlined as native JS operators at emit
+time; the shim holds only those needing helper logic (e.g. integer
+division/modulo semantics, see Integer Semantics).</li>
+  <li>String builtins — <code class="language-plaintext highlighter-rouge">string_concat</code>, length, slice, comparison, etc.</li>
+  <li>Collection constructors / helpers — <code class="language-plaintext highlighter-rouge">List</code> (cons/nil), <code class="language-plaintext highlighter-rouge">Option</code>, <code class="language-plaintext highlighter-rouge">Result</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">print</code> → <code class="language-plaintext highlighter-rouge">console.log</code>.</li>
+  <li>Generic structural-equality helper, if a shared one is cleaner than
+per-type generated functions.</li>
+</ul>
+
+<p>Target size ≈ 300–400 lines. Lives in the repo as a source asset and is
+copied (or referenced by relative import) next to emitted output.</p>
+
+<h2 id="async-coloring-asynccolor-pass">Async Coloring (<code class="language-plaintext highlighter-rouge">AsyncColor</code> pass)</h2>
+
+<p>A new TIR pass implementing the async/await concurrency model. It computes,
+by fixpoint over the call graph, which functions are <strong>async</strong>:</p>
+
+<ol>
+  <li>A function is async if it directly calls an async <code class="language-plaintext highlighter-rouge">js_extern</code>.</li>
+  <li>A function is async if it transitively calls an async function.</li>
+  <li>Iterate to fixpoint.</li>
+</ol>
+
+<p>Emission consequences:</p>
+
+<ul>
+  <li>Async functions emit as <code class="language-plaintext highlighter-rouge">async function</code> / <code class="language-plaintext highlighter-rouge">async (…) =&gt;</code>.</li>
+  <li>Calls <strong>to</strong> an async function emit <code class="language-plaintext highlighter-rouge">await f(…)</code>.</li>
+  <li>Purely synchronous functions and call sites are unaffected.</li>
+</ul>
+
+<p>This pass replaces, for the JS target, the native handling of <code class="language-plaintext highlighter-rouge">blocking</code>
+externs (which dispatch on an OS thread via <code class="language-plaintext highlighter-rouge">march_run_blocking_*</code>). In the
+JS world “blocking” becomes “awaitable”.</p>
+
+<p>Constraint: an async function cannot be called from a context that the
+coloring did not mark async — by construction the fixpoint prevents this, but
+the pass must assert it and emit a clear diagnostic if an async value escapes
+into a synchronous position (e.g. stored in a data structure and later called
+synchronously). v1 may conservatively reject such programs.</p>
+
+<h2 id="javascript-ffi--js_extern">JavaScript FFI — <code class="language-plaintext highlighter-rouge">js_extern</code></h2>
+
+<p>A JS-specific FFI form so a binding can declare its JS target symbol and
+whether it is asynchronous. This is distinct from the existing C <code class="language-plaintext highlighter-rouge">extern</code>
+block.</p>
+
+<h3 id="surface-syntax-proposed">Surface syntax (proposed)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>js_extern "dom" : Cap(Dom) do
+  fn query(selector: String): Node = "querySelector"
+  async fn fetch_text(url: String): String = "fetchText"
+end
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">"dom"</code> names the JS module/namespace the bindings resolve against.</li>
+  <li><code class="language-plaintext highlighter-rouge">async fn</code> marks the binding as asynchronous (seeds <code class="language-plaintext highlighter-rouge">AsyncColor</code>).</li>
+  <li>The string after <code class="language-plaintext highlighter-rouge">=</code> is the JS symbol name; defaults to the March name.</li>
+</ul>
+
+<h3 id="touch-points">Touch points</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Change</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">lib/ast/ast.ml</code></td>
+      <td>Extend <code class="language-plaintext highlighter-rouge">extern_fn</code> with an optional <code class="language-plaintext highlighter-rouge">ef_js</code> binding (<code class="language-plaintext highlighter-rouge">{ js_module : string option; js_symbol : string; js_async : bool }</code>), or add a parallel <code class="language-plaintext highlighter-rouge">DJsExtern</code> decl. Decision recorded in Open Questions.</td>
+    </tr>
+    <tr>
+      <td>Parser</td>
+      <td>Surface syntax for <code class="language-plaintext highlighter-rouge">js_extern</code> blocks and <code class="language-plaintext highlighter-rouge">async fn</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml</code></td>
+      <td>Same <code class="language-plaintext highlighter-rouge">Cap</code> / <code class="language-plaintext highlighter-rouge">needs</code> capability checking as C externs (Checks 1 and 5). Record the async flag for <code class="language-plaintext highlighter-rouge">AsyncColor</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">lib/tir/lower.ml</code></td>
+      <td>Carry JS binding info into <code class="language-plaintext highlighter-rouge">Tir.extern_decl</code> (new <code class="language-plaintext highlighter-rouge">ed_js_symbol</code> / <code class="language-plaintext highlighter-rouge">ed_async</code>, or a JS-specific extern record).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">lib/tir/js_emit.ml</code></td>
+      <td>Emit <code class="language-plaintext highlighter-rouge">import { querySelector as query } from "./imports/dom.js"</code> (or <code class="language-plaintext highlighter-rouge">globalThis</code>-based resolution) and wire async bindings into <code class="language-plaintext highlighter-rouge">AsyncColor</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="curated-bindings">Curated bindings</h3>
+
+<p>Ship a <code class="language-plaintext highlighter-rouge">march_dom.js</code> (and <code class="language-plaintext highlighter-rouge">Console</code>, <code class="language-plaintext highlighter-rouge">Timer</code>) providing the common DOM,
+console, and timer surface so users have a working FFI immediately without
+writing their own JS. Arbitrary user-supplied imports maps are also
+supported by resolving against a provided module path.</p>
+
+<h2 id="integer-semantics">Integer Semantics</h2>
+
+<p>March <code class="language-plaintext highlighter-rouge">Int</code> is 64-bit; JavaScript <code class="language-plaintext highlighter-rouge">number</code> is an IEEE-754 double, exact only
+to 2^53 − 1. <strong>v1 uses safe 53-bit integers</strong> (<code class="language-plaintext highlighter-rouge">number</code>):</p>
+
+<ul>
+  <li>Rationale: typical UI logic (indices, counts, lengths, enum tags) never
+approaches 2^53. <code class="language-plaintext highlighter-rouge">BigInt</code> is viral (infects every arithmetic site), slower,
+and degrades output readability.</li>
+  <li>The limitation is documented and the boundary is explicit.</li>
+  <li><strong>Future:</strong> a <code class="language-plaintext highlighter-rouge">--js-bigint</code> flag (M4) switches <code class="language-plaintext highlighter-rouge">Int</code> to <code class="language-plaintext highlighter-rouge">BigInt</code> for
+programs that genuinely need full 64-bit range.</li>
+</ul>
+
+<p>Integer division and modulo emit through shim helpers that reproduce March’s
+semantics (truncation toward zero, sign of modulo) rather than relying on raw
+JS <code class="language-plaintext highlighter-rouge">/</code> and <code class="language-plaintext highlighter-rouge">%</code>.</p>
+
+<h2 id="cli--build--caching">CLI / Build / Caching</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--target js</code> (aliases <code class="language-plaintext highlighter-rouge">javascript</code>) → the <code class="language-plaintext highlighter-rouge">Js</code> target variant in
+<code class="language-plaintext highlighter-rouge">parse_target</code>.</li>
+  <li>Output filename: <code class="language-plaintext highlighter-rouge">&lt;basename&gt;.mjs</code>. The runtime shim is copied or
+referenced by relative import alongside it.</li>
+  <li>No native toolchain is invoked — the backend emits text and writes the
+file. (Contrast: native/WASM invoke <code class="language-plaintext highlighter-rouge">clang</code> / <code class="language-plaintext highlighter-rouge">wasm-ld</code>.)</li>
+  <li>CAS: <code class="language-plaintext highlighter-rouge">target_label = "js"</code>, folded into the existing
+<code class="language-plaintext highlighter-rouge">Cas.compilation_hash</code> logic so JS builds cache and short-circuit like
+native/WASM builds.</li>
+  <li>Lands directly on <code class="language-plaintext highlighter-rouge">--target js</code> (no feature flag).</li>
+</ul>
+
+<h2 id="testing-strategy">Testing Strategy</h2>
+
+<ul>
+  <li><strong>Golden tests.</strong> TIR → JS string snapshots for each construct (ADT,
+pattern match, record, tuple, closure, recursion, async coloring).</li>
+  <li><strong>Execution tests.</strong> Compile sample <code class="language-plaintext highlighter-rouge">.march</code> programs to <code class="language-plaintext highlighter-rouge">.mjs</code>, run under
+Node, assert stdout / return values. Reuse existing example programs that
+fall within the v1 subset.</li>
+  <li><strong>FFI / async test.</strong> A Node harness supplying a fake imports map (stubs or
+jsdom) exercises <code class="language-plaintext highlighter-rouge">js_extern</code> and async coloring end-to-end — a sync DOM
+binding and an <code class="language-plaintext highlighter-rouge">async fetch_text</code>.</li>
+  <li>Wire all of the above into <code class="language-plaintext highlighter-rouge">forge test</code> / CI.</li>
+</ul>
+
+<h2 id="milestones">Milestones</h2>
+
+<h3 id="m1--pure-core">M1 — Pure core</h3>
+<p><code class="language-plaintext highlighter-rouge">--target js</code>, <code class="language-plaintext highlighter-rouge">lib/tir/js_emit.ml</code>, the pipeline branch (skip Defun /
+Perceus), <code class="language-plaintext highlighter-rouge">march_runtime.js</code>. Supports pure functions, ADTs, pattern
+matching, records, tuples, closures, recursion, strings, <code class="language-plaintext highlighter-rouge">List</code> / <code class="language-plaintext highlighter-rouge">Option</code> /
+<code class="language-plaintext highlighter-rouge">Result</code>. Node golden + execution tests. <strong>No FFI, no async.</strong></p>
+
+<p>Includes the validation task: confirm no <code class="language-plaintext highlighter-rouge">Opt.run</code> pass assumes Perceus ran.</p>
+
+<h3 id="m2--js_extern-synchronous">M2 — <code class="language-plaintext highlighter-rouge">js_extern</code> (synchronous)</h3>
+<p>FFI plumbing through parser → typecheck → lower → emit. <code class="language-plaintext highlighter-rouge">march_dom.js</code> with
+synchronous DOM / console bindings. Capability checking on <code class="language-plaintext highlighter-rouge">js_extern</code>.</p>
+
+<h3 id="m3--async">M3 — Async</h3>
+<p><code class="language-plaintext highlighter-rouge">AsyncColor</code> pass; <code class="language-plaintext highlighter-rouge">async fn</code> in <code class="language-plaintext highlighter-rouge">js_extern</code>; <code class="language-plaintext highlighter-rouge">fetch</code> / timer bindings;
+async-position escape diagnostics.</p>
+
+<h3 id="m4--polish">M4 — Polish</h3>
+<p>Source-map comments, <code class="language-plaintext highlighter-rouge">--js-bigint</code> flag, broader stdlib shims, dead-export
+elimination, ergonomics of the imports-map resolution.</p>
+
+<h2 id="risks-and-open-questions">Risks and Open Questions</h2>
+
+<h3 id="risks">Risks</h3>
+
+<ul>
+  <li><strong>Opt without Perceus.</strong> <code class="language-plaintext highlighter-rouge">Opt.run</code> currently runs <em>after</em> Perceus on the
+native path, and a comment notes some passes target “cases revealed after
+Perceus.” The JS path runs Opt on RC-free TIR. <strong>Validation task (M1):</strong>
+confirm every Opt pass is correct (and ideally still useful) on a module
+that contains no RC nodes. If any pass assumes RC nodes exist, gate it off
+for the JS target.</li>
+  <li><strong>Async escape.</strong> A first-class async function stored in a data structure
+and later invoked from a synchronous position breaks the await coloring.
+v1 conservatively rejects this with a diagnostic; a fuller solution
+(uniformly async-typing such values) is deferred.</li>
+  <li><strong>Name-mangling collisions.</strong> The qualified-name → JS-identifier mangler
+must be injective over the module’s name set. A prior march bug
+(cross-module ctor-tag collision) shows this class of problem is real;
+the mangler needs a collision check, not just a substitution scheme.</li>
+</ul>
+
+<h3 id="open-questions">Open Questions</h3>
+
+<ol>
+  <li><strong>Extern representation:</strong> extend <code class="language-plaintext highlighter-rouge">extern_fn</code> with an optional <code class="language-plaintext highlighter-rouge">ef_js</code>
+field, or introduce a separate <code class="language-plaintext highlighter-rouge">DJsExtern</code> declaration? Leaning toward
+extending <code class="language-plaintext highlighter-rouge">extern_fn</code> to keep one capability-checking path.</li>
+  <li><strong>Target type location:</strong> add <code class="language-plaintext highlighter-rouge">Js</code> to <code class="language-plaintext highlighter-rouge">Llvm_emit.target_config</code> (where it
+is a slightly awkward fit, since it bypasses LLVM), or introduce a
+shared <code class="language-plaintext highlighter-rouge">backend_target</code> type that both <code class="language-plaintext highlighter-rouge">Llvm_emit</code> and <code class="language-plaintext highlighter-rouge">Js_emit</code> consume?
+Leaning toward a shared type to avoid <code class="language-plaintext highlighter-rouge">Llvm_emit</code> owning a non-LLVM
+variant.</li>
+  <li><strong>Import resolution:</strong> resolve <code class="language-plaintext highlighter-rouge">js_extern</code> symbols against
+<code class="language-plaintext highlighter-rouge">globalThis</code>, against ES module imports, or both (configurable)? Default
+proposal: relative ES module imports for curated bindings, with a
+documented escape hatch.</li>
+</ol>
+
+
+        </article>
+      </main>
+
+      <!-- Footer -->
+      <footer id="march-footer" class="py-5 px-6 lg:px-12 text-sm">
+        March Programming Language &mdash;
+        <a href="https://github.com/march-language/march" style="color:#6FE3D6;" target="_blank" rel="noopener">GitHub</a>
+      </footer>
+    </div>
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+    <div class="drawer-side z-40">
+      <label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+
+      <aside id="march-sidebar" class="min-h-full w-64 flex flex-col">
+
+        <!-- Logo -->
+        <div id="march-logo-bar" class="p-5">
+          <a href="/" class="march-logo-link flex items-center gap-3" style="text-decoration:none;">
+            <img src="/assets/logo.webp" width="38" height="38" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            <span class="font-bold text-xl" style="color:#D6EEF5;">March</span>
+          </a>
+        </div>
+
+        <!-- Nav -->
+        <nav id="march-nav" class="flex-1 overflow-y-auto py-3 px-2">
+          
+
+          <div class="march-nav-section">Start here</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/installation/">Installation</a></li>
+            
+            <li><a href="/docs/playground/">Try It Out</a></li>
+            
+            <li><a href="/docs/getting-started/">Getting Started</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Language</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/tour/">Language Tour</a></li>
+            
+            <li><a href="/docs/build-a-cli/">Build a CLI Tool</a></li>
+            
+            <li><a href="/docs/types/">Type System</a></li>
+            
+            <li><a href="/docs/linear-types/">Linear Types</a></li>
+            
+            <li><a href="/docs/refinement-types/">Refinement Types</a></li>
+            
+            <li><a href="/docs/memory-model/">Memory Model</a></li>
+            
+            <li><a href="/docs/pattern-matching/">Pattern Matching</a></li>
+            
+            <li><a href="/docs/modules/">Module System</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Concurrency</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/actors/">Actors</a></li>
+            
+            <li><a href="/docs/parallel-collections/">Parallel Collections</a></li>
+            
+            <li><a href="/docs/session-types/">Session Types</a></li>
+            
+            <li><a href="/docs/supervision/">Supervision Trees</a></li>
+            
+            <li><a href="/docs/clustering/">Clustering & RPC</a></li>
+            
+            <li><a href="/docs/flow/">Flow & Backpressure</a></li>
+            
+            <li><a href="/docs/hot-code-reload/">Hot Code Reload</a></li>
+            
+            <li><a href="/docs/interfaces/">Interfaces</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Reference</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            <li><a href="/docs/stdlib/">Standard Library</a></li>
+            
+            <li><a href="/docs/stdlib-guide/">Stdlib Guide</a></li>
+            
+            <li><a href="/docs/property-testing/">Property Testing</a></li>
+            
+            <li><a href="/docs/repl/">REPL</a></li>
+            
+            <li><a href="/docs/tooling/">Tooling</a></li>
+            
+            <li><a href="/docs/lsp/">LSP & Editors</a></li>
+            
+            <li><a href="/docs/examples/">Examples</a></li>
+            
+            <li><a href="/docs/capabilities/">Capabilities</a></li>
+            
+            <li><a href="/docs/ffi/">Foreign Function Interface</a></li>
+            
+          </ul>
+        </nav>
+
+        <!-- GitHub CTA -->
+        <div id="march-github-bar" class="p-4">
+          <a href="https://github.com/march-language/march" class="march-github-btn" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.38 7.86 10.9.57.1.78-.25.78-.55v-2.1c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.48 3.14-1.17 3.14-1.17.63 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

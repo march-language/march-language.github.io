@@ -1,0 +1,118 @@
+> **Generated from the [March docs](https://march-lang.org/docs/cookbook/json-api/).**
+> Runnable [Scroll](https://github.com/march-language/scroll) notebook. To use it:
+>
+> 1. Install Scroll once: `forge install scroll@https://github.com/march-language/scroll`
+> 2. Run it: `forge scroll.serve cookbook-json-api.scrollmd`
+> 3. **Shift+Enter** runs a cell. Cells share state top-to-bottom, and running a
+>    cell re-runs the ones above it — keep cells side-effect-free or idempotent.
+>
+> Generated from the current docs. Blocks shown for reference only won't run. This runs March on your
+> machine — it's the same code shown on the docs page.
+
+# Call a JSON API and parse the response
+
+Make an HTTP request, parse the JSON body, and pull typed fields out of it —
+turning an untyped response into a value your program can trust. Uses
+`HttpClient`, `Http`, and `Json`. (The [HTTP recipe](https://march-lang.org/docs/cookbook/http/)
+covers building requests and servers; this is the missing half: decoding a
+response.)
+
+---
+
+## The shape of a JSON value
+
+`Json.parse` returns `Result(JsonValue, String)`, where `JsonValue` is an ADT:
+
+```march-static
+type JsonValue =
+    Null
+  | Bool(Bool)
+  | Number(Float)
+  | Str(String)
+  | Array(List(JsonValue))
+  | Object(List((String, JsonValue)))
+```
+
+You decode by pattern-matching this ADT — there's no reflection, so a malformed
+or wrong-typed field is a branch you handle, not a crash.
+
+---
+
+## Fetch and decode
+
+`HttpClient.get(client, url)` returns `Result(Response, _)`; `Http.response_body`
+extracts the body string; `Json.get(jv, key)` returns `Option(JsonValue)` for a
+field. Chaining the matches turns *two* failure sources (the request and the
+parse) into one `Result`:
+
+```march
+mod Weather do
+
+  type Report = Report(String, Float)   -- city name, temperature
+
+  fn fetch(city : String) : Result(Report, String) do
+    let client = HttpClient.new_client()
+    match HttpClient.get(client, "https://example.com/weather?city=" ++ city) do
+      Err(_)   -> Err("request failed")
+      Ok(resp) ->
+        match Json.parse(Http.response_body(resp)) do
+          Err(e) -> Err("bad JSON: " ++ e)
+          Ok(jv) ->
+            -- pull two fields and check their shapes in one match
+            match (Json.get(jv, "name"), Json.get(jv, "temp")) do
+              (Some(JsonValue.Str(name)), Some(JsonValue.Number(t))) ->
+                Ok(Report(name, t))
+              _ ->
+                Err("missing or wrong-typed fields")
+            end
+        end
+    end
+  end
+
+end
+```
+
+Matching the **tuple** `(Json.get(…), Json.get(…))` checks both fields at once:
+the success arm fires only when `name` is a string *and* `temp` is a number;
+anything else falls through to the error arm. Constructors like `Str`/`Number`
+exist in more than one type, so qualify them as `JsonValue.Str` / `JsonValue.Number`
+to disambiguate.
+
+---
+
+## Nested fields
+
+For values buried in nested objects, `Json.get_in(jv, ["main", "temp"])` walks a
+key path; `Json.get_at(jv, i)` indexes into an array. Both return
+`Option(JsonValue)`, so they compose with the same matching style:
+
+```march-static
+match Json.get_in(jv, ["main", "temp"]) do
+  Some(JsonValue.Number(t)) -> Ok(t)
+  _                         -> Err("no main.temp")
+end
+```
+
+---
+
+## Try it
+
+`Json.parse` works on any string, so you can exercise the accessors without a
+network call:
+
+```march
+match Json.parse("{\"name\": \"Paris\", \"temp\": 14.5}") do
+  Ok(jv) -> Json.get(jv, "name")
+  Err(_) -> None
+end
+```
+
+This returns `Some(JsonValue.Str("Paris"))`.
+
+---
+
+## See also
+
+- [HTTP](https://march-lang.org/docs/cookbook/http/) — building requests, headers, and servers.
+- [Pattern Matching](https://march-lang.org/docs/pattern-matching/) — exhaustiveness when decoding ADTs.
+- [Standard Library → Json](https://march-lang.org/docs/stdlib/) — the full accessor list.

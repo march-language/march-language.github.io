@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory Model — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link active">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      <div class="scrollmd-split">
+  <a class="scrollmd-split-dl" href="/downloads/memory-model.scrollmd" download
+     title="Download this page as a runnable Scroll notebook">
+    &#8595; Download for Scroll
+  </a>
+  <a class="scrollmd-split-gh" href="https://github.com/march-language/scroll" target="_blank" rel="noopener"
+     title="Scroll on GitHub">
+    <svg class="scrollmd-gh-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    Scroll
+  </a>
+</div>
+<style>
+  .scrollmd-split {
+    display: inline-flex; align-items: stretch;
+    margin: 0 0 1.5rem;
+    font-size: .85rem; font-family: var(--font-mono, monospace);
+    border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden;
+  }
+  .scrollmd-split-dl, .scrollmd-split-gh {
+    display: inline-flex; align-items: center; gap: .4em;
+    padding: .35em .85em;
+    text-decoration: none;
+    background: var(--bg-code);
+    transition: background .15s;
+  }
+  .scrollmd-split-dl { color: var(--accent); }
+  .scrollmd-split-gh {
+    color: var(--text-muted);
+    border-left: 1px solid var(--border);
+  }
+  .scrollmd-split-dl:hover, .scrollmd-split-gh:hover {
+    background: var(--border);
+    color: var(--accent);
+  }
+  .scrollmd-gh-icon { width: 14px; height: 14px; flex-shrink: 0; }
+</style>
+
+      <h1 id="memory-model--how-fbip-works">Memory Model — How FBIP Works</h1>
+
+<p>March’s headline promise is <strong>functional code that runs in place</strong>: you write
+pure transformations over immutable data, and the compiler turns them into
+mutation when it can prove no one will notice. There is no tracing garbage
+collector, no stop-the-world pause, and — in the common “transform and return”
+case — no allocation at all. This page explains the mechanism end to end.</p>
+
+<p>The two ingredients are <strong>Perceus reference counting</strong> (deterministic, compiled
+in) and <strong>FBIP — Functional But In-Place</strong> (the reuse optimization that rides on
+top of it). The same uniqueness property that makes FBIP work also makes
+<em>parallel</em> FBIP lock-free.</p>
+
+<hr />
+
+<h2 id="perceus-deterministic-reference-counting">Perceus: deterministic reference counting</h2>
+
+<p>Every heap value carries a small reference count (RC). The classic problem with
+reference counting is throughput: naively, every time a value is passed,
+returned, or bound, you pay an increment, and every time a reference dies you pay
+a decrement. <strong>Perceus</strong> eliminates almost all of that cost with a compile-time
+dataflow analysis that inserts <code class="language-plaintext highlighter-rouge">inc</code> and <code class="language-plaintext highlighter-rouge">dec</code> operations <em>precisely</em> at the
+points where ownership actually changes — and then fuses, cancels, and elides
+them:</p>
+
+<ul>
+  <li>A function that receives a value and immediately returns a transformed version
+often needs <strong>no increment at all</strong> — the caller’s reference is transferred.</li>
+  <li>An <code class="language-plaintext highlighter-rouge">inc</code> followed by a <code class="language-plaintext highlighter-rouge">dec</code> on the same path provably cancels, and both are
+removed.</li>
+  <li>What survives is only the genuinely uncertain residue.</li>
+</ul>
+
+<p>The result is <em>deterministic</em> memory management. Because the <code class="language-plaintext highlighter-rouge">dec</code> that frees a
+value is <strong>emitted by the compiler at that value’s last use</strong>, deallocation
+happens at a known program point:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Tracing GC (e.g. OCaml’s minor/major)</th>
+      <th>Perceus RC</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>When memory is freed</td>
+      <td>Later, when a collection runs</td>
+      <td>At the value’s last use, in line</td>
+    </tr>
+    <tr>
+      <td>Pause</td>
+      <td>Stop-the-world (or concurrent barriers)</td>
+      <td>None — no scan ever happens</td>
+    </tr>
+    <tr>
+      <td>Write barriers</td>
+      <td>On every pointer store</td>
+      <td>None (immutable-by-default has no stores)</td>
+    </tr>
+    <tr>
+      <td>Predictability</td>
+      <td>Depends on heap pressure</td>
+      <td>Compile-time, per-value</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>No scan. No pause. No write barriers. Freeing is just a <code class="language-plaintext highlighter-rouge">dec</code> the compiler
+already wrote into the code.</p>
+
+<hr />
+
+<h2 id="uniqueness--rc-1">Uniqueness = RC 1</h2>
+
+<p>The key fact Perceus exploits at runtime is simple: <strong>when a value’s last use
+sees RC == 1, that value is uniquely owned.</strong> No other reference exists, so
+nothing else can ever observe it again. Its memory is about to become garbage.</p>
+
+<p>If, <em>at that same point</em>, the program is allocating a new value <strong>of the same
+shape</strong> (same constructor arity / size class), the runtime skips the allocator
+entirely and <strong>reuses the dying value’s memory for the new one</strong>. One uniqueness
+check replaces an allocator round-trip — and the new value lands at the same
+address, so it stays hot in cache.</p>
+
+<p>This is the whole trick. FBIP is just this rule applied to constructor rewrites.</p>
+
+<hr />
+
+<h2 id="fbip-a-worked-beforeafter">FBIP: a worked before/after</h2>
+
+<p>Here is the canonical example — incrementing every leaf of a binary tree:</p>
+
+<pre><code class="language-march">mod TreeDemo do
+  ptype Tree = Leaf(Int) | Node(Tree, Tree)
+
+  pfn inc_leaves(t : Tree) : Tree do
+    match t do
+    Leaf(n)    -&gt; Leaf(n + 1)
+    Node(l, r) -&gt; Node(inc_leaves(l), inc_leaves(r))
+    end
+  end
+
+  pfn sum_leaves(t : Tree) : Int do
+    match t do
+    Leaf(n)    -&gt; n
+    Node(l, r) -&gt; sum_leaves(l) + sum_leaves(r)
+    end
+  end
+
+  -- A runnable entry point: build a small tree, increment every leaf, and
+  -- fold it back to a number so the demo cell below can print a result.
+  fn demo() : Int do
+    let t = Node(Leaf(1), Node(Leaf(2), Leaf(3)))
+    sum_leaves(inc_leaves(t))
+  end
+end
+</code></pre>
+
+<p>Read functionally, this allocates a brand-new tree: every <code class="language-plaintext highlighter-rouge">Leaf(n + 1)</code> and
+every <code class="language-plaintext highlighter-rouge">Node(...)</code> is a fresh constructor. A naive implementation would allocate
+a full second tree and then free the first.</p>
+
+<p><strong>What the compiler actually emits.</strong> When <code class="language-plaintext highlighter-rouge">inc_leaves</code> owns <code class="language-plaintext highlighter-rouge">t</code> uniquely (the
+caller transferred its only reference), Perceus knows that the moment the <code class="language-plaintext highlighter-rouge">match</code>
+scrutinizes a <code class="language-plaintext highlighter-rouge">Node(l, r)</code>, that <code class="language-plaintext highlighter-rouge">Node</code> cell is dying — its RC is 1 and its last
+use is right here. The rebuild <code class="language-plaintext highlighter-rouge">Node(inc_leaves(l), inc_leaves(r))</code> has the
+<em>same shape</em> as the cell being matched, so instead of allocating, the compiler
+<strong>reuses the matched cell in place</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>before  (functional reading):           after  (what runs):
+
+  match Node(l, r):                        match cell @0x40 = Node(l, r):
+    allocate a NEW Node                      reuse cell @0x40
+    fill it with (l', r')                    overwrite its two fields with (l', r')
+    free the old Node                        (no alloc, no free — same address)
+</code></pre></div></div>
+
+<p>Conceptually the optimized form is <code class="language-plaintext highlighter-rouge">reuse t as Node(l', r')</code>: the <code class="language-plaintext highlighter-rouge">Node(l, r)</code>
+you matched and the <code class="language-plaintext highlighter-rouge">Node(...)</code> you build are the <em>same heap cell</em>, with its
+fields rewritten. Across the whole tree, a transform that looks like it allocates
+N nodes allocates <strong>zero</strong> after the first pass — it walks the existing tree and
+overwrites it.</p>
+
+<p><strong>Why this is safe.</strong> Immutability is what makes the rewrite invisible. Because
+no other reference to the old <code class="language-plaintext highlighter-rouge">Node</code> can exist (RC == 1) <em>and</em> March values are
+immutable (no aliased reference could have stashed a pointer into the old cell to
+observe later), there is no observer to fool. The language semantics say “old
+value gone, new value fresh”; the runtime says “same bytes, rewritten.” Both
+agree because no one else is looking.</p>
+
+<blockquote>
+  <p>This is why <code class="language-plaintext highlighter-rouge">tree_transform</code> (the FBIP benchmark) runs roughly 15× faster than
+the equivalent C that allocates and frees a fresh tree each pass, and several
+times faster than OCaml’s tracing GC: it does no allocator work at all in
+steady state.</p>
+</blockquote>
+
+<p><strong>Try it.</strong> The <code class="language-plaintext highlighter-rouge">TreeDemo</code> module above is runnable — this cell builds the sample
+tree <code class="language-plaintext highlighter-rouge">Node(Leaf(1), Node(Leaf(2), Leaf(3)))</code>, runs <code class="language-plaintext highlighter-rouge">inc_leaves</code>, and sums the
+result. The leaves <code class="language-plaintext highlighter-rouge">1, 2, 3</code> become <code class="language-plaintext highlighter-rouge">2, 3, 4</code>, so the total is <code class="language-plaintext highlighter-rouge">9</code>:</p>
+
+<pre><code class="language-march">println("sum after inc_leaves: " ++ int_to_string(TreeDemo.demo()))
+</code></pre>
+
+<hr />
+
+<h2 id="when-reuse-fires-vs-falls-back">When reuse fires vs. falls back</h2>
+
+<p>Reuse fires when, at a constructor expression, the compiler can pair it with a
+<strong>uniquely-owned dying value of matching shape</strong>. It falls back to a normal
+allocation when it can’t:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Outcome</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Matched value is uniquely owned (RC == 1) and the rebuild matches its shape</td>
+      <td><strong>Reuse in place</strong> — no allocation</td>
+    </tr>
+    <tr>
+      <td>Matched value is <strong>shared</strong> (RC &gt; 1 — someone else still holds it)</td>
+      <td><strong>Allocate fresh</strong>, leave the shared value untouched</td>
+    </tr>
+    <tr>
+      <td>No same-shape value is dying at this allocation point</td>
+      <td><strong>Allocate fresh</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The crucial property: <strong>the fallback is automatic and always correct.</strong> If a
+value is shared, mutating it in place <em>would</em> be observable — so Perceus simply
+doesn’t. It allocates a new value and decrements the shared one’s count. You
+never get a wrong answer from a missed reuse; you only get an allocation. A
+fallback is a performance characteristic, <strong>never a bug</strong>.</p>
+
+<p>This is also why you can reason about reuse locally: sharing a value (keeping the
+old binding around, storing it in two places) is exactly what <em>disables</em> reuse at
+that site, and the compiler quietly does the safe thing.</p>
+
+<hr />
+
+<h2 id="writing-allocation-free-code">Writing allocation-free code</h2>
+
+<p>You don’t write reuse directives — the compiler decides. But you can <em>see</em> its
+decisions and steer them. The <a href="/docs/lsp/">LSP</a> reports, as
+inlay hints and per-function code lenses:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">♻ in-place</code> — FBIP fired: this value was reused without allocating.</li>
+  <li><code class="language-plaintext highlighter-rouge">⧉ copied</code> — a value had to be copied (it was shared, so reuse couldn’t fire).</li>
+  <li><code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code> — the value never reached the heap at all.</li>
+</ul>
+
+<p><strong>The practical loop:</strong></p>
+
+<ol>
+  <li>Turn on performance annotations (<code class="language-plaintext highlighter-rouge">march.inlayHints.performanceAnnotations</code>).</li>
+  <li>Scan a hot function. <code class="language-plaintext highlighter-rouge">♻</code> and <code class="language-plaintext highlighter-rouge">⚡</code> are good. A <code class="language-plaintext highlighter-rouge">⧉ copied</code> <em>inside a hot loop</em>
+is a refactor target — that’s an allocation you can probably remove.</li>
+  <li>Rewrite so the value you transform is <strong>consumed</strong>, not aliased.</li>
+</ol>
+
+<p><strong>The rules that keep reuse firing:</strong></p>
+
+<ul>
+  <li><strong>Consume the value you transform.</strong> Destructure it and rebuild from the
+pieces; don’t read the original again afterward.</li>
+  <li><strong>Don’t reuse the old binding after rebuilding.</strong> A second use of the old value
+pushes its RC above 1 at the rebuild point — reuse can’t fire.</li>
+  <li><strong>Keep the constructor shape and arity matched.</strong> Reuse needs the dying cell
+and the new cell to be the same size class.</li>
+</ul>
+
+<p>Here is a <code class="language-plaintext highlighter-rouge">⧉</code>-triggering anti-pattern next to its <code class="language-plaintext highlighter-rouge">♻</code> fix:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">ptype Box = Box(Int, Int)
+
+-- ⧉ copied: `b` is read AGAIN after the new Box is built, so the old Box is
+-- still live (RC &gt; 1) at the rebuild point. The compiler must allocate a copy.
+pfn bump_copied(b : Box) : (Box, Int) do
+  match b do
+  Box(x, y) -&gt;
+    let updated = Box(x + 1, y)
+    let old_x   = match b do Box(ox, _) -&gt; ox end   -- second use of `b`
+    (updated, old_x)
+  end
+end
+
+-- ♻ in-place: `b` is consumed exactly once. Nothing else references the old
+-- Box, so its cell is rewritten in place — zero allocation.
+pfn bump_reused(b : Box) : Box do
+  match b do
+  Box(x, y) -&gt; Box(x + 1, y)
+  end
+end
+</code></pre>
+
+<p>If <code class="language-plaintext highlighter-rouge">bump_copied</code> genuinely needs the old field, read it <em>before</em> you rebuild
+(bind <code class="language-plaintext highlighter-rouge">x</code> in the same <code class="language-plaintext highlighter-rouge">match</code>, then return it) rather than matching <code class="language-plaintext highlighter-rouge">b</code> a second
+time — that collapses the two uses into one and reuse fires again.</p>
+
+<hr />
+
+<h2 id="parallel-fbip-needs-no-locks">Parallel FBIP needs no locks</h2>
+
+<p>The uniqueness that powers FBIP also makes it <strong>lock-free across cores</strong>.</p>
+
+<p>Consider summing or transforming the two children of a tree in parallel:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">Node(l, r) -&gt; Node(inc_leaves(l), inc_leaves(r))
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">l</code> and <code class="language-plaintext highlighter-rouge">r</code> are <strong>disjoint subtrees</strong>. When the parent <code class="language-plaintext highlighter-rouge">Node</code> is uniquely owned,
+each child is uniquely owned within its own branch — RC == 1 in its own context.
+Hand <code class="language-plaintext highlighter-rouge">l</code> to one core and <code class="language-plaintext highlighter-rouge">r</code> to another and each rewrites its subtree in place
+with <strong>nothing to synchronize</strong>: there is no shared cell two cores could both
+touch, so there’s no lock, no atomic RC traffic, no contention. Uniqueness <em>is</em>
+the disjointness proof.</p>
+
+<p>This is exactly the property the <code class="language-plaintext highlighter-rouge">parallel</code> benchmark relies on: sibling subtrees
+have independent RC chains, so in-place reuse stays correct on both sides with no
+locking. The same idea scales to actor message passing — see the
+<a href="/docs/parallel-collections/">parallelism</a> guide, and
+<a href="/docs/linear-types/">linear types</a> for the ownership-transfer
+(“zero-copy send”) case where a <code class="language-plaintext highlighter-rouge">linear</code> value is <em>guaranteed</em> RC == 1.</p>
+
+<hr />
+
+<h2 id="where-this-sits-in-the-bigger-picture">Where this sits in the bigger picture</h2>
+
+<p>FBIP is one layer of a stratified memory model. The others reinforce it:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">linear</code> / <code class="language-plaintext highlighter-rouge">affine</code> values</strong> have statically known lifetimes — the compiler
+inserts <code class="language-plaintext highlighter-rouge">free</code> at the last use with zero RC bookkeeping (see
+<a href="/docs/linear-types/">linear types</a>). A <code class="language-plaintext highlighter-rouge">linear</code> value is
+the <em>strongest</em> FBIP case: RC == 1 by construction.</li>
+  <li><strong>Immutable-by-default</strong> means pointer fields are never written after
+construction, which is what eliminates write barriers — and what makes in-place
+reuse unobservable.</li>
+  <li><strong>Whole-program monomorphization and defunctionalization</strong> make types concrete
+and remove heap-allocated closures, so escape analysis can stack-allocate the
+many values that never outlive their call (<code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code>).</li>
+</ul>
+
+<p>The net effect: most values never touch the heap, the ones that do are usually
+reused rather than reallocated, and the residual frees are deterministic <code class="language-plaintext highlighter-rouge">dec</code>
+operations the compiler already wrote — not a collector you have to wait for.</p>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/linear-types/">Linear Types</a> — ownership that
+guarantees RC == 1, and zero-copy actor sends.</li>
+  <li><a href="/docs/safety-by-construction/">Safety by Construction</a> —
+how the safety layers stack on one function.</li>
+  <li><a href="/docs/parallel-collections/">Parallelism</a> — the scheduler that runs
+disjoint, uniquely-owned subtrees across cores.</li>
+  <li><a href="/docs/lsp/">LSP &amp; Editors</a> — turning on the <code class="language-plaintext highlighter-rouge">♻ / ⧉ / ⚡</code>
+performance hints.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

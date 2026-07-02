@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>March Coding Standards — March Lang</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM."/>
+
+  <!-- DaisyUI v4 + Tailwind v4 CDN (compatible pair) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" type="text/css"/>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <style>
+    /* ── March palette applied directly — bypasses DaisyUI theme variables ── */
+
+    /* Backgrounds */
+    html, body                       { background-color: #0B1F2A; color: #D6EEF5; }
+    #march-sidebar                   { background-color: #0F2A36; border-right: 1px solid #133847; }
+    #march-topbar                    { background-color: #0F2A36; border-bottom: 1px solid #133847; }
+    #march-footer                    { border-top: 1px solid #133847; color: #7aacbe; }
+    #march-logo-bar                  { border-bottom: 1px solid #133847; }
+    #march-github-bar                { border-top: 1px solid #133847; }
+
+    /* Nav links */
+    #march-nav a                     { color: #a8ccd8; border-radius: 6px; padding: 5px 10px; display: block; font-size: 0.875rem; text-decoration: none; }
+    #march-nav a:hover               { background-color: #133847; color: #D6EEF5; }
+    #march-nav a.active              { background-color: rgba(111,227,214,0.13); color: #6FE3D6; font-weight: 600; }
+    .march-nav-section               { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #3d6678; padding: 14px 10px 4px; }
+
+    /* Prose */
+    .prose                           { color: #D6EEF5; }
+    .prose h1, .prose h2,
+    .prose h3, .prose h4             { color: #E6FCF9; scroll-margin-top: 4rem; }
+    .prose a                         { color: #6FE3D6; text-decoration: none; }
+    .prose a:hover                   { text-decoration: underline; }
+    .prose strong                    { color: #CFF7F1; }
+    .prose table                     { display: block; overflow-x: auto; }
+    .prose td code, .prose th code   { white-space: nowrap; }
+    .prose thead                     { border-bottom-color: #133847; }
+    .prose tbody tr                  { border-bottom-color: #133847; }
+    .prose blockquote                { border-left-color: #1C5D6F; color: #a8ccd8; }
+    .prose hr                        { border-color: #133847; }
+
+    /* Inline code */
+    .prose :not(pre) > code          { background: #0F2A36; color: #6FE3D6; padding: 1px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid #133847; }
+    .prose :not(pre) > code::before,
+    .prose :not(pre) > code::after  { content: none; }
+
+    /* Fenced code blocks */
+    .highlight                       { background: #0B1F2A !important; border-radius: 8px; overflow-x: auto; border: 1px solid #133847; }
+    .highlight pre                   { background: transparent; margin: 0; padding: 1rem 1.25rem; }
+    .highlighter-rouge .highlight    { margin: 1.25rem 0; }
+
+    /* Rouge tokens (March palette) */
+    .highlight .c, .highlight .c1,
+    .highlight .cm, .highlight .cp,
+    .highlight .cs                   { color: #3d6070; font-style: italic; } /* comment */
+    .highlight .k, .highlight .kd,
+    .highlight .kn, .highlight .kp,
+    .highlight .kr                   { color: #6FE3D6; }                    /* keyword */
+    .highlight .kt                   { color: #CFF7F1; }                    /* type */
+    .highlight .s, .highlight .sb,
+    .highlight .sc, .highlight .sd,
+    .highlight .s2, .highlight .sh,
+    .highlight .si, .highlight .sx,
+    .highlight .sr, .highlight .s1,
+    .highlight .ss                   { color: #36D399; }                    /* string */
+    .highlight .m, .highlight .mf,
+    .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il   { color: #FBBF24; }                    /* number */
+    .highlight .o, .highlight .ow   { color: #3ABFF8; }                    /* operator */
+    .highlight .nf, .highlight .fm  { color: #6FE3D6; }                    /* function */
+    .highlight .nc, .highlight .nn  { color: #CFF7F1; }                    /* class/module */
+    .highlight .nb                  { color: #3ABFF8; }                    /* builtin */
+    .highlight .nt                  { color: #6FE3D6; }                    /* tag */
+    .highlight .na                  { color: #36D399; }                    /* attribute */
+    .highlight .err                 { color: #F87272; }                    /* error */
+    .highlight .n, .highlight .nx  { color: #D6EEF5; }                    /* name */
+    .highlight .p                   { color: #C7DDE5; }                    /* punctuation */
+    .highlight .gd                  { color: #F87272; }                    /* deleted */
+    .highlight .gi                  { color: #36D399; }                    /* inserted */
+
+    /* GitHub button */
+    .march-github-btn               { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #1C5D6F; color: #6FE3D6; font-size: 0.8rem; text-decoration: none; transition: background 0.15s; }
+    .march-github-btn:hover         { background-color: #133847; }
+
+    /* Logo hover */
+    .march-logo-link:hover span     { color: #6FE3D6; }
+    .march-logo-link span           { transition: color 0.15s; }
+  </style>
+</head>
+
+<body>
+  <div class="drawer lg:drawer-open">
+    <input id="nav-drawer" type="checkbox" class="drawer-toggle"/>
+
+    <!-- ── Page content ─────────────────────────────────────────────────── -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- Mobile topbar -->
+      <nav id="march-topbar" class="navbar sticky top-0 z-30 lg:hidden">
+        <div class="navbar-start">
+          <label for="nav-drawer" class="btn btn-ghost btn-square drawer-button" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#D6EEF5">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </label>
+        </div>
+        <div class="navbar-center">
+          <a href="/" class="flex items-center gap-2 font-bold text-lg" style="color:#D6EEF5; text-decoration:none;">
+            <img src="/assets/logo.webp" width="26" height="26" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            March
+          </a>
+        </div>
+        <div class="navbar-end">
+          <a href="https://github.com/march-language/march" class="btn btn-ghost btn-sm" style="color:#a8ccd8;" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="flex-1 w-full max-w-4xl mx-auto px-6 py-10 lg:px-12">
+        <article class="prose max-w-none prose-pre:p-0 prose-pre:bg-transparent prose-pre:rounded-none">
+          <h1 id="march-coding-standards">March Coding Standards</h1>
+
+<p>Canonical reference for March style, safety, and idiom rules. This document is the
+single source of truth — the linter (<code class="language-plaintext highlighter-rouge">forge lint</code>), the LSP, and LLM tooling all derive
+their rule definitions from here.</p>
+
+<p>Each rule has:</p>
+<ul>
+  <li>A stable <strong>slug</strong> used as the diagnostic code in the linter and LSP</li>
+  <li>A <strong>severity</strong> — <code class="language-plaintext highlighter-rouge">error</code>, <code class="language-plaintext highlighter-rouge">warning</code>, or <code class="language-plaintext highlighter-rouge">hint</code></li>
+  <li>An <strong>auto-fix</strong> flag — whether the LSP can fix it automatically</li>
+</ul>
+
+<hr />
+
+<h2 id="table-of-contents">Table of Contents</h2>
+
+<ul>
+  <li><a href="#naming">Naming</a></li>
+  <li><a href="#style">Style</a></li>
+  <li><a href="#safety">Safety</a></li>
+  <li><a href="#dead-code">Dead Code</a></li>
+  <li><a href="#actors">Actors</a></li>
+  <li><a href="#configuration">Configuration</a></li>
+</ul>
+
+<hr />
+
+<h2 id="naming">Naming</h2>
+
+<h3 id="namingsnake-case-functions"><code class="language-plaintext highlighter-rouge">naming/snake-case-functions</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> yes (rename)</p>
+
+<p>Function names must use <code class="language-plaintext highlighter-rouge">snake_case</code>. This includes top-level functions, <code class="language-plaintext highlighter-rouge">pfn</code> private
+functions, and local <code class="language-plaintext highlighter-rouge">let</code>-bound functions.</p>
+
+<p><strong>Why:</strong> Consistency with the standard library and readability when scanning function
+lists. PascalCase names are reserved for types and modules.</p>
+
+<pre><code class="language-march">-- Bad
+fn myFunction(x : Int) : Int do
+  x + 1
+end
+
+fn MyFunction(x : Int) : Int do
+  x + 1
+end
+
+-- Good
+fn my_function(x : Int) : Int do
+  x + 1
+end
+</code></pre>
+
+<hr />
+
+<h3 id="namingpascal-case-types"><code class="language-plaintext highlighter-rouge">naming/pascal-case-types</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> yes (rename)</p>
+
+<p>Type names (type aliases, variant types, record types) must use <code class="language-plaintext highlighter-rouge">PascalCase</code>.</p>
+
+<p><strong>Why:</strong> Instantly distinguishes type names from value names when reading code.</p>
+
+<pre><code class="language-march">-- Bad
+type my_result = Ok(Int) | err(String)
+
+-- Good
+type MyResult = Ok(Int) | Err(String)
+</code></pre>
+
+<hr />
+
+<h3 id="namingpascal-case-modules"><code class="language-plaintext highlighter-rouge">naming/pascal-case-modules</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Module names must use <code class="language-plaintext highlighter-rouge">PascalCase</code>. This is consistent with the <code class="language-plaintext highlighter-rouge">mod Name do</code> syntax
+and mirrors how modules are referenced at call sites (<code class="language-plaintext highlighter-rouge">ModuleName.function</code>).</p>
+
+<pre><code class="language-march">-- Bad
+mod my_module do
+  ...
+end
+
+-- Good
+mod MyModule do
+  ...
+end
+</code></pre>
+
+<hr />
+
+<h3 id="namingpascal-case-constructors"><code class="language-plaintext highlighter-rouge">naming/pascal-case-constructors</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> yes (rename)</p>
+
+<p>Variant constructors within a type definition must use <code class="language-plaintext highlighter-rouge">PascalCase</code>. Lowercase or
+<code class="language-plaintext highlighter-rouge">snake_case</code> constructors are visually indistinguishable from variable names, which
+makes pattern matches harder to read.</p>
+
+<pre><code class="language-march">-- Bad
+type Status = active | inactive | pending(String)
+
+-- Good
+type Status = Active | Inactive | Pending(String)
+</code></pre>
+
+<hr />
+
+<h2 id="style">Style</h2>
+
+<h3 id="styleprefer-match"><code class="language-plaintext highlighter-rouge">style/prefer-match</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Prefer <code class="language-plaintext highlighter-rouge">match</code> over <code class="language-plaintext highlighter-rouge">if/else</code> chains that test the same discriminant against multiple
+values. A chain of two or more <code class="language-plaintext highlighter-rouge">else if</code> branches on the same variable is a match in
+disguise.</p>
+
+<p><strong>Why:</strong> <code class="language-plaintext highlighter-rouge">match</code> is exhaustiveness-checked, self-documenting, and easier to extend.
+<code class="language-plaintext highlighter-rouge">if/else</code> chains on a single variable silently allow missing cases.</p>
+
+<pre><code class="language-march">-- Bad
+if status == 200 do
+  "ok"
+else if status == 404 do
+  "not found"
+else if status == 500 do
+  "server error"
+else
+  "unknown"
+end
+
+-- Good
+match status do
+  200 -&gt; "ok"
+  404 -&gt; "not found"
+  500 -&gt; "server error"
+  _   -&gt; "unknown"
+end
+</code></pre>
+
+<p>This rule also triggers when an <code class="language-plaintext highlighter-rouge">if</code> condition tests a constructor that could be a
+match pattern (requires type information):</p>
+
+<pre><code class="language-march">-- Bad (when x : Option(Int))
+if is_some(x) do
+  unwrap(x) + 1
+else
+  0
+end
+
+-- Good
+match x do
+  Some(v) -&gt; v + 1
+  None    -&gt; 0
+end
+</code></pre>
+
+<hr />
+
+<h3 id="styleextract-arm-branches"><code class="language-plaintext highlighter-rouge">style/extract-arm-branches</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">match</code> arm whose body contains another <code class="language-plaintext highlighter-rouge">match</code> or an <code class="language-plaintext highlighter-rouge">if/else</code> should be extracted
+into a private function with multiple heads. Deeply nested branching is hard to read
+and test.</p>
+
+<p><strong>Why:</strong> Multi-head private functions are the idiomatic March way to handle
+multi-dimensional dispatch. They keep each arm body flat and each case independently
+readable.</p>
+
+<pre><code class="language-march">-- Bad
+match result do
+  Ok(v) -&gt;
+    match v.kind do
+      Query   -&gt; run_query(v)
+      Command -&gt; run_command(v)
+    end
+  Err(e) -&gt; handle_error(e)
+end
+
+-- Good
+match result do
+  Ok(v)  -&gt; dispatch(v)
+  Err(e) -&gt; handle_error(e)
+end
+
+pfn dispatch(v) when v.kind == Query   do run_query(v) end
+pfn dispatch(v) when v.kind == Command do run_command(v) end
+
+-- Better still, with constructor patterns on the inner type
+pfn dispatch({kind: Query,   ..} = v) do run_query(v) end
+pfn dispatch({kind: Command, ..} = v) do run_command(v) end
+</code></pre>
+
+<p>This rule triggers on:</p>
+<ul>
+  <li>A match arm whose body is a <code class="language-plaintext highlighter-rouge">match</code> expression</li>
+  <li>A match arm whose body is an <code class="language-plaintext highlighter-rouge">if/else</code> with two or more branches (single
+<code class="language-plaintext highlighter-rouge">if</code> without <code class="language-plaintext highlighter-rouge">else</code> is allowed — it often reads as a guard)</li>
+</ul>
+
+<hr />
+
+<h3 id="styleprefer-pipe"><code class="language-plaintext highlighter-rouge">style/prefer-pipe</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Three or more levels of nested function calls should be written as a pipeline using
+<code class="language-plaintext highlighter-rouge">|&gt;</code>. Pipelines read left-to-right in the order operations are applied; deeply nested
+calls read inside-out.</p>
+
+<pre><code class="language-march">-- Bad
+map(filter(sort(xs), is_active), to_string)
+
+-- Good
+xs |&gt; sort |&gt; filter(is_active) |&gt; map(to_string)
+</code></pre>
+
+<p>The threshold is three levels of nesting. Two levels (<code class="language-plaintext highlighter-rouge">f(g(x))</code>) are fine inline.</p>
+
+<hr />
+
+<h3 id="styleno-boolean-literal-compare"><code class="language-plaintext highlighter-rouge">style/no-boolean-literal-compare</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> yes</p>
+
+<p>Never compare a boolean expression to <code class="language-plaintext highlighter-rouge">true</code> or <code class="language-plaintext highlighter-rouge">false</code> with <code class="language-plaintext highlighter-rouge">==</code> or <code class="language-plaintext highlighter-rouge">!=</code>. Use the
+expression directly, or negate it with <code class="language-plaintext highlighter-rouge">!</code>.</p>
+
+<pre><code class="language-march">-- Bad
+if is_valid == true do ...
+if done == false do ...
+if !ready != true do ...
+
+-- Good
+if is_valid do ...
+if !done do ...
+if ready do ...
+</code></pre>
+
+<hr />
+
+<h3 id="styleno-redundant-else"><code class="language-plaintext highlighter-rouge">style/no-redundant-else</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> yes (removes <code class="language-plaintext highlighter-rouge">else</code>, dedents body)</p>
+
+<p>When the <code class="language-plaintext highlighter-rouge">if</code> branch always diverges — its return type is <code class="language-plaintext highlighter-rouge">Never</code> (e.g. <code class="language-plaintext highlighter-rouge">panic</code>,
+<code class="language-plaintext highlighter-rouge">exit</code>, an infinite loop) — the <code class="language-plaintext highlighter-rouge">else</code> keyword is redundant. Remove it and let the
+consequent code fall through. This is the guard-clause pattern.</p>
+
+<p><strong>Why:</strong> Unnecessary <code class="language-plaintext highlighter-rouge">else</code> after a diverge adds indentation and implies false symmetry
+between a guard and the main path.</p>
+
+<pre><code class="language-march">-- Bad
+fn divide(a : Int, b : Int) : Int do
+  if b == 0 do
+    panic("division by zero")
+  else
+    a / b
+  end
+end
+
+-- Good
+fn divide(a : Int, b : Int) : Int do
+  if b == 0 do panic("division by zero") end
+  a / b
+end
+</code></pre>
+
+<hr />
+
+<h3 id="stylede-morgan"><code class="language-plaintext highlighter-rouge">style/de-morgan</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> yes</p>
+
+<p>Apply De Morgan’s law to simplify negated boolean expressions.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pattern</th>
+      <th>Simplification</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">!(a &amp;&amp; b)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">!a \|\| !b</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">!(a \|\| b)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">!a &amp;&amp; !b</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">!a &amp;&amp; !b</code></td>
+      <td><code class="language-plaintext highlighter-rouge">!(a \|\| b)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">!a \|\| !b</code></td>
+      <td><code class="language-plaintext highlighter-rouge">!(a &amp;&amp; b)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Why:</strong> The simplified form often reads closer to how the condition is reasoned about.
+The auto-fix rewrites in whichever direction removes a negation level.</p>
+
+<pre><code class="language-march">-- Bad
+if !(user.active &amp;&amp; user.verified) do
+  deny()
+end
+
+-- Good
+if !user.active || !user.verified do
+  deny()
+end
+</code></pre>
+
+<hr />
+
+<h3 id="styledoc-comment-public-fn"><code class="language-plaintext highlighter-rouge">style/doc-comment-public-fn</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Every public function (non-<code class="language-plaintext highlighter-rouge">pfn</code>) should have a <code class="language-plaintext highlighter-rouge">doc</code> annotation. Use triple-quoted
+<code class="language-plaintext highlighter-rouge">doc """ ... """</code> for multi-line descriptions; <code class="language-plaintext highlighter-rouge">doc "..."</code> is fine for one-liners.</p>
+
+<p><strong>Why:</strong> Doc strings are first-class in March — queryable in the REPL with <code class="language-plaintext highlighter-rouge">h(fn_name)</code>,
+surfaced in LSP hover, and the basis for future <code class="language-plaintext highlighter-rouge">march doc</code> generation. An undocumented
+public function is a missing contract.</p>
+
+<pre><code class="language-march">-- Bad
+fn connect(url : String) : Result(Conn, Error) do
+  ...
+end
+
+-- Good (one-liner)
+doc "Opens a TCP connection to `url`. Returns Err if the host is unreachable."
+fn connect(url : String) : Result(Conn, Error) do
+  ...
+end
+
+-- Good (multi-line)
+doc """
+Opens a TCP connection to `url`.
+
+Returns `Err(ConnectionRefused)` if the host actively refuses the connection,
+or `Err(Timeout)` if no response is received within the default timeout.
+"""
+fn connect(url : String) : Result(Conn, Error) do
+  ...
+end
+</code></pre>
+
+<hr />
+
+<h3 id="styleannotate-public-fns"><code class="language-plaintext highlighter-rouge">style/annotate-public-fns</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> yes (inserts inferred type)</p>
+
+<p>Public functions (non-<code class="language-plaintext highlighter-rouge">pfn</code>) should have explicit return type annotations. Parameter
+type annotations are encouraged but not required by this rule.</p>
+
+<p><strong>Why:</strong> Explicit return types form a stable public API contract. They catch accidental
+type changes at the definition site rather than the call site, and make the LSP hover
+useful without requiring inference.</p>
+
+<pre><code class="language-march">-- Bad
+fn greet(name) do
+  "Hello, " ++ name
+end
+
+-- Good
+fn greet(name : String) : String do
+  "Hello, " ++ name
+end
+</code></pre>
+
+<hr />
+
+<h2 id="safety">Safety</h2>
+
+<h3 id="safetydiscard-result"><code class="language-plaintext highlighter-rouge">safety/discard-result</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>A call that returns <code class="language-plaintext highlighter-rouge">Result</code> must not have its return value discarded. Either bind it
+with <code class="language-plaintext highlighter-rouge">let</code>, propagate it with <code class="language-plaintext highlighter-rouge">?</code> or <code class="language-plaintext highlighter-rouge">let?</code>, or explicitly handle both arms.</p>
+
+<p><strong>Why:</strong> Silently discarding a <code class="language-plaintext highlighter-rouge">Result</code> hides errors. Every <code class="language-plaintext highlighter-rouge">Result</code>-returning call is
+a potential failure path that must be acknowledged.</p>
+
+<pre><code class="language-march">-- Bad
+write_file("out.txt", data)   -- return value dropped
+
+-- Good: propagate with let?  (preferred in Result-returning functions)
+let? _ = write_file("out.txt", data)
+
+-- Good: propagate with ?
+let _ = write_file("out.txt", data)?
+
+-- Good: handle explicitly
+match write_file("out.txt", data) do
+  Ok(_)  -&gt; ()
+  Err(e) -&gt; log_error(e)
+end
+</code></pre>
+
+<hr />
+
+<h3 id="safetypartial-let-pattern"><code class="language-plaintext highlighter-rouge">safety/partial-let-pattern</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">let</code> binding that uses an irrefutable pattern on a fallible (multi-constructor) type
+will panic at runtime if the value does not match. Use <code class="language-plaintext highlighter-rouge">match</code> instead.</p>
+
+<p><strong>Why:</strong> <code class="language-plaintext highlighter-rouge">let Some(x) = expr</code> is a runtime panic if <code class="language-plaintext highlighter-rouge">expr</code> is <code class="language-plaintext highlighter-rouge">None</code>. The exhaustiveness
+checker cannot catch this at the <code class="language-plaintext highlighter-rouge">let</code> site — it must be a lint rule.</p>
+
+<pre><code class="language-march">-- Bad
+let Some(user) = find_user(id)   -- panics if None
+let Ok(conn)   = connect(url)    -- panics if Err
+
+-- Good
+match find_user(id) do
+  Some(user) -&gt; use_user(user)
+  None       -&gt; handle_missing()
+end
+</code></pre>
+
+<hr />
+
+<h3 id="safetyno-panic-in-lib"><code class="language-plaintext highlighter-rouge">safety/no-panic-in-lib</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Library modules must not call <code class="language-plaintext highlighter-rouge">panic</code> directly. Return <code class="language-plaintext highlighter-rouge">Result</code> or <code class="language-plaintext highlighter-rouge">Option</code> and let
+the caller decide how to handle failure. <code class="language-plaintext highlighter-rouge">panic</code> is acceptable in application entry
+points (<code class="language-plaintext highlighter-rouge">main</code>), test code, and truly unrecoverable situations (e.g. allocator failure).</p>
+
+<p><strong>Why:</strong> A <code class="language-plaintext highlighter-rouge">panic</code> in a library is an unilateral abort that the caller cannot recover
+from. It breaks composability and makes libraries hostile to use in contexts where
+uptime matters.</p>
+
+<pre><code class="language-march">-- Bad (in a lib module)
+fn parse_int(s : String) : Int do
+  match try_parse(s) do
+    Some(n) -&gt; n
+    None    -&gt; panic("not a number: " ++ s)
+  end
+end
+
+-- Good
+fn parse_int(s : String) : Result(Int, String) do
+  match try_parse(s) do
+    Some(n) -&gt; Ok(n)
+    None    -&gt; Err("not a number: " ++ s)
+  end
+end
+</code></pre>
+
+<p>Detection: a <code class="language-plaintext highlighter-rouge">panic</code> call inside a module that has no <code class="language-plaintext highlighter-rouge">fn main()</code> and is not a
+<code class="language-plaintext highlighter-rouge">_test.march</code> file.</p>
+
+<hr />
+
+<h2 id="dead-code">Dead Code</h2>
+
+<h3 id="dead-codeunused-private-fn"><code class="language-plaintext highlighter-rouge">dead-code/unused-private-fn</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">pfn</code> that is not reachable from any public function root is dead code and should be
+removed.</p>
+
+<p><strong>Why:</strong> Unreachable private functions accumulate over time, making codebases harder to
+navigate and refactor. The compiler can prove they are unreachable via reachability
+analysis from public roots.</p>
+
+<pre><code class="language-march">-- Bad: pfn helper is never called
+pfn helper(x : Int) : Int do x * 2 end
+fn public_api(x : Int) : Int do x + 1 end
+
+-- Good
+fn public_api(x : Int) : Int do x + 1 end
+</code></pre>
+
+<hr />
+
+<h3 id="dead-codeunreachable-after-diverge"><code class="language-plaintext highlighter-rouge">dead-code/unreachable-after-diverge</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Code that follows a diverging call (a call that never returns — <code class="language-plaintext highlighter-rouge">panic</code>, <code class="language-plaintext highlighter-rouge">exit</code>, or a
+function with return type <code class="language-plaintext highlighter-rouge">Never</code>) is unreachable and should be removed.</p>
+
+<p><strong>Why:</strong> Unreachable code is confusing and often indicates a logic error — either the
+diverging call is wrong, or the code after it was left behind from a refactor.</p>
+
+<pre><code class="language-march">-- Bad
+panic("unrecoverable")
+cleanup()   -- never runs
+
+-- Good
+panic("unrecoverable")
+</code></pre>
+
+<hr />
+
+<h2 id="actors">Actors</h2>
+
+<h3 id="actorshandler-delegates-to-fn"><code class="language-plaintext highlighter-rouge">actors/handler-delegates-to-fn</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Actor <code class="language-plaintext highlighter-rouge">on</code> handler bodies should be thin — a single delegating call or a state update
+expression. Complex logic (nested <code class="language-plaintext highlighter-rouge">match</code>, <code class="language-plaintext highlighter-rouge">if/else</code>, or more than three <code class="language-plaintext highlighter-rouge">let</code>
+bindings) belongs in a <code class="language-plaintext highlighter-rouge">pfn</code>, which can be called from the handler and tested
+independently without sending a message.</p>
+
+<p><strong>Why:</strong> Handler bodies that contain business logic couple the protocol layer to the
+implementation. Extracting to <code class="language-plaintext highlighter-rouge">pfn</code> makes each handler a readable one-liner dispatch
+table and keeps the logic unit-testable.</p>
+
+<pre><code class="language-march">-- Bad
+on Process(job) do
+  let result = match job.kind do
+    Query   -&gt; run_query(job.data)
+    Command -&gt; run_command(job.data)
+  end
+  send(job.reply_to, Done(result))
+  { state with processed: state.processed + 1 }
+end
+
+-- Good
+on Process(job) do handle_process(state, job) end
+
+pfn handle_process(state, job) do
+  let result = dispatch_job(job)
+  send(job.reply_to, Done(result))
+  { state with processed: state.processed + 1 }
+end
+
+pfn dispatch_job(job) when job.kind == Query   do run_query(job.data) end
+pfn dispatch_job(job) when job.kind == Command do run_command(job.data) end
+</code></pre>
+
+<p>Triggers when <code class="language-plaintext highlighter-rouge">on</code> body contains a <code class="language-plaintext highlighter-rouge">match</code>, an <code class="language-plaintext highlighter-rouge">if/else</code>, or more than three <code class="language-plaintext highlighter-rouge">let</code>
+bindings.</p>
+
+<hr />
+
+<h3 id="actorsdeclare-message-type"><code class="language-plaintext highlighter-rouge">actors/declare-message-type</code></h3>
+
+<p><strong>Severity:</strong> hint<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Define a named variant type for the messages an actor accepts, declared adjacent to
+(immediately before) the actor. Without it, the full message protocol is only
+discoverable by reading every <code class="language-plaintext highlighter-rouge">on</code> clause.</p>
+
+<p><strong>Why:</strong> An explicit message type gives the actor a public contract that can be
+referenced in type signatures, documentation, and by other actors that send to it.</p>
+
+<pre><code class="language-march">-- Bad: protocol is implicit, scattered across handler clauses
+actor Counter do
+  state { count : Int }
+  init { count: 0 }
+  on Increment() do ... end
+  on Reset()     do ... end
+  on GetCount()  do ... end
+end
+
+-- Good: protocol is explicit and referenceable
+type CounterMsg = Increment | Reset | GetCount
+
+actor Counter do
+  state { count : Int }
+  init { count: 0 }
+  on Increment() do ... end
+  on Reset()     do ... end
+  on GetCount()  do ... end
+end
+</code></pre>
+
+<hr />
+
+<h3 id="actorsno-spawn-in-handler"><code class="language-plaintext highlighter-rouge">actors/no-spawn-in-handler</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>Do not call <code class="language-plaintext highlighter-rouge">spawn</code> inside an <code class="language-plaintext highlighter-rouge">on</code> handler body. Process topology — which actors
+create which other actors — should be declared in <code class="language-plaintext highlighter-rouge">init</code> or via the <code class="language-plaintext highlighter-rouge">supervise</code>
+config, not wired up dynamically in response to messages.</p>
+
+<p><strong>Why:</strong> Spawns inside handlers make the process tree implicit and hard to reason
+about. Supervision config and <code class="language-plaintext highlighter-rouge">init</code> make the topology visible and restartable.</p>
+
+<pre><code class="language-march">-- Bad
+on Start(config) do
+  let worker = spawn(Worker)
+  send(worker, Run(config))
+  { state with worker: Some(worker) }
+end
+
+-- Good: spawn in init, pass the pid into state
+actor Supervisor do
+  state { worker : Pid(Worker) }
+  init do
+    let worker = spawn(Worker)
+    { worker: worker }
+  end
+
+  on Start(config) do
+    send(state.worker, Run(config))
+    state
+  end
+end
+
+-- Also good: use supervision config for managed child actors
+actor Supervisor do
+  supervise do
+    Worker worker
+  end
+  ...
+end
+</code></pre>
+
+<hr />
+
+<h3 id="actorsannotate-state-fields"><code class="language-plaintext highlighter-rouge">actors/annotate-state-fields</code></h3>
+
+<p><strong>Severity:</strong> warning<br />
+<strong>Auto-fix:</strong> no</p>
+
+<p>All fields in an actor’s <code class="language-plaintext highlighter-rouge">state { ... }</code> block must have explicit type annotations.
+Actor state is long-lived, potentially serialised, and inspected by supervision
+tooling — implicit types are a maintenance hazard.</p>
+
+<pre><code class="language-march">-- Bad
+actor Cache do
+  state { entries, ttl, hits }
+  ...
+end
+
+-- Good
+actor Cache do
+  state {
+    entries : Map(String, Bytes),
+    ttl     : Int,
+    hits    : Int
+  }
+  ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="configuration">Configuration</h2>
+
+<p>Rules are configured per-project in <code class="language-plaintext highlighter-rouge">.march-lint.toml</code> at the project root. This file
+is generated automatically by <code class="language-plaintext highlighter-rouge">forge new</code>.</p>
+
+<p>Each rule can be set to <code class="language-plaintext highlighter-rouge">"error"</code>, <code class="language-plaintext highlighter-rouge">"warning"</code>, <code class="language-plaintext highlighter-rouge">"hint"</code>, or <code class="language-plaintext highlighter-rouge">"off"</code>.</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># .march-lint.toml</span>
+<span class="c"># Generated by forge new. Adjust severities or disable rules as needed.</span>
+<span class="c"># Valid values: "error" | "warning" | "hint" | "off"</span>
+
+<span class="nn">[rules]</span>
+<span class="c"># Naming</span>
+<span class="py">"naming/snake-case-functions"</span>         <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"naming/pascal-case-types"</span>            <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"naming/pascal-case-modules"</span>          <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"naming/pascal-case-constructors"</span>     <span class="p">=</span> <span class="s">"warning"</span>
+
+<span class="c"># Style</span>
+<span class="py">"style/prefer-match"</span>                  <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/extract-arm-branches"</span>          <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/prefer-pipe"</span>                   <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/no-boolean-literal-compare"</span>    <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"style/no-redundant-else"</span>             <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/de-morgan"</span>                     <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/doc-comment-public-fn"</span>         <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"style/annotate-public-fns"</span>           <span class="p">=</span> <span class="s">"hint"</span>
+
+<span class="c"># Safety</span>
+<span class="py">"safety/discard-result"</span>               <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"safety/partial-let-pattern"</span>          <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"safety/no-panic-in-lib"</span>              <span class="p">=</span> <span class="s">"warning"</span>
+
+<span class="c"># Dead code</span>
+<span class="py">"dead-code/unused-private-fn"</span>         <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"dead-code/unreachable-after-diverge"</span> <span class="p">=</span> <span class="s">"warning"</span>
+
+<span class="c"># Actors</span>
+<span class="py">"actors/handler-delegates-to-fn"</span>      <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"actors/declare-message-type"</span>         <span class="p">=</span> <span class="s">"hint"</span>
+<span class="py">"actors/no-spawn-in-handler"</span>          <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">"actors/annotate-state-fields"</span>        <span class="p">=</span> <span class="s">"warning"</span>
+</code></pre></div></div>
+
+<h3 id="forge-lint-flags"><code class="language-plaintext highlighter-rouge">forge lint</code> flags</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Flag</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>(none)</em></td>
+      <td>Exit 0 if no errors; exit 1 if any <code class="language-plaintext highlighter-rouge">error</code>-severity violations</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--strict</code></td>
+      <td>Treat <code class="language-plaintext highlighter-rouge">warning</code> as <code class="language-plaintext highlighter-rouge">error</code>; exit 1 on any warning or error</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--all</code></td>
+      <td>Also report <code class="language-plaintext highlighter-rouge">hint</code>-severity findings</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--json</code></td>
+      <td>Emit machine-readable JSON (for CI/editor integration)</td>
+    </tr>
+  </tbody>
+</table>
+
+
+        </article>
+      </main>
+
+      <!-- Footer -->
+      <footer id="march-footer" class="py-5 px-6 lg:px-12 text-sm">
+        March Programming Language &mdash;
+        <a href="https://github.com/march-language/march" style="color:#6FE3D6;" target="_blank" rel="noopener">GitHub</a>
+      </footer>
+    </div>
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+    <div class="drawer-side z-40">
+      <label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+
+      <aside id="march-sidebar" class="min-h-full w-64 flex flex-col">
+
+        <!-- Logo -->
+        <div id="march-logo-bar" class="p-5">
+          <a href="/" class="march-logo-link flex items-center gap-3" style="text-decoration:none;">
+            <img src="/assets/logo.webp" width="38" height="38" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            <span class="font-bold text-xl" style="color:#D6EEF5;">March</span>
+          </a>
+        </div>
+
+        <!-- Nav -->
+        <nav id="march-nav" class="flex-1 overflow-y-auto py-3 px-2">
+          
+
+          <div class="march-nav-section">Start here</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/installation/">Installation</a></li>
+            
+            <li><a href="/docs/playground/">Try It Out</a></li>
+            
+            <li><a href="/docs/getting-started/">Getting Started</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Language</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/tour/">Language Tour</a></li>
+            
+            <li><a href="/docs/build-a-cli/">Build a CLI Tool</a></li>
+            
+            <li><a href="/docs/types/">Type System</a></li>
+            
+            <li><a href="/docs/linear-types/">Linear Types</a></li>
+            
+            <li><a href="/docs/refinement-types/">Refinement Types</a></li>
+            
+            <li><a href="/docs/memory-model/">Memory Model</a></li>
+            
+            <li><a href="/docs/pattern-matching/">Pattern Matching</a></li>
+            
+            <li><a href="/docs/modules/">Module System</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Concurrency</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/actors/">Actors</a></li>
+            
+            <li><a href="/docs/parallel-collections/">Parallel Collections</a></li>
+            
+            <li><a href="/docs/session-types/">Session Types</a></li>
+            
+            <li><a href="/docs/supervision/">Supervision Trees</a></li>
+            
+            <li><a href="/docs/clustering/">Clustering & RPC</a></li>
+            
+            <li><a href="/docs/flow/">Flow & Backpressure</a></li>
+            
+            <li><a href="/docs/hot-code-reload/">Hot Code Reload</a></li>
+            
+            <li><a href="/docs/interfaces/">Interfaces</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Reference</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            <li><a href="/docs/stdlib/">Standard Library</a></li>
+            
+            <li><a href="/docs/stdlib-guide/">Stdlib Guide</a></li>
+            
+            <li><a href="/docs/property-testing/">Property Testing</a></li>
+            
+            <li><a href="/docs/repl/">REPL</a></li>
+            
+            <li><a href="/docs/tooling/">Tooling</a></li>
+            
+            <li><a href="/docs/lsp/">LSP & Editors</a></li>
+            
+            <li><a href="/docs/examples/">Examples</a></li>
+            
+            <li><a href="/docs/capabilities/">Capabilities</a></li>
+            
+            <li><a href="/docs/ffi/">Foreign Function Interface</a></li>
+            
+          </ul>
+        </nav>
+
+        <!-- GitHub CTA -->
+        <div id="march-github-bar" class="p-4">
+          <a href="https://github.com/march-language/march" class="march-github-btn" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.38 7.86 10.9.57.1.78-.25.78-.55v-2.1c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.48 3.14-1.17 3.14-1.17.63 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

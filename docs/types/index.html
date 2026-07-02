@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Type System — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link active">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="type-system">Type System</h1>
+
+<p>March uses Hindley-Milner type inference with bidirectional checking at function boundaries. You get the convenience of inferred types with the safety of static checking.</p>
+
+<hr />
+
+<h2 id="primitive-types">Primitive Types</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Literals</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>64-bit signed integer</td>
+      <td><code class="language-plaintext highlighter-rouge">42</code>, <code class="language-plaintext highlighter-rouge">-7</code>, <code class="language-plaintext highlighter-rouge">0</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Float</code></td>
+      <td>64-bit IEEE 754</td>
+      <td><code class="language-plaintext highlighter-rouge">3.14</code>, <code class="language-plaintext highlighter-rouge">-0.5</code>, <code class="language-plaintext highlighter-rouge">1.0e10</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Boolean</td>
+      <td><code class="language-plaintext highlighter-rouge">true</code>, <code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">String</code></td>
+      <td>UTF-8 string</td>
+      <td><code class="language-plaintext highlighter-rouge">"hello"</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Char</code></td>
+      <td>Unicode scalar value</td>
+      <td>(accessed via String operations)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">()</code></td>
+      <td>Unit (no value)</td>
+      <td><code class="language-plaintext highlighter-rouge">()</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="type-annotations">Type Annotations</h2>
+
+<p>Annotations are optional everywhere except:</p>
+<ul>
+  <li>Recursive functions where inference would loop</li>
+  <li>When you want explicit documentation</li>
+</ul>
+
+<pre><code class="language-march">fn add(x : Int, y : Int) : Int do
+  x + y
+end
+
+-- Equally valid — fully inferred:
+fn add(x, y) do x + y end
+</code></pre>
+
+<p>Parameter and return annotations use <code class="language-plaintext highlighter-rouge">:</code>:</p>
+<pre><code class="language-march">let count : Int = 0
+fn process(data : List(String)) : Option(Int) do ... end
+</code></pre>
+
+<hr />
+
+<h2 id="algebraic-data-types-adts">Algebraic Data Types (ADTs)</h2>
+
+<h3 id="sum-types-variants">Sum Types (Variants)</h3>
+
+<p>Variants declare a type with multiple possible shapes. No leading <code class="language-plaintext highlighter-rouge">|</code> on the first case:</p>
+
+<pre><code class="language-march">type Color = Red | Green | Blue
+
+type Shape =
+  | Circle(Float)
+  | Rect(Float, Float)
+  | Triangle(Float, Float, Float)
+</code></pre>
+
+<p>Constructors are capitalized. They can carry zero or more fields:</p>
+
+<pre><code class="language-march">type Expr =
+  | Num(Int)
+  | Add(Expr, Expr)
+  | Mul(Expr, Expr)
+  | Neg(Expr)
+</code></pre>
+
+<p>Use constructors by applying them like functions:</p>
+
+<pre><code class="language-march">let c = Circle(3.14)
+let r = Rect(4.0, 6.0)
+let e = Add(Num(1), Mul(Num(2), Num(3)))
+</code></pre>
+
+<h3 id="record-types">Record Types</h3>
+
+<p>Records have named fields:</p>
+
+<pre><code class="language-march">type Point = { x : Float, y : Float }
+type User  = { name : String, age : Int, email : String }
+</code></pre>
+
+<p>Create, access, and update:</p>
+
+<pre><code class="language-march">let p = { x: 1.0, y: 2.0 }
+let moved = { p with x: 5.0 }
+let dist = p.x +. p.y
+</code></pre>
+
+<p>Records and variants can be combined — a variant constructor can carry a record:</p>
+
+<pre><code class="language-march">type Config =
+  | Default
+  | Custom({ host : String, port : Int, debug : Bool })
+</code></pre>
+
+<hr />
+
+<h2 id="records">Records</h2>
+
+<p>Record types group named fields into a single value. Define them with curly-brace syntax:</p>
+
+<pre><code class="language-march">type Point = { x : Float, y : Float }
+type User  = { name : String, age : Int, active : Bool }
+</code></pre>
+
+<p>Create a record by supplying all fields:</p>
+
+<pre><code class="language-march">let p = { x: 1.0, y: 2.0 }
+let u = { name: "Alice", age: 30, active: true }
+</code></pre>
+
+<p>Access fields with <code class="language-plaintext highlighter-rouge">.</code>:</p>
+
+<pre><code class="language-march">let dist = p.x +. p.y
+</code></pre>
+
+<p>Update fields with <code class="language-plaintext highlighter-rouge">{ base with field: value }</code> — this creates a new record; the original is unchanged:</p>
+
+<pre><code class="language-march">let p2 = { p with x: 5.0 }       -- new Point, y unchanged
+let u2 = { u with active: false } -- deactivate user
+</code></pre>
+
+<p>Destructure records in patterns:</p>
+
+<pre><code class="language-march">match p do
+  { x, y } -&gt; x +. y
+end
+</code></pre>
+
+<p>Records and sum types can be combined — a sum type constructor can carry a record payload:</p>
+
+<pre><code class="language-march">type Shape =
+  | Circle({ radius : Float })
+  | Rect({ width : Float, height : Float })
+</code></pre>
+
+<hr />
+
+<h2 id="atoms">Atoms</h2>
+
+<p>An atom is a named constant whose value is its own name. Atoms are written with a leading colon:</p>
+
+<pre><code class="language-march">:ok
+:error
+:pending
+:one_for_one
+</code></pre>
+
+<p>Atoms are commonly used as tags in sum types, supervision strategies, HTTP methods, and protocol states:</p>
+
+<pre><code class="language-march">type Status = :ok | :error | :pending
+
+match status do
+  :ok      -&gt; "success"
+  :error   -&gt; "failure"
+  :pending -&gt; "in progress"
+end
+</code></pre>
+
+<p>Each atom literal has its own distinct type, so the compiler catches typos at the type level.</p>
+
+<hr />
+
+<h2 id="type-parameters-generics">Type Parameters (Generics)</h2>
+
+<p>Type parameters are lowercase:</p>
+
+<pre><code class="language-march">type Option(a) = None | Some(a)
+type Result(a, e) = Ok(a) | Err(e)
+type Pair(a, b) = Pair(a, b)
+type Tree(a) = Leaf | Node(Tree(a), a, Tree(a))
+</code></pre>
+
+<p>Use the same lowercase letters in function signatures to refer to type parameters:</p>
+
+<pre><code class="language-march">fn identity(x : a) : a do x end
+
+fn map_option(opt : Option(a), f : a -&gt; b) : Option(b) do
+  match opt do
+    None    -&gt; None
+    Some(x) -&gt; Some(f(x))
+  end
+end
+</code></pre>
+
+<p>The compiler infers type parameter instantiations at call sites:</p>
+
+<pre><code class="language-march">map_option(Some(42), fn x -&gt; x * 2)  -- Option(Int)
+map_option(Some("hi"), String.length) -- Option(Int)
+</code></pre>
+
+<hr />
+
+<h2 id="type-aliases">Type Aliases</h2>
+
+<p>Give a type a shorter name:</p>
+
+<pre><code class="language-march">type Name = String
+type Age  = Int
+type DB   = Map(String, List(Int))
+</code></pre>
+
+<p>A type alias expands to its definition, so a value declared as the alias can be
+used where the underlying type is expected — e.g. a <code class="language-plaintext highlighter-rouge">Name</code> flows into a function
+taking a <code class="language-plaintext highlighter-rouge">String</code>. The reverse is not always accepted: passing a bare <code class="language-plaintext highlighter-rouge">String</code>
+where the alias <code class="language-plaintext highlighter-rouge">Name</code> is expected can be rejected, so don’t rely on aliases
+being freely interchangeable in both directions. Use aliases for readability,
+not as a substitute for a distinct wrapper type.</p>
+
+<hr />
+
+<h2 id="optiona">Option(a)</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Option(a)</code> represents a value that may or may not be present:</p>
+
+<pre><code class="language-march">type Option(a) = None | Some(a)
+</code></pre>
+
+<p>Standard pattern:</p>
+
+<pre><code class="language-march">fn safe_head(xs : List(a)) : Option(a) do
+  match xs do
+    Nil        -&gt; None
+    Cons(h, _) -&gt; Some(h)
+  end
+end
+</code></pre>
+
+<p>Stdlib helpers (from prelude, always in scope):</p>
+
+<pre><code class="language-march">unwrap(Some(42))           -- 42 (panics if None)
+unwrap_or(None, 0)         -- 0
+</code></pre>
+
+<p>From <code class="language-plaintext highlighter-rouge">Option</code> module:</p>
+
+<pre><code class="language-march">Option.map(Some(5), fn x -&gt; x + 1)  -- Some(6)
+Option.and_then(opt, fn x -&gt; ...)   -- flatMap
+Option.unwrap_or_else(opt, fn () -&gt; compute_default())
+Option.is_some(opt)
+Option.is_none(opt)
+</code></pre>
+
+<hr />
+
+<h2 id="resulta-e">Result(a, e)</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Result(a, e)</code> represents either success or failure:</p>
+
+<pre><code class="language-march">type Result(a, e) = Ok(a) | Err(e)
+</code></pre>
+
+<p>Functions that can fail return <code class="language-plaintext highlighter-rouge">Result</code>:</p>
+
+<pre><code class="language-march">fn parse_int(s : String) : Result(Int, String) do
+  -- returns Ok(n) or Err("not a valid integer")
+  parse_int_builtin(s)
+end
+</code></pre>
+
+<p>Chain multiple fallible operations with <code class="language-plaintext highlighter-rouge">let?</code> (propagates <code class="language-plaintext highlighter-rouge">Err</code> automatically):</p>
+
+<pre><code class="language-march">fn run(input : String) : Result(String, String) do
+  let? n    = parse_int(input)
+  let? user = fetch_user(n)
+  Ok(display(user))
+end
+</code></pre>
+
+<p>Use <code class="language-plaintext highlighter-rouge">with</code> when you need custom <code class="language-plaintext highlighter-rouge">else</code> handling or mixed <code class="language-plaintext highlighter-rouge">Option</code>/<code class="language-plaintext highlighter-rouge">Result</code> chains (the <code class="language-plaintext highlighter-rouge">with</code> construct is covered in the Pattern Matching page; it short-circuits on non-matching patterns):</p>
+
+<pre><code class="language-march">with Ok(n)    &lt;- parse_int(input),
+     Ok(user) &lt;- fetch_user(n) do
+  display(user)
+else
+  Err(e) -&gt; println("Error: " ++ e)
+end
+</code></pre>
+
+<p>Stdlib helpers:</p>
+
+<pre><code class="language-march">Result.map(Ok(5), fn x -&gt; x + 1)     -- Ok(6)
+Result.map_err(Err("x"), String.upcase)
+Result.and_then(res, fn v -&gt; ...)      -- flatMap
+Result.unwrap(Ok(42))                  -- 42
+Result.unwrap_or(Err("e"), 0)          -- 0
+Result.is_ok(res)
+Result.is_err(res)
+</code></pre>
+
+<hr />
+
+<h2 id="the-let-operator">The <code class="language-plaintext highlighter-rouge">let?</code> Operator</h2>
+
+<p><code class="language-plaintext highlighter-rouge">let?</code> is syntactic sugar for unwrapping a <code class="language-plaintext highlighter-rouge">Result</code> and propagating errors automatically. Inside a function that returns <code class="language-plaintext highlighter-rouge">Result</code>, <code class="language-plaintext highlighter-rouge">let?</code> saves you from writing nested <code class="language-plaintext highlighter-rouge">match</code> expressions:</p>
+
+<pre><code class="language-march">fn load_config(path : String) : Result(Config, String) do
+  let? raw  = File.read(path)         -- unwrap or propagate Err
+  let? text = Utf8.decode(raw)        -- unwrap or propagate Err
+  let? cfg  = Config.parse(text)      -- unwrap or propagate Err
+  Ok(cfg)
+end
+</code></pre>
+
+<p>Each <code class="language-plaintext highlighter-rouge">let? x = expr</code> desugars to:</p>
+
+<pre><code class="language-march">match expr do
+  Ok(x)  -&gt; &lt;rest of function&gt;
+  Err(e) -&gt; Err(e)    -- early return, propagating the error
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">?</code> postfix operator is the expression-level equivalent — use it to unwrap inline:</p>
+
+<pre><code class="language-march">let cfg = Config.parse(File.read(path)?)?   -- chain unwraps
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">let?</code> and <code class="language-plaintext highlighter-rouge">?</code> only work with <code class="language-plaintext highlighter-rouge">Result(a, e)</code>. For <code class="language-plaintext highlighter-rouge">Option(a)</code>, use <code class="language-plaintext highlighter-rouge">match</code> or the <code class="language-plaintext highlighter-rouge">with</code> construct.</p>
+
+<hr />
+
+<h2 id="tuples">Tuples</h2>
+
+<p>Tuples are anonymous ordered products:</p>
+
+<pre><code class="language-march">let pair : (Int, String) = (1, "hello")
+let triple : (Int, Float, Bool) = (1, 2.0, true)
+let unit : () = ()
+</code></pre>
+
+<p>Destructure with <code class="language-plaintext highlighter-rouge">let</code> or pattern matching:</p>
+
+<pre><code class="language-march">let (a, b) = pair
+match triple do
+  (n, f, b) -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="lists">Lists</h2>
+
+<p><code class="language-plaintext highlighter-rouge">List(a)</code> is a singly-linked cons list:</p>
+
+<pre><code class="language-march">type List(a) = Nil | Cons(a, List(a))
+</code></pre>
+
+<p>List literals desugar to <code class="language-plaintext highlighter-rouge">Cons</code> chains:</p>
+
+<pre><code class="language-march">[1, 2, 3]   -- Cons(1, Cons(2, Cons(3, Nil)))
+[]          -- Nil
+</code></pre>
+
+<hr />
+
+<h2 id="function-types">Function Types</h2>
+
+<p>Function types are written with <code class="language-plaintext highlighter-rouge">-&gt;</code>, right-associative:</p>
+
+<pre><code class="language-march">Int -&gt; Bool          -- takes Int, returns Bool
+Int -&gt; Int -&gt; Int    -- curried: takes Int, returns (Int -&gt; Int)
+(Int, Int) -&gt; Int    -- takes a pair
+</code></pre>
+
+<p>Higher-order functions:</p>
+
+<pre><code class="language-march">fn apply(f : Int -&gt; Int, x : Int) : Int do f(x) end
+fn compose(f : b -&gt; c, g : a -&gt; b) : a -&gt; c do
+  fn x -&gt; f(g(x))
+end
+</code></pre>
+
+<hr />
+
+<h2 id="qualified-types">Qualified Types</h2>
+
+<p>Types from modules are accessed with <code class="language-plaintext highlighter-rouge">.</code>:</p>
+
+<pre><code class="language-march">Http.Request
+Map.Entry(String, Int)
+</code></pre>
+
+<hr />
+
+<h2 id="dependent-types">Dependent Types</h2>
+
+<p>A <strong>dependent type</strong> is a type that depends on a <em>value</em> — not just on other
+types. March has two flavours, each with different trade-offs.</p>
+
+<h3 id="refinement-types--value-predicates">Refinement Types — value predicates</h3>
+
+<p>A <strong>refinement type</strong> <code class="language-plaintext highlighter-rouge">{T | predicate}</code> constrains what values a type can hold.
+The predicate is checked by an SMT solver (Z3) at compile time — so a whole
+class of bugs (negative sizes, out-of-bounds indices, division by zero) becomes
+a compile error instead of a runtime panic.</p>
+
+<pre><code class="language-march">-- Precondition: callers must pass a positive chunk size
+fn chunks(xs : List(a), size : {Int | _ &gt; 0}) : List(List(a)) do ... end
+
+-- Postcondition: this function promises a non-negative count
+fn count(xs : List(a)) : {Int | _ &gt;= 0} do List.length(xs) end
+
+chunks([1,2,3,4,5], 0)   -- compile error: 0 can never be &gt; 0
+chunks([1,2,3,4,5], 2)   -- ok
+</code></pre>
+
+<p>Checking follows <strong>definite-failure semantics</strong>: a diagnostic is emitted only
+when the predicate can <em>never</em> hold — never for unknown or possibly-valid
+values. This means no false positives, but also no proof obligation: if the
+solver can’t decide, it stays silent.</p>
+
+<pre><code class="language-march">fn f(n : Int) : Int do
+  chunks(data, n)    -- skipped: n could be positive, compiler doesn't know
+end
+</code></pre>
+
+<p>Refinements support <strong>path sensitivity</strong> — a guard you write becomes an
+assumption the solver can use:</p>
+
+<pre><code class="language-march">fn safe_chunks(xs : List(a), n : Int) : List(List(a)) do
+  if n &gt; 0 do
+    chunks(xs, n)    -- ok: the guard established n &gt; 0
+  else
+    [xs]
+  end
+end
+</code></pre>
+
+<p>For predicates over data structures, define a <strong><code class="language-plaintext highlighter-rouge">@[measure]</code></strong> — a total,
+terminating function the solver axiomatises structurally:</p>
+
+<pre><code class="language-march">@[measure]
+fn size(t : Tree(a)) : Int do
+  match t do
+    Leaf          -&gt; 0
+    Node(l, _, r) -&gt; 1 + size(l) + size(r)
+  end
+end
+
+fn get(t : Tree(a), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; size(t)}) : a do ... end
+</code></pre>
+
+<p>See the <a href="/docs/refinement-types/">Refinement Types guide</a> for the full syntax,
+measure soundness gate, <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> flag, and limitations.</p>
+
+<h3 id="type-level-naturals--dimension-constraints">Type-Level Naturals — dimension constraints</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Nat</code> in a type parameter threads a <em>compile-time</em> natural number through the
+type, making shape mismatches impossible to express:</p>
+
+<pre><code class="language-march">type Vector(n, a) = Vector(Array(a))
+
+fn zip_vectors(v1 : Vector(n, a), v2 : Vector(n, b)) : Vector(n, (a, b)) do
+  -- the compiler verifies both arguments have the same length n
+  ...
+end
+</code></pre>
+
+<p>Arithmetic on naturals is supported at the type level:</p>
+
+<pre><code class="language-march">type Doubled(n, a) = Array(n * 2, a)
+</code></pre>
+
+<p>This is resolved entirely during type inference — no Z3 involved. It is
+appropriate for <strong>structural shape constraints</strong> (array lengths, matrix
+dimensions) where the relationship is fixed at the call site. Refinements are
+appropriate for <strong>value-range constraints</strong> (non-negative, bounded, non-zero)
+where the relationship is a predicate you want to check against a concrete
+argument.</p>
+
+<h3 id="choosing-between-the-two">Choosing between the two</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Refinement types</th>
+      <th>Type-level naturals</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Constraint kind</td>
+      <td>Value predicates (<code class="language-plaintext highlighter-rouge">&gt;= 0</code>, <code class="language-plaintext highlighter-rouge">!= 0</code>, <code class="language-plaintext highlighter-rouge">&lt; len(xs)</code>)</td>
+      <td>Shape/dimension equality</td>
+    </tr>
+    <tr>
+      <td>Base types</td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Nat</code> (non-negative integer)</td>
+    </tr>
+    <tr>
+      <td>Solver</td>
+      <td>Z3 SMT (optional)</td>
+      <td>Type inference (always)</td>
+    </tr>
+    <tr>
+      <td>False positives</td>
+      <td>None (definite-failure only)</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>HOF / dynamic dispatch</td>
+      <td>Not checked</td>
+      <td>Checked</td>
+    </tr>
+    <tr>
+      <td>Incomplete by design?</td>
+      <td>Yes</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="opaque-types">Opaque Types</h2>
+
+<p>Hide a type’s representation while keeping the name usable in signatures:</p>
+
+<pre><code class="language-march">mod Token do
+  opaque type Token = Token(String)
+
+  fn make(s : String) : Token do Token(s) end
+  fn value(t : Token) : String do
+    match t do Token(s) -&gt; s end
+  end
+end
+</code></pre>
+
+<p>Outside <code class="language-plaintext highlighter-rouge">Token</code>, callers can use <code class="language-plaintext highlighter-rouge">Token</code> as a type but cannot construct or pattern-match it directly — only through the module’s public API.</p>
+
+<p>For completely hidden types, use <code class="language-plaintext highlighter-rouge">ptype</code>:</p>
+
+<pre><code class="language-march">ptype Internal = Foo | Bar(Int)
+-- Both the type name and constructors are private
+</code></pre>
+
+<hr />
+
+<h2 id="operator-reference">Operator Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operator</th>
+      <th>Types</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">+</code> <code class="language-plaintext highlighter-rouge">-</code> <code class="language-plaintext highlighter-rouge">*</code> <code class="language-plaintext highlighter-rouge">/</code> <code class="language-plaintext highlighter-rouge">%</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Integer arithmetic</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">+.</code> <code class="language-plaintext highlighter-rouge">-.</code> <code class="language-plaintext highlighter-rouge">*.</code> <code class="language-plaintext highlighter-rouge">/.</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Float</code></td>
+      <td>Float arithmetic (dot suffix required)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">==</code> <code class="language-plaintext highlighter-rouge">!=</code></td>
+      <td>any <code class="language-plaintext highlighter-rouge">Eq</code></td>
+      <td>Equality / inequality</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;</code> <code class="language-plaintext highlighter-rouge">&gt;</code> <code class="language-plaintext highlighter-rouge">&lt;=</code> <code class="language-plaintext highlighter-rouge">&gt;=</code></td>
+      <td>any <code class="language-plaintext highlighter-rouge">Ord</code></td>
+      <td>Ordering</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&amp;&amp;</code> <code class="language-plaintext highlighter-rouge">\|\|</code> <code class="language-plaintext highlighter-rouge">!</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Boolean and / or / not</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">++</code></td>
+      <td><code class="language-plaintext highlighter-rouge">String</code></td>
+      <td>String concatenation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">\|&gt;</code></td>
+      <td>any</td>
+      <td>Pipe: <code class="language-plaintext highlighter-rouge">x \|&gt; f</code> is <code class="language-plaintext highlighter-rouge">f(x)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Float operators require the dot suffix.</strong> Mixing <code class="language-plaintext highlighter-rouge">Int</code> operators with <code class="language-plaintext highlighter-rouge">Float</code> values is a type error:</p>
+
+<pre><code class="language-march">let a = 1.5 +. 2.5   -- Float: correct
+let b = 1.5 + 2.5    -- type error: + is Int-only
+</code></pre>
+
+<p>The pipe operator chains transformations left-to-right:</p>
+
+<pre><code class="language-march">[1, 2, 3, 4, 5]
+  |&gt; List.filter(fn x -&gt; x % 2 == 0)
+  |&gt; List.map(fn x -&gt; x * x)
+  |&gt; List.fold_left(0, fn acc x -&gt; acc + x)
+-- evaluates to 20
+</code></pre>
+
+<hr />
+
+<h2 id="which-safety-tool-for-which-job">Which Safety Tool for Which Job</h2>
+
+<p>March gives you many ways to make illegal states unrepresentable. Choose by <strong>the
+guarantee you want</strong>, not by the feature name. This table is keyed on the
+guarantee:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Guarantee you want</th>
+      <th>Reach for</th>
+      <th>Checked by</th>
+      <th>Granularity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A value stays in a numeric/logical range (<code class="language-plaintext highlighter-rouge">&gt;= 0</code>, <code class="language-plaintext highlighter-rouge">!= 0</code>, <code class="language-plaintext highlighter-rouge">&lt; len</code>)</td>
+      <td>Refinement <code class="language-plaintext highlighter-rouge">{T \| pred}</code></td>
+      <td>SMT solver (Z3), compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A dimension/length matches across values</td>
+      <td>Type-level natural <code class="language-plaintext highlighter-rouge">Vector(n, a)</code></td>
+      <td>Type inference, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A value can only be built through a vetted constructor</td>
+      <td>Smart-constructor / opaque <code class="language-plaintext highlighter-rouge">ptype</code></td>
+      <td>Type checker (private constructor)</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>Validate data whose shape isn’t known until runtime</td>
+      <td>Runtime validator returning <code class="language-plaintext highlighter-rouge">Result</code></td>
+      <td>Your code, run time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A resource is used the right number of times</td>
+      <td><code class="language-plaintext highlighter-rouge">linear</code> (exactly once) / <code class="language-plaintext highlighter-rouge">affine</code> (at most once)</td>
+      <td>Type checker, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A resource is used in the right order (open → read → close)</td>
+      <td>Typestate (<code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code>)</td>
+      <td>Type checker, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>Code may only touch resources it was granted</td>
+      <td>Capability <code class="language-plaintext highlighter-rouge">needs</code> / <code class="language-plaintext highlighter-rouge">Cap(X)</code></td>
+      <td>Type checker (transitive), compile time</td>
+      <td>Per module / call</td>
+    </tr>
+    <tr>
+      <td>A two-party conversation follows a protocol</td>
+      <td>Session type <code class="language-plaintext highlighter-rouge">protocol</code> + <code class="language-plaintext highlighter-rouge">Chan</code></td>
+      <td>Type checker, compile time</td>
+      <td>Per channel</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="two-confusable-pairs">Two confusable pairs</h3>
+
+<p><strong>Refinement vs. smart-constructor.</strong> A refinement <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> checks a
+<em>predicate the solver can read</em> every time the value flows into a refined
+position — great for arithmetic ranges and bounds. A smart-constructor (<code class="language-plaintext highlighter-rouge">ptype</code>
+with a private constructor) enforces an invariant the solver <em>can’t</em> express
+(<code class="language-plaintext highlighter-rouge">Email</code> is well-formed, <code class="language-plaintext highlighter-rouge">Sanitized</code> has been escaped): the only way to get the
+type is to go through the function that establishes the invariant. Use a
+refinement when the property is arithmetic; use a smart-constructor when it’s
+structural or semantic.</p>
+
+<p><strong>Refinement vs. runtime validator.</strong> They live at different boundaries:
+<strong>refine internals, validate untrusted input at the edge.</strong> A refinement is a
+<em>static</em> contract between functions you control — it disappears at runtime. A
+runtime validator returning <code class="language-plaintext highlighter-rouge">Result</code> is for data crossing a trust boundary (a
+request body, a file, a CLI argument) where you genuinely don’t know the value
+until it arrives. Validate once at the edge, then carry the proof inward as a
+smart-constructor or a refined type.</p>
+
+<p>See <a href="/docs/safety-by-construction/">Safety by Construction</a> for one function that
+threads capability, typestate, and refinement together.</p>
+
+<hr />
+
+<h2 id="whats-inferred-what-you-must-write">What’s Inferred, What You Must Write</h2>
+
+<p>March’s rule of thumb: <strong>it infers structure (facts it can read off your code)
+and asks you to declare claims (constraints, predicates, and effects it must
+verify against your code).</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>What March does</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Inferred</strong> (you write nothing)</td>
+      <td>Reconstructed from the code</td>
+      <td>Types of <code class="language-plaintext highlighter-rouge">let</code> locals; lambda parameter types; generic instantiation at call sites</td>
+    </tr>
+    <tr>
+      <td><strong>Optional</strong> (write for docs/clarity)</td>
+      <td>Inferred, but you may pin it</td>
+      <td>Function parameter and return signatures</td>
+    </tr>
+    <tr>
+      <td><strong>NOT inferred</strong> (you declare, compiler verifies)</td>
+      <td>A claim the compiler checks but won’t guess</td>
+      <td>Interface constraints (<code class="language-plaintext highlighter-rouge">when Ord(a)</code>); refinement predicates (<code class="language-plaintext highlighter-rouge">{Int \| _ &gt;= 0}</code>); capabilities (<code class="language-plaintext highlighter-rouge">needs IO.FileRead</code>)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The asymmetry is deliberate. A <em>fact</em> like “this local is an <code class="language-plaintext highlighter-rouge">Int</code>” the compiler
+can simply read off the expression. A <em>claim</em> like “this argument is always
+positive” or “this module may read files” is a contract you’re asserting — the
+compiler can’t invent the contract for you, but once you state it, it holds you
+(and your callers) to it.</p>
+
+<hr />
+
+<h2 id="what-the-type-system-buys-at-runtime">What the Type System Buys at Runtime</h2>
+
+<p>The static guarantees aren’t just for catching bugs — they let the compiler
+<em>delete</em> runtime machinery that dynamic languages pay for on every call:</p>
+
+<ul>
+  <li><strong>Whole-program monomorphization → no dynamic dispatch.</strong> Generic code is
+specialized to concrete types, so interface calls become direct calls with no
+vtable lookup. (See <a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Defunctionalization → no heap closures.</strong> Higher-order functions are compiled
+to plain tagged data and a dispatch, so passing a lambda doesn’t allocate a
+closure object on the heap. (See <a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Immutable by default → no write barriers.</strong> Pointer fields are never written
+after construction, so there’s no GC write barrier on the common path. (See
+<a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Linear / affine → static free.</strong> Values with statically known lifetimes get a
+compiler-inserted <code class="language-plaintext highlighter-rouge">free</code> at last use — no reference-count bookkeeping at all.
+(See <a href="/docs/memory-model/">memory model</a>.)</li>
+</ul>
+
+<hr />
+
+<h2 id="the-type-hierarchy-at-a-glance">The Type Hierarchy at a Glance</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Types
+├── Primitives: Int, Float, Bool, String, ()
+├── Sum types: type Foo = A | B(T) | ...
+├── Record types: type Foo = { field : T, ... }
+├── Generic types: type Foo(a) = ...
+├── Function types: T -&gt; U
+├── Tuple types: (T, U, V)
+├── Linear/affine: linear T, affine T
+├── Dependent types
+│   ├── Refinement types: {Int | _ &gt;= 0}, {Int | _ != 0}
+│   └── Type-level naturals: Vector(n, a), Matrix(m, n, a)
+└── Stdlib: List(a), Option(a), Result(a,e), Map(k,v), ...
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/pattern-matching/">Pattern Matching</a> — destructuring all these types</li>
+  <li><a href="/docs/linear-types/">Linear Types</a> — ownership and resource safety</li>
+  <li><a href="/docs/refinement-types/">Refinement Types</a> — types that carry a predicate (<code class="language-plaintext highlighter-rouge">{Int | _ &gt;= 0}</code>), checked by an SMT solver</li>
+  <li><a href="/docs/interfaces/">Interfaces</a> — ad-hoc polymorphism with <code class="language-plaintext highlighter-rouge">interface</code>/<code class="language-plaintext highlighter-rouge">impl</code></li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

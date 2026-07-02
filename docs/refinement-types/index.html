@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Refinement Types — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link active">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="refinement-types">Refinement Types</h1>
+
+<p>A <strong>refinement type</strong> attaches a logical predicate to an ordinary type:
+<code class="language-plaintext highlighter-rouge">{Int | _ &gt;= 0}</code> is “an <code class="language-plaintext highlighter-rouge">Int</code> that is non-negative”. March discharges these
+predicates with an SMT solver (Z3) at compile time, so a whole class of bugs —
+out-of-bounds indices, negative sizes, division by zero, broken invariants —
+becomes a <strong>compile error</strong> instead of a runtime panic.</p>
+
+<p>Refinements are March’s pragmatic slice of <strong>dependent typing</strong>: types that
+depend on <em>values</em>. You get the safety where it pays off (preconditions,
+bounds, postconditions) without a proof assistant’s ceremony — and, crucially,
+<strong>without false positives</strong>: if the checker can’t prove a value is definitely
+wrong, it stays silent.</p>
+
+<blockquote>
+  <p><strong>Requires Z3.</strong> Refinement checking runs only when the <code class="language-plaintext highlighter-rouge">z3</code> solver is on your
+<code class="language-plaintext highlighter-rouge">PATH</code>. Without it, the predicates type-check as their base type and no
+refinement diagnostics are produced (the build still succeeds).</p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-problem-they-solve">The Problem They Solve</h2>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : Int) : Int do
+  -- if i is out of range this panics at runtime
+  List.nth(xs, i) |&gt; Option.unwrap
+end
+
+at([10, 20, 30], 5)   -- boom, eventually, at runtime
+</code></pre>
+
+<p>A refinement moves the contract into the type, where the compiler checks it:</p>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; len(xs)}) : Int do
+  List.nth(xs, i) |&gt; Option.unwrap
+end
+
+at([10, 20, 30], 5)   -- compile error: 5 is not &lt; len([10,20,30]) = 3
+at([10, 20, 30], 1)   -- ok
+</code></pre>
+
+<hr />
+
+<h2 id="syntax">Syntax</h2>
+
+<p>A refinement is written <code class="language-plaintext highlighter-rouge">{ BaseType | predicate }</code>. The placeholder <code class="language-plaintext highlighter-rouge">_</code> stands
+for the value being refined:</p>
+
+<pre><code class="language-march">{Int | _ &gt;= 0}              -- a non-negative Int
+{Int | _ &gt; 0}              -- a positive Int
+{Int | _ != 0}             -- a non-zero Int (safe divisor)
+{Int | _ &gt;= 0 &amp;&amp; _ &lt; 100}  -- a bounded Int
+</code></pre>
+
+<p>You can name the value instead of using <code class="language-plaintext highlighter-rouge">_</code>:</p>
+
+<pre><code class="language-march">{v : Int | v &gt;= 0 &amp;&amp; v &lt; 100}
+</code></pre>
+
+<p>Refinements appear anywhere a type does — <strong>parameters</strong> (preconditions) and
+<strong>return types</strong> (postconditions):</p>
+
+<pre><code class="language-march">-- precondition: callers must pass a positive size
+fn chunks(xs : List(a), size : {Int | _ &gt; 0}) : List(List(a)) do ... end
+
+-- postcondition: this function promises a non-negative result
+fn count(xs : List(a)) : {Int | _ &gt;= 0} do List.length(xs) end
+</code></pre>
+
+<p>The supported predicate fragment is <strong><code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code> linear arithmetic</strong>:
+<code class="language-plaintext highlighter-rouge">+ - *</code> (multiplication by a literal), the comparisons <code class="language-plaintext highlighter-rouge">== != &lt; &lt;= &gt; &gt;=</code>, the
+connectives <code class="language-plaintext highlighter-rouge">&amp;&amp; || not</code>, integer/bool literals, and <strong>measures</strong> (below).</p>
+
+<hr />
+
+<h2 id="how-checking-works--definite-failure">How Checking Works — Definite Failure</h2>
+
+<p>March reports a refinement violation <strong>only when the predicate can <em>never</em>
+hold</strong> under everything it knows at that point. This “definite-failure” stance
+is the heart of the design:</p>
+
+<ul>
+  <li>The argument <strong>always</strong> satisfies the predicate → <strong>pass</strong>, silently.</li>
+  <li>The argument <strong>never</strong> satisfies it → <strong>compile error</strong> with a counterexample.</li>
+  <li>It <strong>might</strong> satisfy it (the value is unknown / the solver is unsure) →
+<strong>skipped</strong>, silently.</li>
+</ul>
+
+<pre><code class="language-march">fn take_pos(n : {Int | _ &gt;= 0}) : Int do n end
+
+take_pos(-3)                     -- error: -3 can never be &gt;= 0
+take_pos(5)                      -- pass
+
+fn f(k : Int) : Int do
+  take_pos(k)                    -- skipped: k is unknown, might be &gt;= 0
+end
+</code></pre>
+
+<p>The consequence: <strong>no false positives, by design — but incomplete.</strong> The
+checker never flags correct code, and never blocks a build over something it
+can’t disprove. It also won’t <em>prove</em> everything you might hope; facts it can’t
+establish are conservatively let through. This trade is deliberate — a
+refinement checker that cries wolf is one developers turn off.</p>
+
+<hr />
+
+<h2 id="path-sensitivity--guards-establish-facts">Path Sensitivity — Guards Establish Facts</h2>
+
+<p>A guard you write becomes an assumption the solver can use. The then-branch
+learns the condition; the else-branch learns its negation:</p>
+
+<pre><code class="language-march">fn get(xs : List(Int), i : Int) : Int do
+  if i &gt;= 0 &amp;&amp; i &lt; len(xs) do
+    at(xs, i)          -- ok: the guard proves the precondition here
+  else
+    0
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">match</code> arm guards (<code class="language-plaintext highlighter-rouge">when</code>) work the same way. An <code class="language-plaintext highlighter-rouge">assert(p)</code> acts as an
+<strong>assume</strong> — it injects <code class="language-plaintext highlighter-rouge">p</code> as a fact for the code that follows:</p>
+
+<pre><code class="language-march">fn g(i : Int) : Int do
+  assert(i &gt;= 0)
+  take_pos(i)          -- ok: the assert established i &gt;= 0
+end
+</code></pre>
+
+<p>Use <code class="language-plaintext highlighter-rouge">assert</code> as the escape hatch for facts the checker can’t derive on its own
+(it’s the place a hand-proved lemma lives).</p>
+
+<hr />
+
+<h2 id="postconditions">Postconditions</h2>
+
+<p>A refined return type is checked on <strong>every return path</strong> of the function,
+under the path/scope reaching it:</p>
+
+<pre><code class="language-march">fn clamp_low(n : Int) : {Int | _ &gt;= 0} do
+  if n &lt; 0 do 0 else n end        -- both branches satisfy _ &gt;= 0  ✓
+end
+
+fn bad(n : Int) : {Int | _ &gt;= 0} do
+  if n &lt; 0 do n else 0 end        -- error: the n &lt; 0 branch returns a negative
+end
+</code></pre>
+
+<hr />
+
+<h2 id="measures--refining-over-data-structures">Measures — Refining over Data Structures</h2>
+
+<p>A <strong>measure</strong> is a function from a value to an <code class="language-plaintext highlighter-rouge">Int</code> (or <code class="language-plaintext highlighter-rouge">Bool</code>) that you can
+mention in predicates. The built-in <code class="language-plaintext highlighter-rouge">len</code> measures a list:</p>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; len(xs)}) : Int do ... end
+</code></pre>
+
+<p>You can define your own with the <code class="language-plaintext highlighter-rouge">@[measure]</code> attribute — for example the size
+of a tree:</p>
+
+<pre><code class="language-march">type Tree(a) = Leaf | Node(Tree(a), a, Tree(a))
+
+@[measure]
+fn size(t : Tree(a)) : Int do
+  match t do
+    Leaf          -&gt; 0
+    Node(l, x, r) -&gt; 1 + size(l) + size(r)
+  end
+end
+
+fn get(t : Tree(a), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; size(t)}) : a do ... end
+</code></pre>
+
+<p>The solver reasons about measures <strong>structurally</strong>: from the recursion
+equations above it computes <code class="language-plaintext highlighter-rouge">size(Node(Leaf, x, Leaf)) = 1</code>, so an out-of-bounds
+index into a literal tree is caught, and <code class="language-plaintext highlighter-rouge">size(t) &gt;= 0</code> is known for any <code class="language-plaintext highlighter-rouge">t</code>.
+Measures may call <strong>other measures</strong> and be <strong>mutually recursive</strong> (e.g. a
+<code class="language-plaintext highlighter-rouge">Tree</code>/<code class="language-plaintext highlighter-rouge">Forest</code> pair), and the built-in <code class="language-plaintext highlighter-rouge">List</code> is modelled too, so a user
+<code class="language-plaintext highlighter-rouge">length</code> measure over <code class="language-plaintext highlighter-rouge">List(a)</code> reasons structurally just like <code class="language-plaintext highlighter-rouge">size</code>.</p>
+
+<h3 id="the-measure-soundness-gate">The measure soundness gate</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">@[measure]</code> is a <em>promise</em> that the function is a <strong>total, terminating, pure</strong>
+mathematical function — the solver trusts it, so a broken one would let it
+“prove” anything. March enforces the promise as a <strong>hard compile error</strong>. A
+<code class="language-plaintext highlighter-rouge">@[measure]</code> is rejected if it:</p>
+
+<ul>
+  <li>has an <strong>effect</strong> (<code class="language-plaintext highlighter-rouge">spawn</code>, <code class="language-plaintext highlighter-rouge">send</code>, <code class="language-plaintext highlighter-rouge">dbg</code>, <code class="language-plaintext highlighter-rouge">assert</code>),</li>
+  <li>can <strong>diverge or abort</strong> (<code class="language-plaintext highlighter-rouge">panic</code>, <code class="language-plaintext highlighter-rouge">todo</code>, <code class="language-plaintext highlighter-rouge">exit</code>),</li>
+  <li>is <strong>non-total</strong> — a non-exhaustive <code class="language-plaintext highlighter-rouge">match</code> on its parameter, or a <code class="language-plaintext highlighter-rouge">/</code> / <code class="language-plaintext highlighter-rouge">%</code>
+that could divide by zero,</li>
+  <li>is <strong>not structurally recursive</strong> — a recursive call whose argument isn’t a
+component of the matched parameter.</li>
+</ul>
+
+<p>A measure that is sound but outside what the encoding can model (see
+limitations) isn’t an error — it simply falls back to weaker, symbolic
+reasoning.</p>
+
+<hr />
+
+<h2 id="where-refinements-resolve">Where Refinements Resolve</h2>
+
+<p>Refinement checking follows the same name resolution as the type checker:
+<strong>direct named calls</strong>, across modules, through <strong><code class="language-plaintext highlighter-rouge">alias</code></strong> and <strong><code class="language-plaintext highlighter-rouge">use</code></strong>:</p>
+
+<pre><code class="language-march">mod App do
+  use Lib.{take_pos}          -- imported name resolves to Lib.take_pos
+  alias Lib.Inner as I        -- alias resolves to Lib.Inner.*
+
+  fn run() : Int do
+    take_pos(-1)              -- error: resolved + checked against Lib's precondition
+    I.helper(-1)             -- error: alias-qualified call checked too
+  end
+end
+</code></pre>
+
+<p>A bare call binds to the nearest enclosing module that defines it (with
+shadowing), so a local helper is never confused with a same-named function
+elsewhere.</p>
+
+<hr />
+
+<h2 id="limitations">Limitations</h2>
+
+<p>Refinements are intentionally a <em>pragmatic slice</em> of dependent typing. Know the
+edges:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">Int</code> and <code class="language-plaintext highlighter-rouge">Bool</code> only.</strong> There are <strong>no <code class="language-plaintext highlighter-rouge">Float</code> value-refinements</strong> —
+encoding floats as mathematical reals is unsound for IEEE-754 arithmetic, so
+it’s deliberately omitted. Predicates over other types aren’t supported.</li>
+  <li><strong>Incomplete (by the definite-failure stance).</strong> The checker catches values
+that are <em>definitely</em> wrong and stays silent otherwise. It will not prove
+every true property; quantified/measure facts in particular sometimes return
+“unknown” and are skipped. This never produces a false positive, but it does
+mean some real guarantees go unchecked.</li>
+  <li><strong>Direct calls only — no higher-order or interface dispatch.</strong> A precondition
+on a function passed as a value, called through a variable, or dispatched
+through an <code class="language-plaintext highlighter-rouge">interface</code>/<code class="language-plaintext highlighter-rouge">impl</code> is <strong>not</strong> checked. (True higher-order checking
+needs refinement subtyping in unification, which isn’t implemented.)</li>
+  <li><strong>Measures see structure, not elements.</strong> Element values inside a data
+structure are opaque to a measure (<code class="language-plaintext highlighter-rouge">size</code>/<code class="language-plaintext highlighter-rouge">len</code>/<code class="language-plaintext highlighter-rouge">depth</code> never inspect them).
+Measures are single-argument, structurally recursive, and return <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>.</li>
+  <li><strong>No relational postconditions yet.</strong> Properties that <em>relate</em> a measure
+across an operation — <code class="language-plaintext highlighter-rouge">size(insert(t, x)) == size(t) + 1</code> — are not yet
+provable automatically (they often need induction the solver can’t do by
+itself). Use an <code class="language-plaintext highlighter-rouge">assert</code> lemma where you need them.</li>
+  <li><strong>Performance: measures can be slow on a cold cache.</strong> Quantified + datatype
+reasoning is far more expensive per query than plain arithmetic. Verdicts are
+content-addressed and cached (warm rebuilds are fast), and the cost is
+isolated to call sites that actually mention a measure — but a cold build of
+measure-heavy code pays for it. See the flag below.</li>
+</ul>
+
+<hr />
+
+<h2 id="the---no-measure-axioms-flag">The <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> Flag</h2>
+
+<p>Pass <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> to reflect <code class="language-plaintext highlighter-rouge">@[measure]</code> functions <strong>symbolically</strong>
+instead of axiomatising them. This skips the datatype/quantifier reasoning (and
+the soundness gate), trading structural measure reasoning for speed. It changes
+only diagnostics, never the compiled artifact. Refinement checking of plain
+<code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code> predicates is unaffected and always cheap.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nt">--check</span> <span class="nt">--no-measure-axioms</span> app.march
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="practical-rules">Practical Rules</h2>
+
+<ol>
+  <li><strong>Refine the contract, not the convenience.</strong> Add <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> where a
+non-positive value is a genuine bug (a chunk size, an unguarded divisor), not
+to every <code class="language-plaintext highlighter-rouge">Int</code>. Many March APIs already clamp defensively and have no real
+precondition.</li>
+  <li><strong>Guard, then call.</strong> A precondition you can’t satisfy with a literal is
+discharged by an <code class="language-plaintext highlighter-rouge">if</code>/<code class="language-plaintext highlighter-rouge">when</code> guard right before the call.</li>
+  <li><strong>Reach for <code class="language-plaintext highlighter-rouge">assert</code> as your lemma.</strong> When you <em>know</em> a fact the checker
+can’t derive, <code class="language-plaintext highlighter-rouge">assert(p)</code> makes it available — and documents the assumption.</li>
+  <li><strong>Annotate measures you’ll reason about.</strong> A <code class="language-plaintext highlighter-rouge">@[measure]</code> only earns its
+keep if a predicate mentions it; keep them total, exhaustive, and structural
+so they pass the gate.</li>
+</ol>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/types/">Type System</a> — the types refinements attach to</li>
+  <li><a href="/docs/linear-types/">Linear Types</a> — the other compile-time safety layer</li>
+  <li><a href="/docs/pattern-matching/">Pattern Matching</a> — <code class="language-plaintext highlighter-rouge">match</code> guards feed path sensitivity</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

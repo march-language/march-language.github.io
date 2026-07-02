@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>List — March Lang</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM."/>
+
+  <!-- DaisyUI v4 + Tailwind v4 CDN (compatible pair) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" type="text/css"/>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <style>
+    /* ── March palette applied directly — bypasses DaisyUI theme variables ── */
+
+    /* Backgrounds */
+    html, body                       { background-color: #0B1F2A; color: #D6EEF5; }
+    #march-sidebar                   { background-color: #0F2A36; border-right: 1px solid #133847; }
+    #march-topbar                    { background-color: #0F2A36; border-bottom: 1px solid #133847; }
+    #march-footer                    { border-top: 1px solid #133847; color: #7aacbe; }
+    #march-logo-bar                  { border-bottom: 1px solid #133847; }
+    #march-github-bar                { border-top: 1px solid #133847; }
+
+    /* Nav links */
+    #march-nav a                     { color: #a8ccd8; border-radius: 6px; padding: 5px 10px; display: block; font-size: 0.875rem; text-decoration: none; }
+    #march-nav a:hover               { background-color: #133847; color: #D6EEF5; }
+    #march-nav a.active              { background-color: rgba(111,227,214,0.13); color: #6FE3D6; font-weight: 600; }
+    .march-nav-section               { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #3d6678; padding: 14px 10px 4px; }
+
+    /* Prose */
+    .prose                           { color: #D6EEF5; }
+    .prose h1, .prose h2,
+    .prose h3, .prose h4             { color: #E6FCF9; scroll-margin-top: 4rem; }
+    .prose a                         { color: #6FE3D6; text-decoration: none; }
+    .prose a:hover                   { text-decoration: underline; }
+    .prose strong                    { color: #CFF7F1; }
+    .prose table                     { display: block; overflow-x: auto; }
+    .prose td code, .prose th code   { white-space: nowrap; }
+    .prose thead                     { border-bottom-color: #133847; }
+    .prose tbody tr                  { border-bottom-color: #133847; }
+    .prose blockquote                { border-left-color: #1C5D6F; color: #a8ccd8; }
+    .prose hr                        { border-color: #133847; }
+
+    /* Inline code */
+    .prose :not(pre) > code          { background: #0F2A36; color: #6FE3D6; padding: 1px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid #133847; }
+    .prose :not(pre) > code::before,
+    .prose :not(pre) > code::after  { content: none; }
+
+    /* Fenced code blocks */
+    .highlight                       { background: #0B1F2A !important; border-radius: 8px; overflow-x: auto; border: 1px solid #133847; }
+    .highlight pre                   { background: transparent; margin: 0; padding: 1rem 1.25rem; }
+    .highlighter-rouge .highlight    { margin: 1.25rem 0; }
+
+    /* Rouge tokens (March palette) */
+    .highlight .c, .highlight .c1,
+    .highlight .cm, .highlight .cp,
+    .highlight .cs                   { color: #3d6070; font-style: italic; } /* comment */
+    .highlight .k, .highlight .kd,
+    .highlight .kn, .highlight .kp,
+    .highlight .kr                   { color: #6FE3D6; }                    /* keyword */
+    .highlight .kt                   { color: #CFF7F1; }                    /* type */
+    .highlight .s, .highlight .sb,
+    .highlight .sc, .highlight .sd,
+    .highlight .s2, .highlight .sh,
+    .highlight .si, .highlight .sx,
+    .highlight .sr, .highlight .s1,
+    .highlight .ss                   { color: #36D399; }                    /* string */
+    .highlight .m, .highlight .mf,
+    .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il   { color: #FBBF24; }                    /* number */
+    .highlight .o, .highlight .ow   { color: #3ABFF8; }                    /* operator */
+    .highlight .nf, .highlight .fm  { color: #6FE3D6; }                    /* function */
+    .highlight .nc, .highlight .nn  { color: #CFF7F1; }                    /* class/module */
+    .highlight .nb                  { color: #3ABFF8; }                    /* builtin */
+    .highlight .nt                  { color: #6FE3D6; }                    /* tag */
+    .highlight .na                  { color: #36D399; }                    /* attribute */
+    .highlight .err                 { color: #F87272; }                    /* error */
+    .highlight .n, .highlight .nx  { color: #D6EEF5; }                    /* name */
+    .highlight .p                   { color: #C7DDE5; }                    /* punctuation */
+    .highlight .gd                  { color: #F87272; }                    /* deleted */
+    .highlight .gi                  { color: #36D399; }                    /* inserted */
+
+    /* GitHub button */
+    .march-github-btn               { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #1C5D6F; color: #6FE3D6; font-size: 0.8rem; text-decoration: none; transition: background 0.15s; }
+    .march-github-btn:hover         { background-color: #133847; }
+
+    /* Logo hover */
+    .march-logo-link:hover span     { color: #6FE3D6; }
+    .march-logo-link span           { transition: color 0.15s; }
+  </style>
+</head>
+
+<body>
+  <div class="drawer lg:drawer-open">
+    <input id="nav-drawer" type="checkbox" class="drawer-toggle"/>
+
+    <!-- ── Page content ─────────────────────────────────────────────────── -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- Mobile topbar -->
+      <nav id="march-topbar" class="navbar sticky top-0 z-30 lg:hidden">
+        <div class="navbar-start">
+          <label for="nav-drawer" class="btn btn-ghost btn-square drawer-button" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#D6EEF5">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </label>
+        </div>
+        <div class="navbar-center">
+          <a href="/" class="flex items-center gap-2 font-bold text-lg" style="color:#D6EEF5; text-decoration:none;">
+            <img src="/assets/logo.webp" width="26" height="26" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            March
+          </a>
+        </div>
+        <div class="navbar-end">
+          <a href="https://github.com/march-language/march" class="btn btn-ghost btn-sm" style="color:#a8ccd8;" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="flex-1 w-full max-w-4xl mx-auto px-6 py-10 lg:px-12">
+        <article class="prose max-w-none prose-pre:p-0 prose-pre:bg-transparent prose-pre:rounded-none">
+          <h1 id="list">List</h1>
+
+<p>List module: immutable singly-linked list operations.</p>
+
+<p>List(a) = Cons(a, List(a)) Nil  (built-in constructors)</p>
+
+<p>Design:</p>
+<ul>
+  <li>Partial functions (head, tail, nth, last) panic on empty/out-of-bounds</li>
+  <li>Safe variants use the _opt suffix and return Option</li>
+  <li>fold_left is the primitive; fold_right recurses on the structure</li>
+  <li>sort uses merge sort</li>
+</ul>
+
+<h2 id="fn-empty--lista">fn empty() : List(a)</h2>
+
+<p>Returns an empty list.</p>
+
+<h2 id="examples">Examples</h2>
+
+<pre><code class="language-march">List.empty()  -- []
+</code></pre>
+
+<h2 id="fn-singletonx--a--lista">fn singleton(x : a) : List(a)</h2>
+
+<p>Returns a list containing a single element.</p>
+
+<h2 id="examples-1">Examples</h2>
+
+<pre><code class="language-march">List.singleton(42)   -- [42]
+List.singleton("hi") -- ["hi"]
+</code></pre>
+
+<h2 id="fn-repeatx--a-n--int--lista">fn repeat(x : a, n : Int) : List(a)</h2>
+
+<p>Returns a list with <code class="language-plaintext highlighter-rouge">x</code> repeated <code class="language-plaintext highlighter-rouge">n</code> times.</p>
+
+<h2 id="examples-2">Examples</h2>
+
+<pre><code class="language-march">List.repeat(0, 3)    -- [0, 0, 0]
+List.repeat("x", 4)  -- ["x", "x", "x", "x"]
+</code></pre>
+
+<h2 id="fn-rangestart--int-stop--int--listint">fn range(start : Int, stop : Int) : List(Int)</h2>
+
+<p>Returns [start, start+1, …, stop-1]. Returns [] if start &gt;= stop.</p>
+
+<h2 id="examples-3">Examples</h2>
+
+<pre><code class="language-march">List.range(0, 5)   -- [0, 1, 2, 3, 4]
+List.range(3, 7)   -- [3, 4, 5, 6]
+List.range(5, 5)   -- []
+</code></pre>
+
+<h2 id="fn-lengthxs--lista--int">fn length(xs : List(a)) : Int</h2>
+
+<p>Returns the number of elements in the list.</p>
+
+<h2 id="examples-4">Examples</h2>
+
+<pre><code class="language-march">List.length([1, 2, 3])  -- 3
+List.length([])         -- 0
+</code></pre>
+
+<h2 id="fn-appendxs--lista-ys--lista--lista">fn append(xs : List(a), ys : List(a)) : List(a)</h2>
+
+<p>Concatenates two lists.</p>
+
+<h2 id="examples-5">Examples</h2>
+
+<pre><code class="language-march">List.append([1, 2], [3, 4, 5])  -- [1, 2, 3, 4, 5]
+List.append([], [1, 2])         -- [1, 2]
+</code></pre>
+
+<h2 id="fn-mapxs--lista-f--a---b--listb">fn map(xs : List(a), f : a -&gt; b) : List(b)</h2>
+
+<p>Applies <code class="language-plaintext highlighter-rouge">f</code> to each element, returning a new list.</p>
+
+<h2 id="examples-6">Examples</h2>
+
+<pre><code class="language-march">List.map([1, 2, 3], fn x -&gt; x * 2)
+-- [2, 4, 6]
+
+List.map(["a", "b"], String.upper)
+-- ["A", "B"]
+</code></pre>
+
+<h2 id="fn-filterxs--lista-pred--a---bool--lista">fn filter(xs : List(a), pred : a -&gt; Bool) : List(a)</h2>
+
+<p>Returns only elements satisfying <code class="language-plaintext highlighter-rouge">pred</code>.</p>
+
+<h2 id="examples-7">Examples</h2>
+
+<pre><code class="language-march">List.filter([1, 2, 3, 4, 5], fn x -&gt; x &gt; 2)
+-- [3, 4, 5]
+
+List.filter(["foo", "", "bar", ""], fn s -&gt; !String.is_empty(s))
+-- ["foo", "bar"]
+</code></pre>
+
+<h2 id="fn-fold_leftacc--b-xs--lista-f--b---a---b--b">fn fold_left(acc : b, xs : List(a), f : b -&gt; a -&gt; b) : b</h2>
+
+<p>Left fold: reduces the list from left to right with an accumulator.</p>
+
+<h2 id="examples-8">Examples</h2>
+
+<pre><code class="language-march">List.fold_left(0, [1, 2, 3, 4], fn acc -&gt; fn x -&gt; acc + x)
+-- 10
+
+List.fold_left([], [1, 2, 3], fn acc -&gt; fn x -&gt; Cons(x * 2, acc))
+-- [6, 4, 2]  (note: reversed; use fold_right or reverse for ordered)
+</code></pre>
+
+<h2 id="fn-sort_byxs--lista-cmp--a---a---bool--lista">fn sort_by(xs : List(a), cmp : a -&gt; a -&gt; Bool) : List(a)</h2>
+
+<p>Sorts by a comparator function. Uses merge sort (stable, O(n log n)).</p>
+
+<h2 id="examples-9">Examples</h2>
+
+<pre><code class="language-march">List.sort_by([3, 1, 4, 1, 5], fn (a, b) -&gt; a &lt; b)
+-- [1, 1, 3, 4, 5]
+
+List.sort_by(["banana", "apple", "cherry"], fn (a, b) -&gt; a &lt; b)
+-- ["apple", "banana", "cherry"]
+</code></pre>
+
+<h2 id="fn-zipxs--lista-ys--listb--lista-b">fn zip(xs : List(a), ys : List(b)) : List((a, b))</h2>
+
+<p>Pairs up elements from two lists. Stops at the shorter list.</p>
+
+<h2 id="examples-10">Examples</h2>
+
+<pre><code class="language-march">List.zip([1, 2, 3], ["a", "b", "c"])
+-- [(1, "a"), (2, "b"), (3, "c")]
+
+List.zip([1, 2], ["a", "b", "c", "d"])
+-- [(1, "a"), (2, "b")]
+</code></pre>
+
+
+
+        </article>
+      </main>
+
+      <!-- Footer -->
+      <footer id="march-footer" class="py-5 px-6 lg:px-12 text-sm">
+        March Programming Language &mdash;
+        <a href="https://github.com/march-language/march" style="color:#6FE3D6;" target="_blank" rel="noopener">GitHub</a>
+      </footer>
+    </div>
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+    <div class="drawer-side z-40">
+      <label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+
+      <aside id="march-sidebar" class="min-h-full w-64 flex flex-col">
+
+        <!-- Logo -->
+        <div id="march-logo-bar" class="p-5">
+          <a href="/" class="march-logo-link flex items-center gap-3" style="text-decoration:none;">
+            <img src="/assets/logo.webp" width="38" height="38" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            <span class="font-bold text-xl" style="color:#D6EEF5;">March</span>
+          </a>
+        </div>
+
+        <!-- Nav -->
+        <nav id="march-nav" class="flex-1 overflow-y-auto py-3 px-2">
+          
+
+          <div class="march-nav-section">Start here</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/installation/">Installation</a></li>
+            
+            <li><a href="/docs/playground/">Try It Out</a></li>
+            
+            <li><a href="/docs/getting-started/">Getting Started</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Language</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/tour/">Language Tour</a></li>
+            
+            <li><a href="/docs/build-a-cli/">Build a CLI Tool</a></li>
+            
+            <li><a href="/docs/types/">Type System</a></li>
+            
+            <li><a href="/docs/linear-types/">Linear Types</a></li>
+            
+            <li><a href="/docs/refinement-types/">Refinement Types</a></li>
+            
+            <li><a href="/docs/memory-model/">Memory Model</a></li>
+            
+            <li><a href="/docs/pattern-matching/">Pattern Matching</a></li>
+            
+            <li><a href="/docs/modules/">Module System</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Concurrency</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/actors/">Actors</a></li>
+            
+            <li><a href="/docs/parallel-collections/">Parallel Collections</a></li>
+            
+            <li><a href="/docs/session-types/">Session Types</a></li>
+            
+            <li><a href="/docs/supervision/">Supervision Trees</a></li>
+            
+            <li><a href="/docs/clustering/">Clustering & RPC</a></li>
+            
+            <li><a href="/docs/flow/">Flow & Backpressure</a></li>
+            
+            <li><a href="/docs/hot-code-reload/">Hot Code Reload</a></li>
+            
+            <li><a href="/docs/interfaces/">Interfaces</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Reference</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            <li><a href="/docs/stdlib/">Standard Library</a></li>
+            
+            <li><a href="/docs/stdlib-guide/">Stdlib Guide</a></li>
+            
+            <li><a href="/docs/property-testing/">Property Testing</a></li>
+            
+            <li><a href="/docs/repl/">REPL</a></li>
+            
+            <li><a href="/docs/tooling/">Tooling</a></li>
+            
+            <li><a href="/docs/lsp/">LSP & Editors</a></li>
+            
+            <li><a href="/docs/examples/">Examples</a></li>
+            
+            <li><a href="/docs/capabilities/">Capabilities</a></li>
+            
+            <li><a href="/docs/ffi/">Foreign Function Interface</a></li>
+            
+          </ul>
+        </nav>
+
+        <!-- GitHub CTA -->
+        <div id="march-github-bar" class="p-4">
+          <a href="https://github.com/march-language/march" class="march-github-btn" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.38 7.86 10.9.57.1.78-.25.78-.55v-2.1c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.48 3.14-1.17 3.14-1.17.63 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

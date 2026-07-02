@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coming from Python — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --accent-dim: oklch(26% 0.09 215);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+      --ck-panel-w: 360px;
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --accent-dim: oklch(70% 0.09 207);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout {
+      display: flex; padding-top: 60px; min-height: 100vh;
+      transition: padding-right 0.25s ease;
+    }
+    .d-layout.repl-open { padding-right: var(--ck-panel-w); }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+      position: relative;
+    }
+    .d-content .highlight pre,
+    .d-content pre {
+      padding: 20px 24px; margin: 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    .d-content .highlight pre {
+      border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); white-space: nowrap; }
+
+    /* ── CODE BLOCK BUTTONS ──────────────────────────────────────────────── */
+    .ck-code-btns {
+      position: absolute; top: 8px; right: 10px;
+      display: flex; gap: 4px; opacity: 0;
+      transition: opacity 0.15s; pointer-events: none;
+    }
+    .d-content .highlight:hover .ck-code-btns,
+    .d-content pre:hover .ck-code-btns { opacity: 1; pointer-events: auto; }
+    .ck-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+      padding: 3px 9px; border-radius: 4px; cursor: pointer;
+      background: var(--bg); color: var(--text-faint);
+      border: 1px solid var(--border); letter-spacing: 0.03em;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .ck-btn:hover { color: var(--text-muted); border-color: var(--text-faint); }
+    .ck-btn-run { color: var(--accent); border-color: var(--accent-dim); }
+    .ck-btn-run:hover { background: rgba(18,145,167,0.08); }
+    .ck-btn-copied { color: oklch(74% 0.18 145) !important; border-color: oklch(74% 0.18 145) !important; }
+
+    /* ── RIGHT REPL PANEL ────────────────────────────────────────────────── */
+    .ck-repl-panel {
+      position: fixed; top: 60px; right: 0;
+      width: var(--ck-panel-w); height: calc(100vh - 60px);
+      background: var(--bg-code); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 90;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+    }
+    .ck-repl-panel.open { transform: translateX(0); }
+
+    .ck-repl-header {
+      display: flex; align-items: center; padding: 11px 16px;
+      border-bottom: 1px solid var(--border); gap: 6px; flex-shrink: 0;
+    }
+    .ck-repl-title {
+      margin-left: 10px; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-faint); flex: 1; letter-spacing: 0.04em;
+    }
+    .ck-repl-close {
+      background: none; border: 1px solid var(--border); color: var(--text-faint);
+      border-radius: 4px; padding: 2px 10px; font-size: 11px; cursor: pointer;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em;
+    }
+    .ck-repl-close:hover { border-color: var(--text-faint); color: var(--text-muted); }
+
+    .ck-repl-history {
+      flex: 1; padding: 14px 20px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .ck-repl-entry { margin-bottom: 2px; }
+    .ck-repl-iline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: var(--text); white-space: pre-wrap;
+    }
+    .ck-repl-iline::before { content: "march> "; color: var(--text-faint); }
+    .ck-repl-oline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: var(--accent); white-space: pre-wrap;
+    }
+    .ck-repl-eline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: #f87171; white-space: pre-wrap;
+    }
+    .ck-repl-info {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      line-height: 1.65; color: var(--text-muted); font-style: italic;
+    }
+
+    .ck-repl-input-row {
+      display: flex; align-items: flex-start; padding: 10px 16px 12px;
+      border-top: 1px solid var(--border); gap: 8px; flex-shrink: 0;
+    }
+    .ck-repl-prompt {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      color: var(--text-faint); user-select: none; padding-top: 1px; white-space: nowrap;
+    }
+    .ck-repl-textarea {
+      flex: 1; background: none; border: none; outline: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.65;
+      color: var(--text); resize: none; overflow: hidden; min-height: 1.65em;
+      caret-color: var(--accent);
+    }
+    .ck-repl-textarea::placeholder { color: var(--text-faint); }
+    .ck-repl-submit {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);
+      background: transparent; border: 1px solid var(--accent-dim);
+      border-radius: 5px; padding: 6px 14px; cursor: pointer; letter-spacing: 0.03em; flex-shrink: 0;
+    }
+    .ck-repl-submit:hover { background: rgba(18,145,167,0.1); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+      .ck-repl-panel { width: min(var(--ck-panel-w), 100vw); }
+      .d-layout.repl-open { padding-right: 0; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ cookbook</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/docs/getting-started/" class="d-nav-link">Docs</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<div class="d-layout" id="d-layout">
+
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <p class="d-sidebar-section">Orientation</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link active">Coming from Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">Coming from TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">Coming from FP</a>
+
+      <p class="d-sidebar-section">Cookbook</p>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Overview</a>
+      <a href="/docs/cookbook/basics/" class="d-sidebar-link">Basics</a>
+      <a href="/docs/cookbook/strings/" class="d-sidebar-link">Strings</a>
+      <a href="/docs/cookbook/http/" class="d-sidebar-link">HTTP</a>
+      <a href="/docs/cookbook/concurrency/" class="d-sidebar-link">Concurrency</a>
+      <a href="/docs/cookbook/capabilities/" class="d-sidebar-link">Capabilities</a>
+      <a href="/docs/cookbook/linear-types/" class="d-sidebar-link">Linear Types</a>
+      <a href="/docs/cookbook/vault/" class="d-sidebar-link">Vault</a>
+      <a href="/docs/cookbook/html/" class="d-sidebar-link">HTML</a>
+
+      <p class="d-sidebar-section">All Docs</p>
+      <a href="/docs/getting-started/" class="d-sidebar-link">← Back to Docs</a>
+    </div>
+  </aside>
+
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="coming-from-python">Coming from Python</h1>
+
+<p>You know Python: dynamic types, exceptions, <code class="language-plaintext highlighter-rouge">for</code> loops, classes. March keeps the readability but moves the safety checks to compile time instead of runtime.</p>
+
+<hr />
+
+<h2 id="functions">Functions</h2>
+
+<pre><code class="language-march">-- Python: def add(x, y): return x + y
+fn add(x, y) do x + y end
+</code></pre>
+
+<p>No <code class="language-plaintext highlighter-rouge">return</code> keyword — the last expression is the result. No colon. No indentation rules — <code class="language-plaintext highlighter-rouge">do...end</code> delimits the body.</p>
+
+<p>Type annotations are optional (the compiler infers them) but good for documentation:</p>
+
+<pre><code class="language-march">fn add(x : Int, y : Int) : Int do x + y end
+</code></pre>
+
+<p>Private functions use <code class="language-plaintext highlighter-rouge">pfn</code> — enforced by the compiler, not just a <code class="language-plaintext highlighter-rouge">_</code> naming convention:</p>
+
+<pre><code class="language-march">pfn helper(s : String) : String do String.to_uppercase(s) end
+</code></pre>
+
+<hr />
+
+<h2 id="no-none--use-option">No <code class="language-plaintext highlighter-rouge">None</code> — use <code class="language-plaintext highlighter-rouge">Option</code></h2>
+
+<p>There’s no <code class="language-plaintext highlighter-rouge">None</code> that silently infects your program. A value that might be absent has type <code class="language-plaintext highlighter-rouge">Option(a)</code>:</p>
+
+<pre><code class="language-march">fn find_user(id : Int) : Option(User) do
+  -- returns Some(user) or None
+end
+
+match find_user(42) do
+  None       -&gt; println("not found")
+  Some(user) -&gt; println(user.name)
+end
+</code></pre>
+
+<p>The compiler forces you to handle both cases. No <code class="language-plaintext highlighter-rouge">AttributeError: 'NoneType' object has no attribute 'name'</code> surprises.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Option.unwrap_or</code> is the safe equivalent of <code class="language-plaintext highlighter-rouge">x or default</code>:</p>
+
+<pre><code class="language-march">Option.unwrap_or(find_user(42), default_user)
+</code></pre>
+
+<hr />
+
+<h2 id="no-exceptions--use-result">No exceptions — use <code class="language-plaintext highlighter-rouge">Result</code></h2>
+
+<p>Instead of <code class="language-plaintext highlighter-rouge">try/except</code>, functions that can fail return <code class="language-plaintext highlighter-rouge">Result(ok, err)</code>:</p>
+
+<pre><code class="language-march">fn parse_int(s : String) : Result(Int, String) do
+  String.to_int(s)
+end
+</code></pre>
+
+<p>Chain fallible operations with <code class="language-plaintext highlighter-rouge">let?</code> — it propagates the error up and returns early, like a <code class="language-plaintext highlighter-rouge">try</code> block that’s in the type:</p>
+
+<pre><code class="language-march">fn run(input : String) : Result(Int, String) do
+  let? n    = parse_int(input)
+  let? user = fetch_user(n)
+  Ok(user.score)
+end
+</code></pre>
+
+<p>If <code class="language-plaintext highlighter-rouge">parse_int</code> returns <code class="language-plaintext highlighter-rouge">Err("not a valid integer")</code>, <code class="language-plaintext highlighter-rouge">run</code> immediately returns that error — <code class="language-plaintext highlighter-rouge">fetch_user</code> never runs. No exception handler needed.</p>
+
+<hr />
+
+<h2 id="no-classes--modules--record-types">No classes — modules + record types</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Python
+</span><span class="k">class</span> <span class="nc">Counter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="bp">self</span><span class="p">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">def</span> <span class="nf">increment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="bp">self</span><span class="p">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="p">.</span><span class="n">count</span>
+</code></pre></div></div>
+
+<p>March keeps data and functions separate. Records hold data; functions in the same module operate on them:</p>
+
+<pre><code class="language-march">type Counter = { count : Int }
+
+fn new() : Counter do { count: 0 } end
+fn increment(c : Counter) : Counter do { c with count: c.count + 1 } end
+fn get(c : Counter) : Int do c.count end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">{ c with count: ... }</code> creates a new record with one field changed — values are immutable by default. For mutable shared state, use <code class="language-plaintext highlighter-rouge">actor</code> or <code class="language-plaintext highlighter-rouge">Vault</code>.</p>
+
+<hr />
+
+<h2 id="no-for-loops--higher-order-functions">No <code class="language-plaintext highlighter-rouge">for</code> loops — higher-order functions</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Python
+</span><span class="n">doubled</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">*</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">total</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>
+<span class="n">first</span>   <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</code></pre></div></div>
+
+<pre><code class="language-march">let doubled = nums |&gt; List.filter(fn x -&gt; x &gt; 0) |&gt; List.map(fn x -&gt; x * 2)
+let total   = List.fold_left(nums, 0, fn (acc, x) -&gt; acc + x)
+let first   = List.find(nums, fn x -&gt; x &gt; 10)
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">|&gt;</code> is the pipe operator — it passes the left side as the first argument to the right side.</p>
+
+<hr />
+
+<h2 id="pattern-matching-replaces-isinstance-and-ifelif">Pattern matching replaces <code class="language-plaintext highlighter-rouge">isinstance</code> and <code class="language-plaintext highlighter-rouge">if/elif</code></h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Python
+</span><span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">Circle</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mf">3.14</span> <span class="o">*</span> <span class="n">shape</span><span class="p">.</span><span class="n">r</span> <span class="o">**</span> <span class="mi">2</span>
+<span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">Rect</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">shape</span><span class="p">.</span><span class="n">w</span> <span class="o">*</span> <span class="n">shape</span><span class="p">.</span><span class="n">h</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="mi">0</span>
+</code></pre></div></div>
+
+<pre><code class="language-march">match shape do
+  Circle(r)  -&gt; 3.14159 *. r *. r
+  Rect(w, h) -&gt; w *. h
+  Point      -&gt; 0.0
+end
+</code></pre>
+
+<p>The compiler checks exhaustiveness — if you add a new constructor to <code class="language-plaintext highlighter-rouge">Shape</code> later, every <code class="language-plaintext highlighter-rouge">match</code> that doesn’t cover it becomes a compile error.</p>
+
+<p><code class="language-plaintext highlighter-rouge">match do</code> without a subject replaces <code class="language-plaintext highlighter-rouge">if/elif/else</code> chains:</p>
+
+<pre><code class="language-march">match do
+  score &gt;= 90 -&gt; "A"
+  score &gt;= 80 -&gt; "B"
+  _           -&gt; "C"
+end
+</code></pre>
+
+<hr />
+
+<h2 id="static-typing-without-the-ceremony">Static typing without the ceremony</h2>
+
+<p>You’re used to Python being dynamic. March is fully static but the type checker is mostly invisible:</p>
+
+<pre><code class="language-march">fn double(n) do n * 2 end       -- inferred: Int -&gt; Int
+let xs = [1, 2, 3]              -- inferred: List(Int)
+let pair = ("hello", 42)        -- inferred: (String, Int)
+</code></pre>
+
+<p>Annotate at module boundaries for documentation and better error messages:</p>
+
+<pre><code class="language-march">fn fetch(id : Int) : Result(User, String) do ... end
+</code></pre>
+
+<hr />
+
+<h2 id="concurrency--shared-state">Concurrency &amp; shared state</h2>
+
+<p>Python reaches for a class with mutable <code class="language-plaintext highlighter-rouge">self</code> state, plus <code class="language-plaintext highlighter-rouge">threading</code> or
+<code class="language-plaintext highlighter-rouge">asyncio</code> for concurrency. March has no mutable objects — <strong>state that changes
+over time lives in an actor</strong>, a process you talk to by message.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Python
+</span><span class="k">class</span> <span class="nc">Counter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">def</span> <span class="nf">inc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">count</span> <span class="o">+=</span> <span class="n">n</span>
+</code></pre></div></div>
+
+<pre><code class="language-march">-- March: state lives in an actor; messages drive the transitions
+actor Counter do
+  state { value : Int }
+  init  { value: 0 }
+
+  on Increment(n : Int) do
+    { state with value: state.value + n }
+  end
+end
+</code></pre>
+
+<p>You <code class="language-plaintext highlighter-rouge">spawn</code> the actor and <code class="language-plaintext highlighter-rouge">send</code> it messages; it owns its state and no other code can touch it.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Python</th>
+      <th>March</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">class</code> with mutable <code class="language-plaintext highlighter-rouge">self</code></td>
+      <td><code class="language-plaintext highlighter-rouge">actor</code> with <code class="language-plaintext highlighter-rouge">state { … }</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">threading.Thread</code> / <code class="language-plaintext highlighter-rouge">asyncio</code> task</td>
+      <td><code class="language-plaintext highlighter-rouge">Task.async(fn () -&gt; …)</code> + <code class="language-plaintext highlighter-rouge">Task.await</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">asyncio.gather(...)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Task.await_many([...])</code></td>
+    </tr>
+    <tr>
+      <td>module-level / <code class="language-plaintext highlighter-rouge">global</code> mutable state</td>
+      <td>a <code class="language-plaintext highlighter-rouge">Vault</code> (in-memory key-value store)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>See <a href="/docs/actors/">Actors</a> and <a href="/docs/actors/#choosing-a-concurrency-primitive">Choosing a concurrency primitive</a>.</p>
+
+<hr />
+
+<h2 id="whats-the-same">What’s the same</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">println(...)</code> for output</li>
+  <li>List literals: <code class="language-plaintext highlighter-rouge">[1, 2, 3]</code></li>
+  <li>Tuple literals: <code class="language-plaintext highlighter-rouge">(1, "hello")</code></li>
+  <li>Boolean: <code class="language-plaintext highlighter-rouge">true</code>, <code class="language-plaintext highlighter-rouge">false</code>, <code class="language-plaintext highlighter-rouge">&amp;&amp;</code>, <code class="language-plaintext highlighter-rouge">||</code>, <code class="language-plaintext highlighter-rouge">!</code></li>
+  <li>String concatenation: <code class="language-plaintext highlighter-rouge">"hello " ++ name</code> (instead of f-strings)</li>
+  <li>Integer arithmetic: <code class="language-plaintext highlighter-rouge">+</code>, <code class="language-plaintext highlighter-rouge">-</code>, <code class="language-plaintext highlighter-rouge">*</code>, <code class="language-plaintext highlighter-rouge">/</code>; float arithmetic adds <code class="language-plaintext highlighter-rouge">.</code>: <code class="language-plaintext highlighter-rouge">+.</code>, <code class="language-plaintext highlighter-rouge">-.</code>, <code class="language-plaintext highlighter-rouge">*.</code>, <code class="language-plaintext highlighter-rouge">/.</code></li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- RIGHT REPL PANEL -->
+<div class="ck-repl-panel" id="ck-repl-panel"
+     data-base="" data-ver="1783000507">
+  <div class="ck-repl-header">
+    <span class="ck-repl-title">march — interactive</span>
+    <button class="ck-repl-close" id="ck-repl-close">close</button>
+  </div>
+  <div class="ck-repl-history" id="ck-repl-history">
+    <div class="ck-repl-entry">
+      <span class="ck-repl-info" id="ck-repl-loading"></span>
+    </div>
+    <div class="ck-repl-entry">
+      <span class="ck-repl-info">Click <strong style="color:var(--accent);font-style:normal">run</strong> on any snippet to try it here.</span>
+    </div>
+  </div>
+  <div class="ck-repl-input-row">
+    <span class="ck-repl-prompt">march&gt;</span>
+    <textarea class="ck-repl-textarea" id="ck-repl-input" rows="1"
+      placeholder="try something…" autocomplete="off" spellcheck="false"></textarea>
+    <button class="ck-repl-submit" id="ck-repl-submit">run</button>
+  </div>
+</div>
+
+<script src="/assets/march-repl.js?v=1783000507"></script>
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script src="/assets/cookbook.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar   = document.getElementById('d-sidebar');
+const overlay   = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', () => {
+  closeSidebar();
+});
+
+initTheme();
+</script>
+</body>
+</html>

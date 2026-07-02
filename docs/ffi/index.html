@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foreign Function Interface — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link active">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="foreign-function-interface-ffi">Foreign Function Interface (FFI)</h1>
+
+<p>March binds to native libraries through a stable C ABI — the same idea as BEAM’s
+<code class="language-plaintext highlighter-rouge">erl_nif.h</code>. You declare an <code class="language-plaintext highlighter-rouge">extern</code> block in March, write (or generate) a thin C
+shim against <code class="language-plaintext highlighter-rouge">runtime/march_ffi.h</code>, and link it through <code class="language-plaintext highlighter-rouge">forge.toml</code>. Rust crates
+bind through the ergonomic <code class="language-plaintext highlighter-rouge">march</code> crate, which rides the same C ABI.</p>
+
+<hr />
+
+<h2 id="declaring-externs">Declaring externs</h2>
+
+<p>An <code class="language-plaintext highlighter-rouge">extern</code> block names a C library, carries an FFI capability, and lists the
+foreign functions with their March types and C symbol names:</p>
+
+<pre><code class="language-march">mod Demo do
+  needs IO.Foreign                       -- using an extern implies this capability
+
+  extern "demo" : Cap(Ffi) do
+    fn add(a: Int, b: Int): Int = "demo_add"
+    fn shout(s: String): String = "demo_shout"
+  end
+
+  fn main() : Unit do
+    println(int_to_string(add(2, 3)))    -- 5
+    println(shout("hi"))                  -- HI
+  end
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">= "symbol"</code> gives the exact C symbol; omit it and the default is
+<code class="language-plaintext highlighter-rouge">&lt;lib&gt;_&lt;fn&gt;</code>. Any module with an <code class="language-plaintext highlighter-rouge">extern</code> block needs the <code class="language-plaintext highlighter-rouge">IO.Foreign</code>
+<a href="/docs/capabilities/">capability</a> (and <code class="language-plaintext highlighter-rouge">IO.Foreign.Blocking</code> if any function is
+<code class="language-plaintext highlighter-rouge">blocking</code>).</p>
+
+<hr />
+
+<h2 id="marshalling-tiers">Marshalling tiers</h2>
+
+<p>Values cross the boundary by their static type — there is no universal runtime
+tag, so each side accesses a value by the type the signature declares.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>March type</th>
+      <th>C side (<code class="language-plaintext highlighter-rouge">march_ffi.h</code>)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Int</code> / <code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>passed by value (<code class="language-plaintext highlighter-rouge">int64_t</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Float</code></td>
+      <td>passed by value (<code class="language-plaintext highlighter-rouge">double</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">String</code> / <code class="language-plaintext highlighter-rouge">Bytes</code></td>
+      <td><code class="language-plaintext highlighter-rouge">march_str_borrow(v)</code> → <code class="language-plaintext highlighter-rouge">march_slice {ptr, len}</code>; build with <code class="language-plaintext highlighter-rouge">march_str_new(p, len)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Option(T)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">march_none()</code> / <code class="language-plaintext highlighter-rouge">march_some(v)</code> (niche); <code class="language-plaintext highlighter-rouge">march_some_boxed</code>/<code class="language-plaintext highlighter-rouge">march_none_boxed</code> for <code class="language-plaintext highlighter-rouge">Float</code>/<code class="language-plaintext highlighter-rouge">Unit</code> payloads</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Result(T, E)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">march_ok(v)</code> / <code class="language-plaintext highlighter-rouge">march_err(e)</code>, or the <code class="language-plaintext highlighter-rouge">raises</code> protocol below</td>
+    </tr>
+    <tr>
+      <td>record / variant</td>
+      <td>the generated codecs (<code class="language-plaintext highlighter-rouge">march_decode_T</code> / <code class="language-plaintext highlighter-rouge">march_encode_T</code>, see below)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">resource R</code></td>
+      <td>an opaque native handle (<code class="language-plaintext highlighter-rouge">march_resource_new</code> / <code class="language-plaintext highlighter-rouge">march_resource_get</code>)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Strings and bytes are <strong>borrowed</strong> for the duration of the call — copy them with
+<code class="language-plaintext highlighter-rouge">march_str_new</code> if you need to keep them.</p>
+
+<hr />
+
+<h2 id="ownership-borrow-vs-consume">Ownership: <code class="language-plaintext highlighter-rouge">borrow</code> vs <code class="language-plaintext highlighter-rouge">consume</code></h2>
+
+<p>Heap arguments are <strong>borrowed</strong> by default: March still owns them and frees them
+after the call, so a binding may read but must not retain them. Prefix a
+parameter with <code class="language-plaintext highlighter-rouge">consume</code> to transfer ownership to the binding (March will not
+free it — the binding must drop or store it):</p>
+
+<pre><code class="language-march">extern "store" : Cap(Ffi) do
+  fn put(consume key: String, consume value: Bytes): Unit = "store_put"
+end
+</code></pre>
+
+<p>This maps directly onto March’s linear/ownership model, so the refcounting stays
+correct with no manual <code class="language-plaintext highlighter-rouge">march_dup</code>/<code class="language-plaintext highlighter-rouge">march_drop</code> in the common case.</p>
+
+<hr />
+
+<h2 id="errors">Errors</h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">Result</code>-returning binding can build the result itself with <code class="language-plaintext highlighter-rouge">march_ok</code> /
+<code class="language-plaintext highlighter-rouge">march_err</code>. Or mark it <code class="language-plaintext highlighter-rouge">raises</code> to use the <strong>env-routed</strong> protocol: the binding
+takes a hidden <code class="language-plaintext highlighter-rouge">march_env *</code>, returns the bare <code class="language-plaintext highlighter-rouge">Ok</code> payload on success, and calls
+<code class="language-plaintext highlighter-rouge">march_raise(env, e)</code> to fail — the compiler materializes <code class="language-plaintext highlighter-rouge">Ok</code>/<code class="language-plaintext highlighter-rouge">Err</code>:</p>
+
+<pre><code class="language-march">extern "rt" : Cap(Ffi) do
+  raises fn parse(s: String): Result(Int, String) = "rt_parse"
+end
+</code></pre>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int64_t</span> <span class="nf">rt_parse</span><span class="p">(</span><span class="n">march_env</span> <span class="o">*</span><span class="n">env</span><span class="p">,</span> <span class="n">march_value</span> <span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">march_slice</span> <span class="n">v</span> <span class="o">=</span> <span class="n">march_str_borrow</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="cm">/* not a number */</span><span class="p">)</span> <span class="p">{</span> <span class="n">march_raise</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">march_str_new</span><span class="p">((</span><span class="k">const</span> <span class="kt">uint8_t</span><span class="o">*</span><span class="p">)</span><span class="s">"bad"</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">return</span> <span class="n">parsed</span><span class="p">;</span>                 <span class="cm">/* bare Ok payload; the wrapper builds Ok(...) */</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This is also how the Rust layer turns a panic into an <code class="language-plaintext highlighter-rouge">Err</code>.</p>
+
+<hr />
+
+<h2 id="blocking"><code class="language-plaintext highlighter-rouge">blocking</code></h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">blocking</code> binding runs on a dedicated OS thread while the calling green thread
+cooperatively yields, so a long C call doesn’t stall the scheduler:</p>
+
+<pre><code class="language-march">extern "io" : Cap(Ffi) do
+  blocking fn read_file(consume path: String): Bytes = "io_read_file"
+end
+</code></pre>
+
+<hr />
+
+<h2 id="generating-the-c-glue">Generating the C glue</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge ffi gen-c &lt;file.march&gt;</code> reads your <code class="language-plaintext highlighter-rouge">extern</code> blocks and emits a compilable
+C shim skeleton: correct signatures, <code class="language-plaintext highlighter-rouge">march_str_borrow</code> slices for <code class="language-plaintext highlighter-rouge">String</code>/
+<code class="language-plaintext highlighter-rouge">Bytes</code>, resource-get + <code class="language-plaintext highlighter-rouge">consume</code>-drop hints, typed <code class="language-plaintext highlighter-rouge">Result</code>/<code class="language-plaintext highlighter-rouge">Option</code> return
+stubs, and a <code class="language-plaintext highlighter-rouge">TODO</code> for the actual library call. For every record/variant type
+reachable from a signature it also generates <strong>codecs</strong> — a repr-C mirror struct
+plus <code class="language-plaintext highlighter-rouge">march_decode_T</code> / <code class="language-plaintext highlighter-rouge">march_encode_T</code> — so you work with plain C structs
+instead of poking value slots:</p>
+
+<pre><code class="language-march">type Point = { x : Int, y : Int }
+type Shape = Circle(Int) | Rect(Int, Int)
+</code></pre>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span> <span class="kt">int64_t</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">;</span> <span class="p">}</span> <span class="n">Point_c</span><span class="p">;</span>          <span class="cm">/* generated */</span>
+<span class="n">Point_c</span> <span class="nf">march_decode_Point</span><span class="p">(</span><span class="n">march_value</span> <span class="n">v</span><span class="p">);</span>
+<span class="n">march_value</span> <span class="nf">march_encode_Point</span><span class="p">(</span><span class="n">Point_c</span> <span class="n">p</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>Record/variant <strong>fields</strong> of <code class="language-plaintext highlighter-rouge">Option(T)</code>/<code class="language-plaintext highlighter-rouge">Result(T,E)</code> (with <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>/
+<code class="language-plaintext highlighter-rouge">String</code>/<code class="language-plaintext highlighter-rouge">Bytes</code>/<code class="language-plaintext highlighter-rouge">Float</code>/<code class="language-plaintext highlighter-rouge">Unit</code> payloads, and nested record/variant types) get
+their own typed mirrors too (<code class="language-plaintext highlighter-rouge">Option_Int_c</code>, <code class="language-plaintext highlighter-rouge">Result_Int_String_c</code>, …) so nested
+optionals decode into <code class="language-plaintext highlighter-rouge">o.maybe.is_some</code> rather than a raw <code class="language-plaintext highlighter-rouge">march_value</code>.
+<code class="language-plaintext highlighter-rouge">List(T)</code> fields are emitted as malloc-owned C arrays (<code class="language-plaintext highlighter-rouge">List_T_c</code> with
+<code class="language-plaintext highlighter-rouge">data</code>/<code class="language-plaintext highlighter-rouge">len</code>), with generated decode/encode that traverse the March spine.</p>
+
+<hr />
+
+<h2 id="binding-a-rust-crate">Binding a Rust crate</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">march</code> Rust crate (<code class="language-plaintext highlighter-rouge">rust/march</code>) is the Rustler analog: write idiomatic
+Rust, and <code class="language-plaintext highlighter-rouge">#[march]</code> generates the <code class="language-plaintext highlighter-rouge">extern "C"</code> shim (decode args, <code class="language-plaintext highlighter-rouge">catch_unwind</code>
+the body, encode the result; a <code class="language-plaintext highlighter-rouge">Result&lt;T, Error&gt;</code> routes errors and panics
+through the error protocol).</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">use</span> <span class="nn">march</span><span class="p">::{</span><span class="n">march</span><span class="p">,</span> <span class="n">Encoder</span><span class="p">,</span> <span class="n">Decoder</span><span class="p">,</span> <span class="n">Error</span><span class="p">,</span> <span class="n">ResourceArc</span><span class="p">};</span>
+
+<span class="nd">#[march]</span>
+<span class="k">fn</span> <span class="nf">parse</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="o">&amp;</span><span class="nb">str</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nb">Result</span><span class="o">&lt;</span><span class="nb">i64</span><span class="p">,</span> <span class="n">Error</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="n">s</span><span class="nf">.trim</span><span class="p">()</span><span class="nf">.parse</span><span class="p">()</span><span class="nf">.map_err</span><span class="p">(|</span><span class="n">e</span><span class="p">:</span> <span class="nn">std</span><span class="p">::</span><span class="nn">num</span><span class="p">::</span><span class="n">ParseIntError</span><span class="p">|</span> <span class="nn">Error</span><span class="p">::</span><span class="nf">msg</span><span class="p">(</span><span class="n">e</span><span class="nf">.to_string</span><span class="p">()))</span>
+<span class="p">}</span>
+
+<span class="nd">#[derive(Encoder,</span> <span class="nd">Decoder)]</span>
+<span class="k">struct</span> <span class="n">Point</span> <span class="p">{</span> <span class="n">x</span><span class="p">:</span> <span class="nb">i64</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">i64</span> <span class="p">}</span>            <span class="c1">// &lt;-&gt; March record (name-sorted)</span>
+
+<span class="nd">#[derive(Encoder,</span> <span class="nd">Decoder)]</span>
+<span class="k">enum</span> <span class="n">Shape</span> <span class="p">{</span> <span class="nf">Circle</span><span class="p">(</span><span class="nb">i64</span><span class="p">),</span> <span class="nf">Rect</span><span class="p">(</span><span class="nb">i64</span><span class="p">,</span> <span class="nb">i64</span><span class="p">)</span> <span class="p">}</span> <span class="c1">// &lt;-&gt; March variant (declaration-order tags)</span>
+
+<span class="nn">march</span><span class="p">::</span><span class="nd">init!</span><span class="p">(</span><span class="s">"demo"</span><span class="p">,</span> <span class="p">[</span><span class="n">parse</span><span class="p">]);</span>             <span class="c1">// generates the March extern block</span>
+</code></pre></div></div>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">#[derive(Encoder, Decoder)]</code></strong> marshals structs↔records and enums↔variants.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">ResourceArc&lt;T&gt;</code></strong> wraps native state behind a March <code class="language-plaintext highlighter-rouge">resource</code>, with <code class="language-plaintext highlighter-rouge">Drop</code>
+wired to the registered destructor.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">march::init!</code></strong> prints the matching March <code class="language-plaintext highlighter-rouge">extern</code> block (<code class="language-plaintext highlighter-rouge">cargo run --bin
+gen_extern</code>).</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">forge ffi add-rust &lt;name&gt;</code> scaffolds a binding crate (a cargo <code class="language-plaintext highlighter-rouge">staticlib</code>
+depending on <code class="language-plaintext highlighter-rouge">march</code>, plus the <code class="language-plaintext highlighter-rouge">gen_extern</code> helper).</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">ConsumeResourceArc&lt;T&gt;</code></strong> is the ownership-transfer variant of <code class="language-plaintext highlighter-rouge">ResourceArc</code>:
+<code class="language-plaintext highlighter-rouge">FromMarch</code> skips <code class="language-plaintext highlighter-rouge">march_dup</code> (March transfers its reference), and <code class="language-plaintext highlighter-rouge">Drop</code> calls
+<code class="language-plaintext highlighter-rouge">march_drop</code>. Use it for <code class="language-plaintext highlighter-rouge">consume h</code> parameters where the binding takes ownership.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Option&lt;f64&gt;</code></strong> uses the fully-boxed representation (<code class="language-plaintext highlighter-rouge">march_some_boxed</code>/
+<code class="language-plaintext highlighter-rouge">march_none_boxed</code>) so that <code class="language-plaintext highlighter-rouge">0.0</code> doesn’t alias <code class="language-plaintext highlighter-rouge">None</code>; the macro handles this
+automatically.</li>
+</ul>
+
+<hr />
+
+<h2 id="building--linking">Building &amp; linking</h2>
+
+<p>List C shim sources and link flags under <code class="language-plaintext highlighter-rouge">[ffi]</code> in <code class="language-plaintext highlighter-rouge">forge.toml</code>; <code class="language-plaintext highlighter-rouge">forge build</code>
+compiles and links them:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[ffi]</span>
+<span class="py">sources</span> <span class="p">=</span> <span class="nn">["native/demo.c"]</span>    <span class="c"># C shims compiled by forge</span>
+<span class="py">link</span>    <span class="p">=</span> <span class="nn">["-lz"]</span>              <span class="c"># extra linker flags</span>
+</code></pre></div></div>
+
+<p>For a Rust binding, <code class="language-plaintext highlighter-rouge">[ffi.rust]</code> triggers <code class="language-plaintext highlighter-rouge">cargo build --release</code> automatically
+and passes the resulting <code class="language-plaintext highlighter-rouge">.a</code> to the linker — no manual build step needed:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[ffi.rust]</span>
+<span class="py">crate</span> <span class="p">=</span> <span class="s">"native/demo_binding"</span>  <span class="c"># path to the Cargo project</span>
+<span class="py">lib</span>   <span class="p">=</span> <span class="s">"demo_binding"</span>         <span class="c"># [lib] name (default: basename of crate)</span>
+</code></pre></div></div>
+
+<p>Editing a shim or any Rust source invalidates the content-addressed binary cache,
+so a rebuild relinks automatically. (Under the bare compiler the flags are
+<code class="language-plaintext highlighter-rouge">--ffi-c</code> / <code class="language-plaintext highlighter-rouge">--ffi-link</code>.)</p>
+
+<hr />
+
+<h2 id="interpreter-mode">Interpreter mode</h2>
+
+<p>Running <code class="language-plaintext highlighter-rouge">march file.march</code> (no <code class="language-plaintext highlighter-rouge">--compile</code>) now supports the <strong>full marshal
+layer</strong>: <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>/<code class="language-plaintext highlighter-rouge">Float</code> args, <code class="language-plaintext highlighter-rouge">String</code>/<code class="language-plaintext highlighter-rouge">Bytes</code> args (heap-allocated for the
+call duration), <code class="language-plaintext highlighter-rouge">Option(T)</code>/<code class="language-plaintext highlighter-rouge">Result(T,E)</code> returns, <code class="language-plaintext highlighter-rouge">raises</code> externs, and
+variant/record args and returns. Project-specific C shims (from <code class="language-plaintext highlighter-rouge">[ffi] sources</code>
+in <code class="language-plaintext highlighter-rouge">forge.toml</code>) are compiled to a shared library on first use and loaded
+automatically — no <code class="language-plaintext highlighter-rouge">--compile</code> required.</p>
+
+<p>The one interpreter gap is <strong>closures/upcalls as arguments</strong>: if a binding takes
+a function-typed parameter (<code class="language-plaintext highlighter-rouge">fn(Int) -&gt; Int</code>), the interpreter reports a clear
+error and asks you to run with <code class="language-plaintext highlighter-rouge">--compile</code>. Compiled mode has no such limit.</p>
+
+<h2 id="nativemarch-callbacks-upcalls">Native→March callbacks (upcalls)</h2>
+
+<p>C bindings can call back into March closures via <code class="language-plaintext highlighter-rouge">march_call(closure, nargs,
+args)</code> in <code class="language-plaintext highlighter-rouge">march_ffi.h</code>. A binding that receives a function-typed argument calls
+it as a plain function pointer. Args use the <strong>native slot representation</strong> (raw
+<code class="language-plaintext highlighter-rouge">int64_t</code> for <code class="language-plaintext highlighter-rouge">Int</code>, not <code class="language-plaintext highlighter-rouge">march_make_int</code>); the return is the generic tagged word
+(<code class="language-plaintext highlighter-rouge">march_get_int</code> to unpack an <code class="language-plaintext highlighter-rouge">Int</code>). Verified in <code class="language-plaintext highlighter-rouge">test/native/ffi_upcall</code>.</p>
+
+<h2 id="remaining-limitations">Remaining limitations</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">blocking</code> spawns a fresh OS thread per call (no pool; fine for occasional long
+calls, not for high-frequency ones).</li>
+  <li>Recursive and generic record/variant types have no generated codec — they fall
+back to raw <code class="language-plaintext highlighter-rouge">march_value</code> passthrough.</li>
+  <li><code class="language-plaintext highlighter-rouge">forge ffi import &lt;header.h&gt;</code> (C header → draft <code class="language-plaintext highlighter-rouge">extern</code> block) is not yet
+implemented; it needs a C-header parser (libclang).</li>
+</ul>
+
+<p>The full ABI is documented in <code class="language-plaintext highlighter-rouge">runtime/march_ffi.h</code>; the design rationale lives
+in <code class="language-plaintext highlighter-rouge">specs/2026-06-19-c-ffi-abi-design.md</code> and the Rust layer in
+<code class="language-plaintext highlighter-rouge">specs/c-ffi-rust-layer.md</code>.</p>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capabilities — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link active">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="capabilities">Capabilities</h1>
+
+<p>March makes side effects <strong>visible in your types</strong> — zero runtime overhead, enforced at compile time. This guide explains what capabilities are, when to reach for each kind, when to leave them alone, and how they compose.</p>
+
+<hr />
+
+<h2 id="the-problem-they-solve">The problem they solve</h2>
+
+<p>In most languages, a function’s signature tells you what data flows in and out. It says nothing about what the function <em>does to the world</em>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Does this read a file? Call the network? Write to a database?
+# You have to read the implementation to find out.
+</span><span class="k">def</span> <span class="nf">compute_price</span><span class="p">(</span><span class="n">product_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="p">...</span>
+</code></pre></div></div>
+
+<p>That invisibility causes three recurring problems:</p>
+
+<p><strong>Accidental effects.</strong> A function you thought was pure secretly calls a logger, which opens a file, which fails in a read-only sandbox. You find out at runtime.</p>
+
+<p><strong>Unclear contracts.</strong> “Does this library ever write files?” requires reading all the source. No amount of documentation fully substitutes for a machine-checked declaration.</p>
+
+<p><strong>Audit blind spots.</strong> Answering “which modules talk to the network?” in a large codebase means grepping and hoping — unless the compiler tracks it.</p>
+
+<p>March’s capability system addresses all three. Effects appear in the type, the compiler traces them transitively through the call graph, and the <em>absence</em> of a capability declaration is a machine-verified guarantee of purity:</p>
+
+<pre><code class="language-march">mod Price do
+  -- No `needs`. The compiler verifies this module is completely pure.
+  fn compute(base : Float, discount : Float) : Float do
+    base * (1.0 - discount)
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="which-tool-do-i-need">Which tool do I need?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Tool</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Control what external resources a module may touch</td>
+      <td>IO caps (<code class="language-plaintext highlighter-rouge">needs</code> / <code class="language-plaintext highlighter-rouge">Cap(X)</code>)</td>
+    </tr>
+    <tr>
+      <td>Guarantee a function is pure</td>
+      <td>Declare nothing — absence enforces it</td>
+    </tr>
+    <tr>
+      <td>Prove initialization ran before dependent code</td>
+      <td>Proof caps (<code class="language-plaintext highlighter-rouge">proof cap</code>)</td>
+    </tr>
+    <tr>
+      <td>Prove a specific value has been processed</td>
+      <td>Opaque refined type (<code class="language-plaintext highlighter-rouge">ptype</code>)</td>
+    </tr>
+    <tr>
+      <td>Track a resource’s open/closed/consumed lifecycle</td>
+      <td>Typestate (<code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code>)</td>
+    </tr>
+    <tr>
+      <td>Exclude allocation/IO from a realtime callback</td>
+      <td>Specialization tag (<code class="language-plaintext highlighter-rouge">Tagged(X, Realtime)</code>)</td>
+    </tr>
+    <tr>
+      <td>Thread many capabilities without parameter explosion</td>
+      <td>Capability environment record</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="io-permission-caps">IO permission caps</h2>
+
+<p>Every module that touches external resources declares <code class="language-plaintext highlighter-rouge">needs</code>:</p>
+
+<pre><code class="language-march">mod Server do
+  needs IO.Network
+
+  fn listen(cap : Cap(IO.Network), port : Int) : () do
+    ...
+  end
+end
+</code></pre>
+
+<p>The compiler enforces this transitively. If your module calls <code class="language-plaintext highlighter-rouge">Server.listen</code>, you must also declare <code class="language-plaintext highlighter-rouge">needs IO.Network</code> — or the build fails with a clear message telling you which call requires which cap.</p>
+
+<h3 id="capability-hierarchy">Capability hierarchy</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(IO)</code> is the root. Sub-capabilities narrow what is allowed:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>IO
+├── IO.Console          — stdout/stderr (println, print)
+├── IO.FileSystem
+│   ├── IO.FileRead     — read files, list directories
+│   └── IO.FileWrite    — write, delete, rename files/dirs
+├── IO.Network
+│   ├── IO.NetConnect   — outbound TCP, WebSocket
+│   │   ├── IO.NetConnect.TLS  — encrypted transport (tls_connect, tls_accept, …)
+│   │   └── IO.Database — database connections (declaration-only; child of NetConnect)
+│   └── IO.NetListen    — bind + listen on a port
+├── IO.Process          — env vars, child processes, process exit
+├── IO.Clock            — wall clock, monotonic time
+├── IO.Random           — CSPRNG (random_bytes, uuid_v4)
+├── IO.Spawn            — task spawning (task_spawn, task_spawn_link, …)
+├── IO.Mut              — shared mutable state (Vault tables)
+├── IO.Telemetry        — telemetry/observability emission (declaration-only)
+└── IO.Foreign          — calling unverified C (extern blocks)
+    └── IO.Foreign.Blocking — blocking extern (spawns OS thread)
+</code></pre></div></div>
+
+<p>A module that declares <code class="language-plaintext highlighter-rouge">needs IO</code> can pass <code class="language-plaintext highlighter-rouge">Cap(IO)</code> to any function that requires a narrower cap. Use <code class="language-plaintext highlighter-rouge">cap_narrow</code> to produce a sub-capability — it’s free, compile-time only:</p>
+
+<pre><code class="language-march">fn start(cap : Cap(IO)) : () do
+  let net_cap  : Cap(IO.NetListen)      = cap_narrow(cap)
+  let tls_cap  : Cap(IO.NetConnect.TLS) = cap_narrow(cap)
+  Server.listen(net_cap, 8080)
+end
+</code></pre>
+
+<h3 id="choosing-the-right-level">Choosing the right level</h3>
+
+<p>Use the <strong>narrowest capability that accurately describes what the code actually does</strong>. Narrower declarations make stronger claims; the compiler verifies them.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>What the code does</th>
+      <th>Declare</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No external state, no I/O</td>
+      <td><em>(nothing — pure by declaration)</em></td>
+    </tr>
+    <tr>
+      <td>Print to stdout/stderr</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Console</code></td>
+    </tr>
+    <tr>
+      <td>Read files or directories</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileRead</code></td>
+    </tr>
+    <tr>
+      <td>Write, delete, or rename files</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code></td>
+    </tr>
+    <tr>
+      <td>Read <strong>and</strong> write files</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileSystem</code></td>
+    </tr>
+    <tr>
+      <td>Outbound TCP or WebSocket</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code></td>
+    </tr>
+    <tr>
+      <td>Outbound HTTPS only — no plaintext TCP</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetConnect.TLS</code></td>
+    </tr>
+    <tr>
+      <td>Accept inbound connections</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetListen</code></td>
+    </tr>
+    <tr>
+      <td>Vault tables (shared mutable state)</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Mut</code></td>
+    </tr>
+    <tr>
+      <td>Spawn green tasks</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Spawn</code></td>
+    </tr>
+    <tr>
+      <td>Wall clock or sleep</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Clock</code></td>
+    </tr>
+    <tr>
+      <td>Random number generation</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Random</code></td>
+    </tr>
+    <tr>
+      <td>Environment variables, child processes</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Process</code></td>
+    </tr>
+    <tr>
+      <td>Calling C via <code class="language-plaintext highlighter-rouge">extern</code></td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code></td>
+    </tr>
+    <tr>
+      <td>Blocking C calls (OS threads)</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code> + <code class="language-plaintext highlighter-rouge">needs IO.Foreign.Blocking</code></td>
+    </tr>
+    <tr>
+      <td>Application entry point or top-level composition</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>In libraries, prefer narrow caps.</strong> A library that only reads config files should declare <code class="language-plaintext highlighter-rouge">needs IO.FileRead</code>, not <code class="language-plaintext highlighter-rouge">needs IO</code>. Callers can then hand it a read-only view, statically proving it cannot secretly write.</p>
+
+<p><strong>In entry points, <code class="language-plaintext highlighter-rouge">needs IO</code> is fine.</strong> The interesting precision lives in the libraries. Application main modules compose everything; they don’t need to obsess over narrowing.</p>
+
+<h3 id="what-the-compiler-tells-you">What the compiler tells you</h3>
+
+<p>When you call something effectful without declaring the matching cap, the compiler is specific:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Warning: Config.load uses IO.FileRead but mod App does not declare `needs IO.FileRead`.
+hint: add `needs IO.FileRead` to the module body.
+</code></pre></div></div>
+
+<p>There are no false positives. Follow the hint, build again. The compiler traces the full call graph so it catches transitive effects too.</p>
+
+<h3 id="when-not-to-use-io-caps">When <em>not</em> to use IO caps</h3>
+
+<p><strong>Pure functions need nothing.</strong> If a function hashes a string, parses JSON, sorts a list, or formats a number, write no <code class="language-plaintext highlighter-rouge">needs</code>. The absence of <code class="language-plaintext highlighter-rouge">needs</code> is itself a machine-verified guarantee.</p>
+
+<p><strong>Don’t over-narrow to look principled.</strong> Declaring <code class="language-plaintext highlighter-rouge">needs IO.FileRead</code> when your function also writes is a lie the compiler will catch. If a function reads and writes, <code class="language-plaintext highlighter-rouge">needs IO.FileSystem</code> is correct even if it feels “less precise.” Accurate beats narrow-but-wrong.</p>
+
+<p><strong>Don’t use IO caps for pure domain concepts.</strong> A function that validates an email address or checks a constraint has no business with capabilities. Capabilities exist for external state, not for logic.</p>
+
+<p><strong>Don’t use capabilities for per-value guarantees.</strong> <code class="language-plaintext highlighter-rouge">Cap(IO.FileRead)</code> proves a module is <em>allowed</em> to read files; it says nothing about whether a specific string value came from a trusted source. For per-value guarantees, use an opaque refined type.</p>
+
+<p><strong>Small scripts: just use <code class="language-plaintext highlighter-rouge">needs IO</code>.</strong> For a 50-line script you’ll run once, fine-grained capability declarations add more friction than value. Use <code class="language-plaintext highlighter-rouge">needs IO</code> at the top and move on. The value of narrow caps emerges in larger codebases with multiple contributors over time.</p>
+
+<hr />
+
+<h2 id="specific-io-capabilities">Specific IO capabilities</h2>
+
+<h3 id="iomut--shared-mutable-state">IO.Mut — shared mutable state</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Mut</code> covers Vault tables — process-global shared mutable hash maps. A module with no <code class="language-plaintext highlighter-rouge">needs IO.Mut</code> is statically proven never to touch shared mutable state:</p>
+
+<pre><code class="language-march">mod Cache do
+  needs IO.Mut
+
+  fn store(key : String, val : Int) : () do
+    let tbl = vault_new("app_cache")
+    vault_set(tbl, key, val)
+  end
+end
+</code></pre>
+
+<p>This is especially useful for library code that should have no hidden state.</p>
+
+<h3 id="ionetconnecttls--encrypted-transport-only">IO.NetConnect.TLS — encrypted transport only</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.NetConnect.TLS</code> is a child of <code class="language-plaintext highlighter-rouge">IO.NetConnect</code>. Declaring it (without <code class="language-plaintext highlighter-rouge">IO.NetConnect</code>) proves the module uses <em>only</em> encrypted connections — no plaintext TCP. Declaring <code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code> covers both.</p>
+
+<pre><code class="language-march">mod HttpsClient do
+  needs IO.NetConnect.TLS  -- plaintext TCP is statically excluded
+
+  fn fetch(fd, h, host) do
+    tls_connect(fd, h, host)
+  end
+end
+</code></pre>
+
+<h3 id="iotelemetry--observability-annotation">IO.Telemetry — observability annotation</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Telemetry</code> is declaration-only: the compiler accepts it as a semantic annotation but does not scan for specific builtins. Use it to make telemetry visible in a module’s surface contract so callers know this module emits observability data:</p>
+
+<pre><code class="language-march">mod Metrics do
+  needs IO.Telemetry
+
+  fn record_request(duration : Int) : () do
+    ...
+  end
+end
+</code></pre>
+
+<h3 id="ioforeign--calling-unverified-c">IO.Foreign — calling unverified C</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Foreign</code> is a meta-capability triggered by the <strong>presence of an <code class="language-plaintext highlighter-rouge">extern</code> block</strong> — not by any specific builtin call. C code bypasses every March type guarantee, so the compiler requires you to acknowledge this explicitly.</p>
+
+<pre><code class="language-march">mod Bindings do
+  needs IO.Foreign
+  needs IO.FileSystem  -- the specific cap the C code uses
+
+  extern "libc": Cap(IO.FileSystem) do
+    fn read(fd : Int, buf : String, n : Int) : Int
+  end
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">blocking</code> modifier spawns an OS thread. Declare both caps when any extern function is blocking:</p>
+
+<pre><code class="language-march">mod Bindings do
+  needs IO.Foreign
+  needs IO.Foreign.Blocking
+  needs IO.FileSystem
+
+  extern "libc": Cap(IO.FileSystem) do
+    blocking fn slow_read(fd : Int) : Int
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code> alone subsumes <code class="language-plaintext highlighter-rouge">IO.Foreign.Blocking</code> (parent covers child), so one declaration suppresses both warnings if you prefer coarser annotations.</p>
+
+<hr />
+
+<h2 id="behavioral-module-caps--cap-no_panic-and-cap-no_alloc">Behavioral module caps — <code class="language-plaintext highlighter-rouge">cap no_panic</code> and <code class="language-plaintext highlighter-rouge">cap no_alloc</code></h2>
+
+<p>Beyond IO permission caps and proof caps, March has two <em>behavioral</em> capability declarations that trigger static analysis passes rather than type-system enforcement. They live in the module body alongside <code class="language-plaintext highlighter-rouge">needs</code> declarations.</p>
+
+<h3 id="cap-no_panic--guaranteed-panic-free"><code class="language-plaintext highlighter-rouge">cap no_panic</code> — guaranteed panic-free</h3>
+
+<pre><code class="language-march">mod SafeMath do
+  cap no_panic
+
+  fn divide(a : {v : Int | v &gt;= 0}, d : {v : Int | v &gt; 0}) : Int do
+    a / d
+  end
+end
+</code></pre>
+
+<p>A module with <code class="language-plaintext highlighter-rouge">cap no_panic</code> must not contain any expression that can panic at runtime. The compiler enforces this with two sub-checks:</p>
+
+<ol>
+  <li><strong>Panic-surface ban</strong> — <code class="language-plaintext highlighter-rouge">refine_check.ml</code> flags calls to functions that can panic (<code class="language-plaintext highlighter-rouge">assert</code>, <code class="language-plaintext highlighter-rouge">error</code>, etc.) when reachable without a proof of non-panic.</li>
+  <li><strong>Division safety</strong> — <code class="language-plaintext highlighter-rouge">division_safety.ml</code> proves every integer divisor is non-zero via the Z3 SMT solver. Both literal divisors (<code class="language-plaintext highlighter-rouge">a / 0</code> → immediate error) and variable divisors are handled:
+    <ul>
+      <li>Variable with an Int refinement <code class="language-plaintext highlighter-rouge">{v | pred}</code>: Z3 discharges <code class="language-plaintext highlighter-rouge">pred ⊢ v ≠ 0</code>; fast syntactic short-circuit for common patterns (<code class="language-plaintext highlighter-rouge">v &gt; 0</code>, <code class="language-plaintext highlighter-rouge">v &gt;= 1</code>, <code class="language-plaintext highlighter-rouge">v != 0</code>, <code class="language-plaintext highlighter-rouge">v &lt; 0</code>).</li>
+      <li>Let-bound variable: Z3 discharges <code class="language-plaintext highlighter-rouge">var = rhs ⊢ var ≠ 0</code> with param assumptions injected.</li>
+      <li>No refinement or unsupported expression: conservative error.</li>
+    </ul>
+  </li>
+</ol>
+
+<p>When Z3 is absent, <code class="language-plaintext highlighter-rouge">cap no_panic</code> is still conservatively enforced — <code class="language-plaintext highlighter-rouge">Unverified</code> outcomes are treated as errors.</p>
+
+<p><strong>Use <code class="language-plaintext highlighter-rouge">Math.checked_div</code> / <code class="language-plaintext highlighter-rouge">Math.checked_mod</code></strong> when you cannot prove the divisor non-zero statically; they return <code class="language-plaintext highlighter-rouge">Option(Int)</code> instead of panicking.</p>
+
+<h3 id="cap-no_alloc--no-heap-allocation"><code class="language-plaintext highlighter-rouge">cap no_alloc</code> — no heap allocation</h3>
+
+<pre><code class="language-march">mod RealTimeDSP do
+  cap no_alloc
+
+  fn mix(a : Float, b : Float, gain : Float) : Float do
+    (a + b) * gain
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">no_alloc.ml</code> walks every function body and flags heap-allocating expressions:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Allocating expression</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ETuple</code> with ≥1 items</td>
+      <td>tuple construction allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ERecord</code></td>
+      <td>record construction allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ECon</code> with ≥1 args (e.g. <code class="language-plaintext highlighter-rouge">Some(x)</code>)</td>
+      <td>boxed constructor allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ELam</code></td>
+      <td>lambda/closure allocates</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Nullary constructors (<code class="language-plaintext highlighter-rouge">None</code>, <code class="language-plaintext highlighter-rouge">True</code>, <code class="language-plaintext highlighter-rouge">False</code>, custom zero-arg tags) and unit <code class="language-plaintext highlighter-rouge">()</code> are safe — they compile to immediate integer tags with no heap allocation.</p>
+
+<p>The check recurses into sub-expressions inside <code class="language-plaintext highlighter-rouge">if</code>, <code class="language-plaintext highlighter-rouge">match</code>, <code class="language-plaintext highlighter-rouge">let</code>, blocks, etc.</p>
+
+<h3 id="choosing-between-the-two">Choosing between the two</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>I want to…</th>
+      <th>Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prove no integer division can panic</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> + Int refinements on divisor params</td>
+    </tr>
+    <tr>
+      <td>Guarantee safe use in a realtime audio callback</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_alloc</code> (+ <code class="language-plaintext highlighter-rouge">Tagged(DSP, Realtime)</code> for the calling site)</td>
+    </tr>
+    <tr>
+      <td>Both — pure, panic-free, zero-alloc</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> and <code class="language-plaintext highlighter-rouge">cap no_alloc</code> together</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Both declarations can coexist in the same module. Each is checked by its own independent pass.</p>
+
+<hr />
+
+<h2 id="capability-inference-hints">Capability inference hints</h2>
+
+<p>If you call a function that requires a <code class="language-plaintext highlighter-rouge">needs X</code> declaration but your module doesn’t have one, the compiler emits a <strong>hint</strong> (not an error) pointing to the call site:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hint: this call uses IO.FileRead but mod Config does not declare `needs IO.FileRead`.
+hint: add `needs IO.FileRead` to the module body.
+</code></pre></div></div>
+
+<p>This is informational — the type checker already enforces <code class="language-plaintext highlighter-rouge">needs</code> as an error. The hint pass (<code class="language-plaintext highlighter-rouge">cap_infer.ml</code>) runs after typechecking and gives an actionable fix message in addition to the type error.</p>
+
+<hr />
+
+<h2 id="putting-it-together">Putting it together</h2>
+
+<p>Here’s how capability declarations compose across a small web application. Reading the <code class="language-plaintext highlighter-rouge">needs</code> list of each module answers “what does this module do to the world?” without opening the implementation:</p>
+
+<pre><code class="language-march">mod Config do
+  needs IO.FileRead          -- reads one config file, nothing else
+
+  fn load(path : String) : Config do ... end
+end
+
+mod Metrics do
+  needs IO.Telemetry         -- makes observability a visible architectural concern
+
+  fn record(event : String, duration : Int) : () do ... end
+end
+
+mod Api do
+  needs IO.NetListen         -- binds a port
+  needs IO.NetConnect.TLS    -- outbound HTTPS only — no plaintext TCP
+  needs IO.Mut               -- session vault
+
+  fn start(io : Cap(IO.NetListen), tls : Cap(IO.NetConnect.TLS),
+           mut : Cap(IO.Mut)) : () do
+    HttpServer.new()
+    |&gt; HttpServer.plug(fn conn -&gt; handle(conn, tls, mut))
+    |&gt; HttpServer.run(io, 8080)
+  end
+end
+
+mod Main do
+  needs IO
+
+  -- The initial Cap(IO) is provided implicitly by the runtime to `main()` —
+  -- there is no `root_cap()` call in user code.
+  fn main(cap : Cap(IO)) : () do
+    let config  = Config.load("/etc/myapp/config.toml")
+    let io_cap  : Cap(IO.NetListen)      = cap_narrow(cap)
+    let tls_cap : Cap(IO.NetConnect.TLS) = cap_narrow(cap)
+    let mut_cap : Cap(IO.Mut)            = cap_narrow(cap)
+    Api.start(io_cap, tls_cap, mut_cap)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Config</code> is provably read-only. <code class="language-plaintext highlighter-rouge">Api</code> cannot read files and cannot use plaintext TCP. If <code class="language-plaintext highlighter-rouge">Config.load</code> ever called a network function, the build would fail until <code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code> was added — no audit needed.</p>
+
+<hr />
+
+<h2 id="runtime-behaviour">Runtime behaviour</h2>
+
+<p>All <code class="language-plaintext highlighter-rouge">Cap(X)</code> values are <strong>runtime-erased</strong>. They compile to <code class="language-plaintext highlighter-rouge">null</code> in LLVM IR and to <code class="language-plaintext highlighter-rouge">VUnit</code> in the interpreter. No allocation, no indirection, no overhead. Enforcement is purely at compile time.</p>
+
+<hr />
+
+<h2 id="proof-caps--encoding-initialization-order">Proof caps — encoding initialization order</h2>
+
+<p>IO caps control <em>which resources</em> a module may touch. Proof caps control <em>when</em> dependent code may run. They’re separate concerns.</p>
+
+<h3 id="the-problem-they-solve-1">The problem they solve</h3>
+
+<p>Some operations must happen before others:</p>
+
+<pre><code class="language-march">-- What stops someone calling this before run_migrations?
+fn query(sql : String) : List(Row) do ... end
+</code></pre>
+
+<p>A proof cap makes “migrations have run” part of the type:</p>
+
+<pre><code class="language-march">mod Db do
+  proof cap Migrated
+
+  fn run_migrations(raw : Cap(Db.Raw)) : Cap(Db.Migrated) do
+    execute_pending_migrations(raw)
+    ()   -- Cap is runtime-erased; () is the actual runtime value
+  end
+
+  fn query(m : Cap(Db.Migrated), sql : String) : List(Row) do
+    -- cannot be called without migration proof
+    ...
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code> is <strong>unforgeable</strong>:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">cap_narrow</code> cannot produce it (it’s not in the IO hierarchy)</li>
+  <li>The runtime-provided <code class="language-plaintext highlighter-rouge">Cap(IO)</code> in <code class="language-plaintext highlighter-rouge">main()</code> cannot produce it</li>
+  <li>Only public (<code class="language-plaintext highlighter-rouge">fn</code>) functions of <code class="language-plaintext highlighter-rouge">mod Db</code> can mint it — private (<code class="language-plaintext highlighter-rouge">pfn</code>) functions may pass it through but cannot create one from nothing</li>
+  <li>External code can pass it through, but cannot create one</li>
+</ul>
+
+<p>Any module that accepts <code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code> must declare <code class="language-plaintext highlighter-rouge">needs Db.Migrated</code>. Forgery is a compile error:</p>
+
+<pre><code class="language-march">mod App do
+  needs Db.Migrated
+
+  -- ERROR: App cannot produce Cap(Db.Migrated) from nothing
+  fn bad() : Cap(Db.Migrated) do () end
+
+  -- OK: pass-through is allowed
+  fn relay(m : Cap(Db.Migrated)) : Cap(Db.Migrated) do m end
+end
+</code></pre>
+
+<h3 id="when-to-use-proof-caps">When to use proof caps</h3>
+
+<p>Proof caps suit <strong>ambient, payload-independent facts</strong> — things true about the <em>system</em>, not about a specific value:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Proof cap</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code></td>
+      <td>Database migrations have run</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Auth.Authenticated)</code></td>
+      <td>The current request has a verified identity</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(App.Initialized)</code></td>
+      <td>Application startup has completed</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Config.Loaded)</code></td>
+      <td>Configuration has been validated</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The key test: <strong>is there a single, well-defined place in the codebase that produces this capability?</strong> If yes, a proof cap works cleanly. If initialization is diffuse, conditional, or happens in multiple places, a proof cap will feel awkward — use a runtime flag instead.</p>
+
+<h3 id="when-not-to-use-proof-caps">When <em>not</em> to use proof caps</h3>
+
+<p><strong>Don’t use proof caps for per-value facts.</strong> If the guarantee must be tied to a specific value (“this <code class="language-plaintext highlighter-rouge">String</code> has been sanitized”), use an opaque refined type:</p>
+
+<pre><code class="language-march">mod Sanitize do
+  ptype Sanitized = Sanitized(String)   -- private constructor
+
+  fn sanitize(raw : String) : Sanitized do
+    Sanitized(escape_html(raw))
+  end
+
+  fn render(s : Sanitized) : String do
+    let Sanitized(text) = s
+    text
+  end
+end
+</code></pre>
+
+<p>A <code class="language-plaintext highlighter-rouge">Cap(Sanitized)</code> would prove “some string was sanitized somewhere,” but not that the string you’re about to render <em>is</em> the one that was sanitized. The opaque type ties proof and data together — you physically cannot pass an unsanitized string to <code class="language-plaintext highlighter-rouge">render</code>.</p>
+
+<p><strong>Don’t use proof caps when there’s no single mint point.</strong> Unforgeability is only meaningful when the minting surface is small and auditable. If the initialization is spread across many code paths, the cap gives a false sense of safety.</p>
+
+<hr />
+
+<h2 id="typestate--tracking-resource-lifecycle">Typestate — tracking resource lifecycle</h2>
+
+<p>IO caps answer “is this module allowed to open a file?” Typestate answers “is <em>this specific handle</em> currently open or closed?”</p>
+
+<h3 id="handler-s-from-the-standard-library"><code class="language-plaintext highlighter-rouge">Handle(R, S)</code> from the standard library</h3>
+
+<p><code class="language-plaintext highlighter-rouge">stdlib/handle.march</code> ships a canonical typestate handle:</p>
+
+<pre><code class="language-march">always_linear type Handle(r, s) = Handle(Int)
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">r</code> parameter is a phantom <em>resource tag</em> and <code class="language-plaintext highlighter-rouge">s</code> is the current <em>state</em>. Because <code class="language-plaintext highlighter-rouge">Handle</code> is <code class="language-plaintext highlighter-rouge">always_linear</code>, dropping it without consuming it — or consuming it twice — are both compile-time errors.</p>
+
+<pre><code class="language-march">tag ConnTag
+tag Closed
+tag Open
+
+fn connect(cap : Cap(IO.Network)) : Handle(ConnTag, Closed) do ... end
+fn open(h : Handle(ConnTag, Closed)) : Handle(ConnTag, Open) do ... end
+fn query(h : Handle(ConnTag, Open), sql : String) : (List(Row), Handle(ConnTag, Open)) do ... end
+fn close(h : Handle(ConnTag, Open)) : Handle(ConnTag, Closed) do ... end
+</code></pre>
+
+<p>The wrong call order is a type error:</p>
+
+<pre><code class="language-march">let h0 = connect(net_cap)
+let h1 = query(h0, "SELECT 1")  -- ERROR: expected Handle(ConnTag, Open), got Handle(ConnTag, Closed)
+let h2 = open(h0)               -- OK
+let (rows, h3) = query(h2, "SELECT 1")
+let h4 = close(h3)
+</code></pre>
+
+<h3 id="declaring-transitions">Declaring transitions</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">transitions</code> block names every valid state transition. The compiler verifies each <code class="language-plaintext highlighter-rouge">via</code> function exists with the right signature, and warns about functions that look like transitions but aren’t declared:</p>
+
+<pre><code class="language-march">mod Db do
+  transitions Handle do
+    ConnTag: Closed -&gt; Open   via open
+    ConnTag: Open   -&gt; Open   via query
+    ConnTag: Open   -&gt; Closed via close
+  end
+end
+</code></pre>
+
+<h3 id="always_linear-type-for-your-own-handles"><code class="language-plaintext highlighter-rouge">always_linear type</code> for your own handles</h3>
+
+<pre><code class="language-march">always_linear type FileHandle(s) = FileHandle(Int)
+
+tag FileClosed
+tag FileOpen
+
+fn open_file(path : String) : FileHandle(FileClosed) do ... end
+fn read_file(h : FileHandle(FileOpen)) : (String, FileHandle(FileOpen)) do ... end
+fn close_file(h : FileHandle(FileOpen)) : FileHandle(FileClosed) do ... end
+</code></pre>
+
+<h3 id="tag--zero-arg-phantom-label-types"><code class="language-plaintext highlighter-rouge">tag</code> — zero-arg phantom label types</h3>
+
+<p><code class="language-plaintext highlighter-rouge">tag Foo</code> is shorthand for <code class="language-plaintext highlighter-rouge">type Foo = Foo</code> — a zero-argument phantom type for state labels and resource tags:</p>
+
+<pre><code class="language-march">tag ConnTag
+tag Closed
+tag Open
+</code></pre>
+
+<h3 id="when-to-use-typestate">When to use typestate</h3>
+
+<p>Use typestate when:</p>
+<ul>
+  <li>A resource has a finite, well-defined lifecycle (closed → open → consumed)</li>
+  <li>Calling operations in the wrong order is a programmer error worth preventing statically</li>
+  <li>The resource must not be dropped without being explicitly released</li>
+</ul>
+
+<p>Don’t use it for:</p>
+<ul>
+  <li>Simple flags or booleans that change frequently at runtime — the type parameter overhead isn’t worth it</li>
+  <li>Cases where the lifecycle state is dynamic and not known until runtime</li>
+</ul>
+
+<p>The LSP shows typestate hover — hovering any <code class="language-plaintext highlighter-rouge">Handle(R, S)</code> expression displays the current state and all declared transitions from it.</p>
+
+<hr />
+
+<h2 id="advanced-patterns">Advanced patterns</h2>
+
+<h3 id="specialization-tags--realtime-exclusion">Specialization tags — realtime exclusion</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Tagged(X, T)</code> annotates a capability with a policy. The key narrowing rule: a function taking <code class="language-plaintext highlighter-rouge">Tagged(_, Realtime)</code> is in a realtime context and cannot also hold <code class="language-plaintext highlighter-rouge">Cap(Alloc)</code>, <code class="language-plaintext highlighter-rouge">Cap(IO)</code>, or <code class="language-plaintext highlighter-rouge">Cap(Panic)</code>. The compiler rejects mixed signatures:</p>
+
+<pre><code class="language-march">type DSP = DSP
+type Realtime = Realtime
+
+-- ERROR: realtime functions cannot take Cap(IO)
+fn bad(cap : Tagged(DSP, Realtime), io : Cap(IO)) : () do () end
+
+-- OK: statically proven — no allocation, no IO, no panic
+fn process(cap : Tagged(DSP, Realtime), buf : Buffer(Float32, 256)) : Buffer(Float32, 256) do
+  ...
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Tagged</code> also covers type-indexed specialization (SIMD widths, buffer sizes) — monomorphization handles these for free:</p>
+
+<pre><code class="language-march">fn fft(cap : Tagged(SIMD, N), buf : Buffer(Float32, N)) : Buffer(Complex32, N)
+-- monomorphization produces fft_256, fft_1024, etc.
+</code></pre>
+
+<h3 id="capability-environment-records--reducing-parameter-count">Capability environment records — reducing parameter count</h3>
+
+<p>When many functions need the same bundle of capabilities, threading individual <code class="language-plaintext highlighter-rouge">Cap(X)</code> parameters everywhere is tedious. Bundle them into a record instead:</p>
+
+<pre><code class="language-march">type RuntimeEnv = {
+  io    : Cap(IO),
+  clock : Cap(IO.Clock),
+  net   : Cap(IO.Network)
+}
+
+fn run(env : RuntimeEnv, data : Input) : Output do ... end
+</code></pre>
+
+<p>Narrow to a restricted set by constructing a smaller record — the type system enforces what the callee can do structurally:</p>
+
+<pre><code class="language-march">type PluginEnv = { clock : Cap(IO.Clock) }
+
+fn run_plugin(env : RuntimeEnv, plugin : Plugin) do
+  plugin.run({ clock: env.clock })  -- plugin structurally cannot use IO or network
+end
+</code></pre>
+
+<p>Each env module should provide named narrowing functions:</p>
+
+<pre><code class="language-march">mod RuntimeEnv do
+  fn narrow_for_plugin(env : RuntimeEnv) : PluginEnv do
+    { clock: env.clock }
+  end
+end
+</code></pre>
+
+<h3 id="testing-with-capability-environment-records">Testing with capability environment records</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(X)</code> values are runtime-erased, so you cannot swap them in tests. Pair the cap with a function field for swappable runtime behaviour:</p>
+
+<pre><code class="language-march">type LogEnv = {
+  log_cap : Cap(IO.Console),  -- compile-time gate, erased at runtime
+  write   : (String) -&gt; ()    -- runtime behaviour — swappable in tests
+}
+
+fn test_process() do
+  let captured = Ref.new([])
+  let env : LogEnv = {
+    log_cap: test_logger_cap(),
+    write:   fn line -&gt; Ref.update(captured, fn xs -&gt; Cons(line, xs))
+  }
+  let result = process(env, test_input)
+  assert_contains(Ref.get(captured), "expected message")
+end
+</code></pre>
+
+<hr />
+
+<h2 id="quick-decision-guide">Quick decision guide</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>I want to…</th>
+      <th>Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prove a module never touches the network</td>
+      <td>Declare only non-network caps — compiler enforces absence</td>
+    </tr>
+    <tr>
+      <td>Guarantee a function is completely pure</td>
+      <td>Declare no <code class="language-plaintext highlighter-rouge">needs</code> — the compiler verifies it</td>
+    </tr>
+    <tr>
+      <td>Let a plugin only read the clock</td>
+      <td><code class="language-plaintext highlighter-rouge">cap_narrow</code> to <code class="language-plaintext highlighter-rouge">Cap(IO.Clock)</code> at the call site</td>
+    </tr>
+    <tr>
+      <td>Guarantee migrations run before any query</td>
+      <td><code class="language-plaintext highlighter-rouge">proof cap Migrated</code> in <code class="language-plaintext highlighter-rouge">mod Db</code></td>
+    </tr>
+    <tr>
+      <td>Prove a specific string has been sanitized</td>
+      <td>Opaque refined type (<code class="language-plaintext highlighter-rouge">ptype</code>), not a proof cap</td>
+    </tr>
+    <tr>
+      <td>Track that a file handle is open vs closed</td>
+      <td><code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code> (typestate)</td>
+    </tr>
+    <tr>
+      <td>Exclude allocation/IO from a realtime callback</td>
+      <td><code class="language-plaintext highlighter-rouge">Tagged(DSP, Realtime)</code></td>
+    </tr>
+    <tr>
+      <td>Thread many caps without adding parameters</td>
+      <td>Capability environment record</td>
+    </tr>
+    <tr>
+      <td>Prove integer division can never panic</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> + Int refinements on divisor params</td>
+    </tr>
+    <tr>
+      <td>Guarantee zero heap allocation (realtime/embedded)</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_alloc</code></td>
+    </tr>
+    <tr>
+      <td>Small script, just want it to work</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO</code> — don’t overthink it</td>
+    </tr>
+  </tbody>
+</table>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module System — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link active">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="module-system">Module System</h1>
+
+<p>March has an Elixir-inspired module system. Modules are the primary unit of code organization, and all definitions live inside a module.</p>
+
+<hr />
+
+<h2 id="declaring-a-module">Declaring a Module</h2>
+
+<p>Every March file begins with a <code class="language-plaintext highlighter-rouge">mod</code> declaration:</p>
+
+<pre><code class="language-march">mod MyApp do
+  -- definitions here
+end
+</code></pre>
+
+<p>Modules can be dotted for hierarchical organization:</p>
+
+<pre><code class="language-march">mod MyApp.Router do
+  -- router logic
+end
+
+mod MyApp.Templates.Layout do
+  -- layout templates
+end
+</code></pre>
+
+<p>Modules can also be nested inline:</p>
+
+<pre><code class="language-march">mod Outer do
+  mod Inner do
+    fn greet() do println("from Inner") end
+  end
+
+  fn main() do
+    Inner.greet()    -- qualified access
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="visibility">Visibility</h2>
+
+<p>By default, all definitions are <strong>public</strong> (accessible from outside the module). To make something private, use <code class="language-plaintext highlighter-rouge">pfn</code> for functions or <code class="language-plaintext highlighter-rouge">ptype</code> for types:</p>
+
+<pre><code class="language-march">mod Passwords do
+  -- Public API:
+  fn verify(plain : String, stored : String) : Bool do
+    hash(plain) == stored
+  end
+
+  -- Private implementation detail:
+  pfn hash(s : String) : String do
+    Crypto.sha256(s)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">pfn</code> functions cannot be called from outside their module. <code class="language-plaintext highlighter-rouge">ptype</code> makes both the type name and its constructors private.</p>
+
+<p>For types that should expose the name but hide the constructors, use <code class="language-plaintext highlighter-rouge">opaque</code>:</p>
+
+<pre><code class="language-march">mod Token do
+  opaque type Token = Token(String)
+
+  fn make(raw : String) : Token do Token(raw) end
+  fn value(t : Token) : String do
+    match t do Token(s) -&gt; s end
+  end
+end
+
+-- Outside Token: can use Token as a type, but cannot construct Token(_) directly
+fn process(t : Token.Token) : () do
+  println(Token.value(t))
+end
+</code></pre>
+
+<hr />
+
+<h2 id="qualified-access">Qualified Access</h2>
+
+<p>Call functions or access types from another module using <code class="language-plaintext highlighter-rouge">.</code>:</p>
+
+<pre><code class="language-march">mod Math do
+  fn square(n : Int) : Int do n * n end
+  fn cube(n : Int) : Int do n * n * n end
+end
+
+mod Main do
+  fn main() do
+    let s = Math.square(4)   -- 16
+    let c = Math.cube(3)     -- 27
+    println(int_to_string(s + c))
+  end
+end
+</code></pre>
+
+<p>Nested module access chains:</p>
+
+<pre><code class="language-march">MyApp.Router.dispatch(conn, request)
+</code></pre>
+
+<hr />
+
+<h2 id="import">import</h2>
+
+<p><code class="language-plaintext highlighter-rouge">import</code> brings names from a module into the current scope. It works like Elixir’s <code class="language-plaintext highlighter-rouge">import</code>:</p>
+
+<pre><code class="language-march">-- Import all public names from MathUtils:
+import MathUtils
+
+fn demo() do
+  let s = square(5)   -- no module prefix needed
+  let c = cube(3)
+  s + c
+end
+</code></pre>
+
+<p>Import only specific names:</p>
+
+<pre><code class="language-march">import MathUtils, only: [square, cube]
+import String, only: [length, split, upcase]
+</code></pre>
+
+<p>Import everything except specific names:</p>
+
+<pre><code class="language-march">import String, except: [dangerous_fn]
+</code></pre>
+
+<p>Dotted import with brace selector:</p>
+
+<pre><code class="language-march">import String.{length, split}
+import MyApp.Utils.{format, parse}
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">import</code> statements can appear anywhere inside a module body. Their scope is the rest of the module from that point.</p>
+
+<hr />
+
+<h2 id="use">use</h2>
+
+<p><code class="language-plaintext highlighter-rouge">use</code> is the other import mechanism. It brings names into scope but is more explicit about source:</p>
+
+<pre><code class="language-march">use List.*                    -- import all from List
+use List.{map, filter}        -- import specific names
+use List.map                  -- import single name
+use A.B.C.*                   -- dotted path, all names
+</code></pre>
+
+<p>The difference between <code class="language-plaintext highlighter-rouge">use</code> and <code class="language-plaintext highlighter-rouge">import</code> is primarily stylistic — <code class="language-plaintext highlighter-rouge">import</code> is Elixir-style with keyword options (<code class="language-plaintext highlighter-rouge">only:</code>, <code class="language-plaintext highlighter-rouge">except:</code>), while <code class="language-plaintext highlighter-rouge">use</code> is ML-style with glob and brace selectors.</p>
+
+<hr />
+
+<h2 id="alias">alias</h2>
+
+<p><code class="language-plaintext highlighter-rouge">alias</code> gives a module a shorter name for the rest of the scope:</p>
+
+<pre><code class="language-march">alias Very.Long.Module.Name as Short
+
+fn demo() do
+  Short.do_something()
+end
+</code></pre>
+
+<p>Elixir-style comma form:</p>
+
+<pre><code class="language-march">alias Very.Long.Module.Name, as: Short
+</code></pre>
+
+<p>Auto-alias to last segment:</p>
+
+<pre><code class="language-march">alias MyApp.Data.Repository
+-- Now Repository is available as the alias
+</code></pre>
+
+<p>Aliases are useful when a module name is long or conflicts with another name in scope.</p>
+
+<hr />
+
+<h2 id="a-full-example">A Full Example</h2>
+
+<p>From <code class="language-plaintext highlighter-rouge">examples/modules.march</code>:</p>
+
+<pre><code class="language-march">mod Example do
+
+  mod MathUtils do
+    fn square(x : Int) : Int do x * x end
+    fn cube(x : Int) : Int do x * x * x end
+    fn abs_val(n : Int) : Int do
+      if n &lt; 0 do 0 - n else n end
+    end
+  end
+
+  mod Greet do
+    fn prefix() : Int do 1000 end
+  end
+
+  -- 1. Qualified access
+  fn demo_qualified() : Int do
+    let a = MathUtils.square(4)
+    let b = MathUtils.cube(3)
+    a + b      -- 43
+  end
+
+  -- 2. Import all
+  import MathUtils
+
+  fn demo_import_all() : Int do
+    square(5) + cube(2)   -- 33
+  end
+
+  -- 3. Import specific names only
+  import MathUtils, only: [abs_val]
+
+  fn demo_import_only() : Int do
+    abs_val(0 - 7)   -- 7
+  end
+
+  -- 4. Alias
+  alias MathUtils, as: M
+
+  fn demo_alias() : Int do
+    M.square(6)   -- 36
+  end
+
+  fn main() : Int do
+    demo_qualified() + demo_import_all() + demo_import_only() + demo_alias()
+  end
+
+end
+</code></pre>
+
+<hr />
+
+<h2 id="module-signatures">Module Signatures</h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">sig</code> declaration defines an abstract interface for a module — a named signature separate from the implementation:</p>
+
+<pre><code class="language-march">sig Collection do
+  type Elem
+  fn insert : Elem -&gt; List(Elem) -&gt; List(Elem)
+  fn member : Elem -&gt; List(Elem) -&gt; Bool
+end
+</code></pre>
+
+<p>Signatures are used for compile-time abstraction and caching — downstream code that depends on a <code class="language-plaintext highlighter-rouge">sig</code> only needs to recompile when the signature changes, not when the implementation changes.</p>
+
+<hr />
+
+<h2 id="multi-file-projects">Multi-File Projects</h2>
+
+<p>In a <code class="language-plaintext highlighter-rouge">forge</code> project, each file typically contains one module. Files are discovered automatically via <code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_app/
+├── src/
+│   ├── my_app.march          -- mod MyApp do ... end
+│   ├── my_app/router.march   -- mod MyApp.Router do ... end
+│   └── my_app/templates.march-- mod MyApp.Templates do ... end
+</code></pre></div></div>
+
+<p>Build with:</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">MARCH_LIB_PATH</span><span class="o">=</span>src ./_build/default/bin/main.exe <span class="nt">--compile</span> <span class="nt">-o</span> my_app src/my_app.march
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge build</code> handles this automatically.</p>
+
+<p>Module names map to file paths by convention: <code class="language-plaintext highlighter-rouge">MyApp.Router</code> → <code class="language-plaintext highlighter-rouge">my_app/router.march</code>, <code class="language-plaintext highlighter-rouge">MyApp.Templates.Layout</code> → <code class="language-plaintext highlighter-rouge">my_app/templates/layout.march</code>.</p>
+
+<hr />
+
+<h2 id="module-level-constants">Module-Level Constants</h2>
+
+<p><code class="language-plaintext highlighter-rouge">let</code> at module level defines a constant accessible throughout the module and (if public) from outside:</p>
+
+<pre><code class="language-march">mod Config do
+  let version   = "1.0.0"
+  let max_items = 1000
+  let base_url  = "https://api.example.com"
+end
+
+-- Access from outside:
+println(Config.version)
+</code></pre>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/interfaces/">Interfaces</a> — <code class="language-plaintext highlighter-rouge">interface</code> and <code class="language-plaintext highlighter-rouge">impl</code> for ad-hoc polymorphism</li>
+  <li><a href="/docs/getting-started/">Getting Started</a> — creating a project with forge</li>
+  <li><a href="/docs/stdlib-guide/">Standard Library</a> — modules you get for free</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

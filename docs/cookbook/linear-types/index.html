@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cookbook: Linear Types — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --accent-dim: oklch(26% 0.09 215);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+      --ck-panel-w: 360px;
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --accent-dim: oklch(70% 0.09 207);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout {
+      display: flex; padding-top: 60px; min-height: 100vh;
+      transition: padding-right 0.25s ease;
+    }
+    .d-layout.repl-open { padding-right: var(--ck-panel-w); }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+      position: relative;
+    }
+    .d-content .highlight pre,
+    .d-content pre {
+      padding: 20px 24px; margin: 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    .d-content .highlight pre {
+      border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); white-space: nowrap; }
+
+    /* ── CODE BLOCK BUTTONS ──────────────────────────────────────────────── */
+    .ck-code-btns {
+      position: absolute; top: 8px; right: 10px;
+      display: flex; gap: 4px; opacity: 0;
+      transition: opacity 0.15s; pointer-events: none;
+    }
+    .d-content .highlight:hover .ck-code-btns,
+    .d-content pre:hover .ck-code-btns { opacity: 1; pointer-events: auto; }
+    .ck-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+      padding: 3px 9px; border-radius: 4px; cursor: pointer;
+      background: var(--bg); color: var(--text-faint);
+      border: 1px solid var(--border); letter-spacing: 0.03em;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .ck-btn:hover { color: var(--text-muted); border-color: var(--text-faint); }
+    .ck-btn-run { color: var(--accent); border-color: var(--accent-dim); }
+    .ck-btn-run:hover { background: rgba(18,145,167,0.08); }
+    .ck-btn-copied { color: oklch(74% 0.18 145) !important; border-color: oklch(74% 0.18 145) !important; }
+
+    /* ── RIGHT REPL PANEL ────────────────────────────────────────────────── */
+    .ck-repl-panel {
+      position: fixed; top: 60px; right: 0;
+      width: var(--ck-panel-w); height: calc(100vh - 60px);
+      background: var(--bg-code); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 90;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+    }
+    .ck-repl-panel.open { transform: translateX(0); }
+
+    .ck-repl-header {
+      display: flex; align-items: center; padding: 11px 16px;
+      border-bottom: 1px solid var(--border); gap: 6px; flex-shrink: 0;
+    }
+    .ck-repl-title {
+      margin-left: 10px; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-faint); flex: 1; letter-spacing: 0.04em;
+    }
+    .ck-repl-close {
+      background: none; border: 1px solid var(--border); color: var(--text-faint);
+      border-radius: 4px; padding: 2px 10px; font-size: 11px; cursor: pointer;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em;
+    }
+    .ck-repl-close:hover { border-color: var(--text-faint); color: var(--text-muted); }
+
+    .ck-repl-history {
+      flex: 1; padding: 14px 20px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .ck-repl-entry { margin-bottom: 2px; }
+    .ck-repl-iline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: var(--text); white-space: pre-wrap;
+    }
+    .ck-repl-iline::before { content: "march> "; color: var(--text-faint); }
+    .ck-repl-oline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: var(--accent); white-space: pre-wrap;
+    }
+    .ck-repl-eline {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.65; color: #f87171; white-space: pre-wrap;
+    }
+    .ck-repl-info {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      line-height: 1.65; color: var(--text-muted); font-style: italic;
+    }
+
+    .ck-repl-input-row {
+      display: flex; align-items: flex-start; padding: 10px 16px 12px;
+      border-top: 1px solid var(--border); gap: 8px; flex-shrink: 0;
+    }
+    .ck-repl-prompt {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      color: var(--text-faint); user-select: none; padding-top: 1px; white-space: nowrap;
+    }
+    .ck-repl-textarea {
+      flex: 1; background: none; border: none; outline: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.65;
+      color: var(--text); resize: none; overflow: hidden; min-height: 1.65em;
+      caret-color: var(--accent);
+    }
+    .ck-repl-textarea::placeholder { color: var(--text-faint); }
+    .ck-repl-submit {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);
+      background: transparent; border: 1px solid var(--accent-dim);
+      border-radius: 5px; padding: 6px 14px; cursor: pointer; letter-spacing: 0.03em; flex-shrink: 0;
+    }
+    .ck-repl-submit:hover { background: rgba(18,145,167,0.1); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+      .ck-repl-panel { width: min(var(--ck-panel-w), 100vw); }
+      .d-layout.repl-open { padding-right: 0; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ cookbook</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/docs/getting-started/" class="d-nav-link">Docs</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<div class="d-layout" id="d-layout">
+
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <p class="d-sidebar-section">Orientation</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">Coming from Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">Coming from TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">Coming from FP</a>
+
+      <p class="d-sidebar-section">Cookbook</p>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Overview</a>
+      <a href="/docs/cookbook/basics/" class="d-sidebar-link">Basics</a>
+      <a href="/docs/cookbook/strings/" class="d-sidebar-link">Strings</a>
+      <a href="/docs/cookbook/http/" class="d-sidebar-link">HTTP</a>
+      <a href="/docs/cookbook/concurrency/" class="d-sidebar-link">Concurrency</a>
+      <a href="/docs/cookbook/capabilities/" class="d-sidebar-link">Capabilities</a>
+      <a href="/docs/cookbook/linear-types/" class="d-sidebar-link active">Linear Types</a>
+      <a href="/docs/cookbook/vault/" class="d-sidebar-link">Vault</a>
+      <a href="/docs/cookbook/html/" class="d-sidebar-link">HTML</a>
+
+      <p class="d-sidebar-section">All Docs</p>
+      <a href="/docs/getting-started/" class="d-sidebar-link">← Back to Docs</a>
+    </div>
+  </aside>
+
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="linear-types">Linear Types</h1>
+
+<p>A linear value must be used exactly once — the compiler rejects code that drops it without consuming it, or uses it twice. This makes resource leaks and double-frees impossible to write.</p>
+
+<hr />
+
+<h2 id="declaring-a-linear-type">Declaring a linear type</h2>
+
+<pre><code class="language-march">linear type FileHandle = FileHandle(Int)
+</code></pre>
+
+<p>Every binding of <code class="language-plaintext highlighter-rouge">FileHandle</code> is automatically linear. Dropping it without calling a consuming function is a compile error:</p>
+
+<pre><code class="language-march">fn main() do
+  let fh = open_file("data.txt")
+  -- returning here without using fh would be a compile error:
+  -- "linear value `fh` is dropped without being consumed"
+  let content = read_all(fh)   -- consumes fh
+  println(content)
+end
+</code></pre>
+
+<hr />
+
+<h2 id="always-linear-types">Always-linear types</h2>
+
+<p><code class="language-plaintext highlighter-rouge">always_linear type</code> promotes every binding to linear without per-use-site annotations:</p>
+
+<pre><code class="language-march">always_linear type DbConn = DbConn(Int)
+</code></pre>
+
+<p>Useful when you want the linearity guarantee enforced everywhere in the codebase, not just where the author remembered to write <code class="language-plaintext highlighter-rouge">linear let</code>.</p>
+
+<hr />
+
+<h2 id="typestate-handles-that-track-state">Typestate: handles that track state</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Handle(Resource, State)</code> is a built-in always-linear typestate handle. State transitions are declared with <code class="language-plaintext highlighter-rouge">transitions</code>:</p>
+
+<pre><code class="language-march">tag Open
+tag Closed
+
+transitions FileHandle do
+  Closed: Closed -&gt; Open   via open_file
+  Open:   Open   -&gt; Closed via close_file
+  Open:   Open   -&gt; Open   via read_chunk
+end
+</code></pre>
+
+<p>Calling <code class="language-plaintext highlighter-rouge">read_chunk</code> on a <code class="language-plaintext highlighter-rouge">FileHandle(Closed)</code> is a compile error. The type system tracks exactly which state the handle is in at every point:</p>
+
+<pre><code class="language-march">fn process(path : String) : Result(String, String) do
+  let? fh      = open_file(path)          -- FileHandle(Open)
+  let? content = read_chunk(fh)           -- FileHandle(Open), returns (data, FileHandle(Open))
+  close_file(content.handle)              -- FileHandle(Open) -&gt; Closed
+  Ok(content.data)
+end
+</code></pre>
+
+<hr />
+
+<h2 id="with-for-linear-resource-scopes"><code class="language-plaintext highlighter-rouge">with</code> for linear resource scopes</h2>
+
+<p><code class="language-plaintext highlighter-rouge">with</code> pairs acquisition with guaranteed cleanup — useful when you want RAII-style deterministic release:</p>
+
+<pre><code class="language-march">fn read_file(path : String) : Result(String, String) do
+  with Ok(fh) &lt;- open_file(path) do
+    let content = read_all(fh)
+    close_file(fh)
+    Ok(content)
+  else
+    Err(e) -&gt; Err(e)
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="complete-example-safe-socket-lifecycle">Complete example: safe socket lifecycle</h2>
+
+<pre><code class="language-march">mod Net do
+  always_linear type Socket = Socket(Int)
+
+  tag Connected
+  tag Disconnected
+
+  transitions Socket do
+    Disconnected: Disconnected -&gt; Connected    via connect
+    Connected:    Connected    -&gt; Disconnected via disconnect
+    Connected:    Connected    -&gt; Connected    via send_bytes
+    Connected:    Connected    -&gt; Connected    via recv_bytes
+  end
+
+  fn echo_once(addr : String) : Result((), String) do
+    let? sock         = connect(addr)
+    let? (msg, sock2) = recv_bytes(sock)
+    let? sock3        = send_bytes(sock2, msg)
+    disconnect(sock3)
+    Ok(())
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">recv_bytes</code> consumes <code class="language-plaintext highlighter-rouge">sock</code> and returns <code class="language-plaintext highlighter-rouge">(data, Socket(Connected))</code> — a fresh handle. Using the original <code class="language-plaintext highlighter-rouge">sock</code> after that would be a compile error (linear value used twice). Forgetting to call <code class="language-plaintext highlighter-rouge">disconnect</code> at the end would also be a compile error — <code class="language-plaintext highlighter-rouge">sock3</code> would be dropped without being consumed.</p>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- RIGHT REPL PANEL -->
+<div class="ck-repl-panel" id="ck-repl-panel"
+     data-base="" data-ver="1783000507">
+  <div class="ck-repl-header">
+    <span class="ck-repl-title">march — interactive</span>
+    <button class="ck-repl-close" id="ck-repl-close">close</button>
+  </div>
+  <div class="ck-repl-history" id="ck-repl-history">
+    <div class="ck-repl-entry">
+      <span class="ck-repl-info" id="ck-repl-loading"></span>
+    </div>
+    <div class="ck-repl-entry">
+      <span class="ck-repl-info">Click <strong style="color:var(--accent);font-style:normal">run</strong> on any snippet to try it here.</span>
+    </div>
+  </div>
+  <div class="ck-repl-input-row">
+    <span class="ck-repl-prompt">march&gt;</span>
+    <textarea class="ck-repl-textarea" id="ck-repl-input" rows="1"
+      placeholder="try something…" autocomplete="off" spellcheck="false"></textarea>
+    <button class="ck-repl-submit" id="ck-repl-submit">run</button>
+  </div>
+</div>
+
+<script src="/assets/march-repl.js?v=1783000507"></script>
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script src="/assets/cookbook.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar   = document.getElementById('d-sidebar');
+const overlay   = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', () => {
+  closeSidebar();
+});
+
+initTheme();
+</script>
+</body>
+</html>

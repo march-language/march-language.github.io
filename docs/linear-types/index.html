@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Linear Types — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link active">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="linear-and-affine-types">Linear and Affine Types</h1>
+
+<p>March’s type system tracks ownership through <strong>linear</strong> and <strong>affine</strong> qualifiers. These let the compiler catch resource leaks and use-after-free bugs <strong>at compile time</strong> — not at runtime, and not by relying on a garbage collector.</p>
+
+<hr />
+
+<h2 id="the-problem-they-solve">The Problem They Solve</h2>
+
+<p>Consider a file handle or database connection. These resources must be:</p>
+<ol>
+  <li><strong>Used</strong> — you shouldn’t open a file and forget to read or close it</li>
+  <li><strong>Closed exactly once</strong> — closing twice is a bug</li>
+  <li><strong>Not shared</strong> — concurrent access through the same raw handle leads to data corruption</li>
+</ol>
+
+<p>In most languages, these are programmer responsibilities enforced by convention and code review. In March, the type system enforces them.</p>
+
+<hr />
+
+<h2 id="linear-vs-affine">Linear vs Affine</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Qualifier</th>
+      <th>Usage count</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">linear</code></td>
+      <td><strong>Exactly once</strong></td>
+      <td>Must be used — dropping it is a compile error</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">affine</code></td>
+      <td><strong>At most once</strong></td>
+      <td>May be dropped (unused), but cannot be used twice</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Both prevent <strong>duplicating</strong> (using twice). Linear additionally prevents <strong>discarding</strong> (never using).</p>
+
+<hr />
+
+<h2 id="linear-values">Linear Values</h2>
+
+<p>A linear type must be used exactly once:</p>
+
+<pre><code class="language-march">fn consume(linear h : Handle) : () do
+  -- h must be used here — the compiler tracks this
+  close(h)
+end
+</code></pre>
+
+<p>If you forget to use a linear value, the compiler reports an error:</p>
+
+<pre><code class="language-march">fn bad(linear h : Handle) : () do
+  ()    -- error: linear value `h` must be used
+end
+</code></pre>
+
+<p>If you try to use it twice:</p>
+
+<pre><code class="language-march">fn also_bad(linear h : Handle) : () do
+  close(h)
+  close(h)   -- error: linear value `h` used more than once
+end
+</code></pre>
+
+<h3 id="linear-let-bindings">Linear Let Bindings</h3>
+
+<pre><code class="language-march">fn read_file(path : String) : String do
+  linear let handle : Handle = open_file(path)
+  let content = read_all(handle)     -- consumes handle
+  content
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">linear let</code> annotation tells the compiler this binding has linear semantics. You don’t need to annotate everything — the type of <code class="language-plaintext highlighter-rouge">open_file</code> already carries the linear constraint.</p>
+
+<hr />
+
+<h2 id="affine-values">Affine Values</h2>
+
+<p>An affine type may be used zero or one times. This is useful for values that have a cleanup operation but where “not using” is acceptable (e.g., an optional connection):</p>
+
+<pre><code class="language-march">fn maybe_connect(affine cap : NetworkCap) : () do
+  -- OK to drop cap without using it
+  if should_connect do
+    connect(cap)
+  end
+  -- No error if we fall through without using cap
+end
+</code></pre>
+
+<p>The key property: you still cannot use an affine value twice.</p>
+
+<hr />
+
+<h2 id="linear-record-fields">Linear Record Fields</h2>
+
+<p>Individual fields of a record can be linear:</p>
+
+<pre><code class="language-march">type Resource = {
+  linear fd   : FileDesc,
+  metadata    : String
+}
+</code></pre>
+
+<p>The compiler tracks each linear field independently. Accessing <code class="language-plaintext highlighter-rouge">r.fd</code> consumes that field — you cannot access it again.</p>
+
+<hr />
+
+<h2 id="linearity-and-memory">Linearity and Memory</h2>
+
+<p>Linearity isn’t only about correctness — it’s the strongest case for March’s
+in-place memory model. A <code class="language-plaintext highlighter-rouge">linear</code> value has <strong>reference count 1 by
+construction</strong>: the type system guarantees exactly one owner, so the compiler
+never has to emit a single reference-count adjustment for it. At the value’s last
+use, it is simply freed — no scan, no count to check. This is the cleanest
+<a href="/docs/memory-model/">Perceus</a> case there is.</p>
+
+<p>The same guarantee makes actor message passing <strong>zero-copy</strong>. Sending an ordinary
+value to another actor copies its bytes (so the two heaps stay disjoint). A
+<code class="language-plaintext highlighter-rouge">linear</code> value can’t be aliased, so sending it <em>transfers ownership</em> instead:
+the runtime hands the pointer over and adjusts bookkeeping, with no bytes copied.
+Uniqueness turns “send” from a copy into a move.</p>
+
+<hr />
+
+<h2 id="linear-types-and-actors">Linear Types and Actors</h2>
+
+<p>Actors communicate by message passing. For safety, a linear value cannot be sent as a message directly — sending would require copying, and copying a linear value violates the uniqueness guarantee.</p>
+
+<p>The actor system uses session types (see below) for typed communication channels where linear values can be transferred safely via <code class="language-plaintext highlighter-rouge">Send</code>/<code class="language-plaintext highlighter-rouge">Recv</code> channel handles.</p>
+
+<hr />
+
+<h2 id="session-types">Session Types</h2>
+
+<p>Session types use binary typed channels — the two endpoints have <strong>dual</strong> types. If one end sends, the other must receive.</p>
+
+<p>Define a protocol:</p>
+
+<pre><code class="language-march">protocol Transfer do
+  Client -&gt; Server : Int
+  Server -&gt; Client : Int
+end
+</code></pre>
+
+<p>A channel endpoint is typed <code class="language-plaintext highlighter-rouge">Chan(Role, Protocol)</code>. Each operation consumes
+the current endpoint and returns a continuation typed at the next protocol
+step:</p>
+
+<pre><code class="language-march">fn client_side(ch : Chan(Client, Transfer)) : Int do
+  let ch2 = Chan.send(ch, 42)        -- send consumes ch, returns continuation
+  let (result, ch3) = Chan.recv(ch2) -- recv returns (value, continuation)
+  Chan.close(ch3)
+  result
+end
+</code></pre>
+
+<p>The server side mirrors this with the dual sequence (<code class="language-plaintext highlighter-rouge">recv</code> then <code class="language-plaintext highlighter-rouge">send</code>):</p>
+
+<pre><code class="language-march">fn server_side(ch : Chan(Server, Transfer)) : () do
+  let (n, ch2) = Chan.recv(ch)
+  let ch3 = Chan.send(ch2, n * 2)
+  Chan.close(ch3)
+end
+</code></pre>
+
+<p>The channel endpoints are linear — each <code class="language-plaintext highlighter-rouge">Chan.send</code>/<code class="language-plaintext highlighter-rouge">Chan.recv</code> operation
+consumes the old endpoint and returns a new one representing the next step of
+the protocol. The compiler verifies the full protocol is followed.</p>
+
+<blockquote>
+  <p><strong>What session types catch:</strong> sending when you should receive, receiving the
+wrong type, abandoning a conversation half-finished, or letting the two ends
+drift out of step — all become compile errors. See
+<a href="/docs/session-types/">Session Types</a> for the full protocol
+syntax and duality rules.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="capabilities-as-linear-types">Capabilities as Linear Types</h2>
+
+<p>Capabilities (see <a href="/docs/capabilities/">capabilities</a>) use linear types to ensure a capability token cannot be forged or duplicated:</p>
+
+<pre><code class="language-march">fn read_secret(linear cap : Cap(Vault)) : String do
+  Vault.read(cap, "secret_key")
+  -- cap is consumed; caller must obtain a new one for further operations
+end
+</code></pre>
+
+<p>Capability narrowing attenuates a capability to a sub-capability:</p>
+
+<pre><code class="language-march">fn restricted_op(cap : Cap(IO)) : () do
+  let console_cap = cap_narrow(cap)   -- Cap(IO) -&gt; Cap(IO.Console)
+  greet(console_cap, "Alice")
+end
+</code></pre>
+
+<hr />
+
+<h2 id="ffi-and-linear-pointers">FFI and Linear Pointers</h2>
+
+<p>When calling C code, raw pointers are typed as <code class="language-plaintext highlighter-rouge">linear Ptr(a)</code>:</p>
+
+<pre><code class="language-march">extern "libc": Cap(LibC) do
+  fn malloc(n : Int) : linear Ptr(a)
+  fn free(linear ptr : Ptr(a)) : ()
+end
+</code></pre>
+
+<p>This makes memory management explicit in the type — you cannot forget to <code class="language-plaintext highlighter-rouge">free</code> a <code class="language-plaintext highlighter-rouge">linear Ptr</code>, and you cannot <code class="language-plaintext highlighter-rouge">free</code> it twice.</p>
+
+<hr />
+
+<h2 id="practical-rules">Practical Rules</h2>
+
+<ol>
+  <li>
+    <p><strong>Use <code class="language-plaintext highlighter-rouge">linear</code> for resources with mandatory cleanup</strong> — file handles, database connections, exclusive locks, capabilities you must return.</p>
+  </li>
+  <li>
+    <p><strong>Use <code class="language-plaintext highlighter-rouge">affine</code> for optional-use tokens</strong> — things you might or might not use, but definitely shouldn’t use twice.</p>
+  </li>
+  <li>
+    <p><strong>Ordinary values need no qualifier</strong> — the default is unrestricted (can be copied, dropped, used many times).</p>
+  </li>
+  <li>
+    <p><strong>Pattern matching on a linear value consumes it</strong> — each branch must use it in a compatible way.</p>
+  </li>
+  <li>
+    <p><strong>Linear fields in records</strong> — accessing the field consumes it; you must use or explicitly drop each linear field.</p>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="why-both">Why Both?</h2>
+
+<p>Many systems have only one kind of linear type. March has both because they solve different problems:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">linear</code> ensures you can’t <strong>forget</strong> to do something (close, release, respond)</li>
+  <li><code class="language-plaintext highlighter-rouge">affine</code> ensures you can’t <strong>duplicate</strong> something, while allowing graceful abandonment</li>
+</ul>
+
+<p>For example, a session channel must be completed (linear — you can’t just drop it midway through a protocol). But an optional permission token might be affine — the operation is valid with or without it.</p>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/types/">Type System</a> — the broader type system context</li>
+  <li><a href="/docs/refinement-types/">Refinement Types</a> — the other compile-time safety layer: value predicates checked by an SMT solver</li>
+  <li><a href="/docs/actors/">Actors</a> — how linear types interact with actor message passing</li>
+  <li><a href="/docs/pattern-matching/">Pattern Matching</a> — destructuring linear values</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

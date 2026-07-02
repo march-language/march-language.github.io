@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Examples — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link active">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="examples">Examples</h1>
+
+<p>Runnable programs in <code class="language-plaintext highlighter-rouge">examples/</code> that showcase March language features and common patterns. Each example is a self-contained <code class="language-plaintext highlighter-rouge">.march</code> file.</p>
+
+<p>To run any example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dune <span class="nb">exec </span>march <span class="nt">--</span> examples/&lt;name&gt;.march
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="fundamentals">Fundamentals</h2>
+
+<h3 id="hellomarch">hello.march</h3>
+
+<p>Functions, let bindings, recursion, and <code class="language-plaintext highlighter-rouge">|&gt;</code> pipes with the List stdlib. A good first program.</p>
+
+<pre><code class="language-march">fn greet(name : String) : String do
+  "Hello, " ++ name ++ "!"
+end
+
+fn factorial(0) : Int do 1 end
+fn factorial(n) : Int do n * factorial(n - 1) end
+
+fn double_evens(xs : List(Int)) : List(Int) do
+  xs
+  |&gt; List.filter(fn x -&gt; x % 2 == 0)
+  |&gt; List.map(fn x -&gt; x * 2)
+end
+</code></pre>
+
+<hr />
+
+<h3 id="pattern_matchingmarch">pattern_matching.march</h3>
+
+<p>Comprehensive pattern matching: literals, custom ADTs, <code class="language-plaintext highlighter-rouge">Option</code>/<code class="language-plaintext highlighter-rouge">Result</code>, nested patterns, and multi-head function definitions.</p>
+
+<pre><code class="language-march">type Shape = Circle(Int) | Rect(Int, Int) | Triangle(Int, Int)
+
+fn area(s : Shape) : Int do
+  match s do
+    Circle(r)      -&gt; r * r * 3
+    Rect(w, h)     -&gt; w * h
+    Triangle(b, h) -&gt; (b * h) / 2
+  end
+end
+
+-- Nested Option patterns
+fn unwrap_nested(v : Option(Option(Int))) : Int do
+  match v do
+    Some(Some(n)) -&gt; n
+    Some(None)    -&gt; -1
+    None          -&gt; -2
+  end
+end
+</code></pre>
+
+<hr />
+
+<h3 id="list_libmarch">list_lib.march</h3>
+
+<p>A custom integer list type built with recursive ADTs. Implements <code class="language-plaintext highlighter-rouge">length</code>, <code class="language-plaintext highlighter-rouge">sum</code>, <code class="language-plaintext highlighter-rouge">product</code>, <code class="language-plaintext highlighter-rouge">max</code>, <code class="language-plaintext highlighter-rouge">reverse</code>, <code class="language-plaintext highlighter-rouge">append</code>, and <code class="language-plaintext highlighter-rouge">range</code> from scratch — a clean exercise in pattern matching and recursion.</p>
+
+<pre><code class="language-march">type IntList = INil | ICons(Int, IntList)
+
+fn sum(INil)         : Int do 0 end
+fn sum(ICons(x, xs)) : Int do x + sum(xs) end
+
+fn reverse(xs : IntList) : IntList do rev_acc(xs, INil) end
+fn rev_acc(INil, acc)         do acc end
+fn rev_acc(ICons(x, xs), acc) do rev_acc(xs, ICons(x, acc)) end
+</code></pre>
+
+<hr />
+
+<h3 id="modulesmarch">modules.march</h3>
+
+<p>Module organisation in one file: qualified access, two-level nesting, and private functions (<code class="language-plaintext highlighter-rouge">pfn</code>).</p>
+
+<pre><code class="language-march">-- Qualified access
+let a = MathUtils.square(4)
+
+-- Two-level nesting
+let area = Geometry.Rect.area(6, 7)
+
+-- pfn is private — only callable within Crypto
+mod Crypto do
+  fn encode(x : Int) : Int do add_checksum(scramble(x)) end
+  pfn scramble(x : Int) : Int do x * 31 + 7 end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="actors--concurrency">Actors &amp; Concurrency</h2>
+
+<h3 id="actorsmarch">actors.march</h3>
+
+<p>Spawning actors, sending messages, handling death gracefully, and observing state transitions.</p>
+
+<pre><code class="language-march">actor Counter do
+  state { value : Int }
+  init  { value: 0 }
+
+  on Increment(n : Int) do { state with value: state.value + n } end
+  on Reset()            do { state with value: 0 } end
+  on Probe(label : String) do
+    println("[Counter] " ++ label ++ " = " ++ int_to_string(state.value))
+    state
+  end
+end
+
+let c = spawn(Counter)
+send(c, Increment(5))
+send(c, Probe("after increment"))
+</code></pre>
+
+<hr />
+
+<h3 id="tasks_basicmarch">tasks_basic.march</h3>
+
+<p>Lightweight tasks: spawn, await, chained results, and fan-out patterns using the Collatz sequence as a stand-in for CPU-bound work.</p>
+
+<pre><code class="language-march">-- Two independent tasks, combined on await
+fn two_tasks() : Int do
+  let t1 = task_spawn(fn x -&gt; collatz(27, 0))
+  let t2 = task_spawn(fn x -&gt; collatz(871, 0))
+  task_await_unwrap(t1) + task_await_unwrap(t2)
+end
+</code></pre>
+
+<hr />
+
+<h3 id="tasks_fork_joinmarch">tasks_fork_join.march</h3>
+
+<p>Recursive divide-and-conquer parallelism. Forks at a midpoint, spawns tasks for each half, and joins results. Demonstrates the canonical pattern for tree-structured parallel work.</p>
+
+<pre><code class="language-march">fn par_sum(lo : Int, hi : Int, threshold : Int) : Int do
+  if hi - lo &lt;= threshold do sum_range(lo, hi)
+  else do
+    let mid   = lo + (hi - lo) / 2
+    let left  = task_spawn(fn x -&gt; par_sum(lo, mid, threshold))
+    let right = task_spawn(fn x -&gt; par_sum(mid + 1, hi, threshold))
+    task_await_unwrap(left) + task_await_unwrap(right)
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="supervision">Supervision</h2>
+
+<h3 id="supervision_strategiesmarch">supervision_strategies.march</h3>
+
+<p>All three restart strategies in one file: <code class="language-plaintext highlighter-rouge">one_for_one</code>, <code class="language-plaintext highlighter-rouge">one_for_all</code>, and <code class="language-plaintext highlighter-rouge">rest_for_one</code>. Each is demonstrated with a concrete crash scenario so you can observe which siblings are restarted.</p>
+
+<pre><code class="language-march">-- one_for_one: only the crashed child restarts
+actor OneForOneSup do
+  state { wa : Int, wb : Int }
+  init  { wa: 0, wb: 0 }
+  supervise do
+    strategy one_for_one
+    max_restarts 5 within 60
+    Worker wa
+    Worker wb
+  end
+end
+
+-- rest_for_one: crash parser → restarts parser + writer, not reader
+actor PipelineSup do
+  state { reader : Int, parser : Int, writer : Int }
+  init  { reader: 0, parser: 0, writer: 0 }
+  supervise do
+    strategy rest_for_one
+    max_restarts 5 within 60
+    Worker reader
+    Worker parser
+    Worker writer
+  end
+end
+</code></pre>
+
+<hr />
+
+<h3 id="supervision_monitormarch">supervision_monitor.march</h3>
+
+<p>Actor monitoring and <code class="language-plaintext highlighter-rouge">Down</code> messages. Shows how to watch for actor death, handle the <code class="language-plaintext highlighter-rouge">Down</code> delivery in a mailbox, and demonitor cleanly.</p>
+
+<hr />
+
+<h3 id="supervision_linear_dropmarch">supervision_linear_drop.march</h3>
+
+<p>Resource cleanup with user-defined <code class="language-plaintext highlighter-rouge">Drop</code> implementations. Resources registered via <code class="language-plaintext highlighter-rouge">own()</code> are released in reverse acquisition order when their actor crashes — the RAII pattern for actors.</p>
+
+<pre><code class="language-march">impl Drop(DbConnection) do
+  fn drop(conn) do
+    match conn do
+    DbConnection(id) -&gt; println("[Drop] Closing db connection " ++ to_string(id))
+    end
+  end
+end
+
+-- Register with an actor — dropped automatically on crash
+own(pid, DbConnection(100))
+own(pid, FileHandle("/var/log/worker.log"))
+-- On crash: FileHandle dropped first, then DbConnection
+</code></pre>
+
+<hr />
+
+<h2 id="http--web">HTTP &amp; Web</h2>
+
+<h3 id="http_hellomarch">http_hello.march</h3>
+
+<p>The smallest possible HTTP server: 18 lines, one route, plain text response.</p>
+
+<pre><code class="language-march">fn router(conn) do
+  match (HttpServer.method(conn), HttpServer.path_info(conn)) do
+  (:get, Nil) -&gt; conn |&gt; HttpServer.text(200, "Hello from compiled March!")
+  _ -&gt; conn |&gt; HttpServer.text(404, "Not Found")
+  end
+end
+
+fn main() do
+  HttpServer.new(8080)
+  |&gt; HttpServer.plug(router)
+  |&gt; HttpServer.listen()
+end
+</code></pre>
+
+<hr />
+
+<h3 id="http_streamingmarch">http_streaming.march</h3>
+
+<p>Three streaming patterns: print chunks as they arrive, byte counting without buffering, and large chunked transfer encoding. Uses <code class="language-plaintext highlighter-rouge">HttpClient.stream_get</code> with an <code class="language-plaintext highlighter-rouge">on_chunk</code> callback.</p>
+
+<pre><code class="language-march">fn print_chunk(chunk) do
+  print("[chunk " ++ int_to_string(string_length(chunk)) ++ " bytes]")
+  print(chunk)
+end
+
+match HttpClient.stream_get(client, "http://httpbin.org/stream/5", print_chunk) do
+Ok((status, _, _)) -&gt; print("Status: " ++ int_to_string(status))
+Err(_)             -&gt; print("Error!")
+end
+</code></pre>
+
+<hr />
+
+<h3 id="http_requestsmarch">http_requests.march</h3>
+
+<p>Full HTTP client stack: <code class="language-plaintext highlighter-rouge">GET</code> and <code class="language-plaintext highlighter-rouge">POST</code> requests, request pipeline steps, default headers, and <code class="language-plaintext highlighter-rouge">Result</code>-based error handling.</p>
+
+<hr />
+
+<h3 id="http_testmarch">http_test.march</h3>
+
+<p>Integration test pattern: spawn a server subprocess, make real HTTP requests (<code class="language-plaintext highlighter-rouge">GET /</code>, <code class="language-plaintext highlighter-rouge">GET /ping</code>, <code class="language-plaintext highlighter-rouge">POST /echo</code>), assert on responses.</p>
+
+<hr />
+
+<h3 id="counter_servermarch">counter_server.march</h3>
+
+<p>An actor-backed HTTP API. A <code class="language-plaintext highlighter-rouge">Counter</code> actor holds state; HTTP routes <code class="language-plaintext highlighter-rouge">GET /count</code>, <code class="language-plaintext highlighter-rouge">POST /increment</code>, <code class="language-plaintext highlighter-rouge">POST /decrement</code> message it directly. Shows the standard actor+HTTP integration pattern.</p>
+
+<hr />
+
+<h3 id="ws_echomarch">ws_echo.march</h3>
+
+<p>WebSocket server on port 9877. Handles <code class="language-plaintext highlighter-rouge">TextFrame</code>, <code class="language-plaintext highlighter-rouge">BinaryFrame</code>, <code class="language-plaintext highlighter-rouge">Ping</code>/<code class="language-plaintext highlighter-rouge">Pong</code>, and <code class="language-plaintext highlighter-rouge">Close</code> in a recursive loop.</p>
+
+<pre><code class="language-march">fn handle_frame(conn, frame) do
+  match frame do
+  TextFrame(msg)   -&gt; WsServer.send_text(conn, "echo: " ++ msg)
+  BinaryFrame(b)   -&gt; WsServer.send_binary(conn, b)
+  Ping(data)       -&gt; WsServer.send_pong(conn, data)
+  Close            -&gt; WsServer.close(conn)
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="data--statistics">Data &amp; Statistics</h2>
+
+<h3 id="stats_basicmarch">stats_basic.march</h3>
+
+<p>Descriptive and bivariate statistics using the <code class="language-plaintext highlighter-rouge">Stats</code> module on plain <code class="language-plaintext highlighter-rouge">List(Float)</code> values.</p>
+
+<pre><code class="language-march">-- Weekly temperatures
+let temps = [18.5, 21.0, 19.8, 23.4, 22.1, 17.6, 20.3]
+
+println("mean:    " ++ float_to_string(Stats.mean(temps)))
+println("median:  " ++ float_to_string(Stats.median(temps)))
+println("std_dev: " ++ float_to_string(Stats.std_dev(temps)))
+println("p25:     " ++ float_to_string(Stats.percentile(temps, 25.0)))
+println("p75:     " ++ float_to_string(Stats.percentile(temps, 75.0)))
+
+-- Linear regression: hours studied → exam score
+let (slope, intercept) = Stats.linear_regression(hours, scores)
+let predicted = slope *. 9.0 +. intercept
+</code></pre>
+
+<p>Also shows <code class="language-plaintext highlighter-rouge">covariance</code>, <code class="language-plaintext highlighter-rouge">correlation</code>, <code class="language-plaintext highlighter-rouge">mode</code>, and the safe <code class="language-plaintext highlighter-rouge">Result</code>-returning variants (<code class="language-plaintext highlighter-rouge">mean_safe</code>, <code class="language-plaintext highlighter-rouge">std_dev_safe</code>).</p>
+
+<hr />
+
+<h3 id="dataframe_basicmarch">dataframe_basic.march</h3>
+
+<p>Tabular data pipelines with the <code class="language-plaintext highlighter-rouge">DataFrame</code> module. Uses an employee dataset throughout.</p>
+
+<pre><code class="language-march">-- Construct from typed columns
+let df = DataFrame.from_columns([
+  StrCol("name",   typed_array_from_list(["Alice", "Bob", "Charlie"])),
+  StrCol("dept",   typed_array_from_list(["Eng", "Eng", "Sales"])),
+  IntCol("salary", typed_array_from_list([95000, 88000, 72000])),
+  FloatCol("rating", typed_array_from_list([4.5, 3.9, 4.2]))
+])
+
+-- LazyFrame: filter, sort, derived column, collect
+let result =
+  DataFrame.lazy(df)
+  |&gt; DataFrame.filter(Gt(Col("salary"), LitInt(80000)))
+  |&gt; DataFrame.sort_by([("salary", Desc)])
+  |&gt; DataFrame.with_column("bonus", fn row -&gt;
+      match DataFrame.row_get_int(row, "salary") do
+      Some(s) -&gt; IntVal(s / 10)
+      None    -&gt; IntVal(0)
+      end)
+  |&gt; DataFrame.collect()
+
+-- GroupBy: mean salary and headcount per department
+let by_dept = DataFrame.group_by(df, ["dept"])
+let agg_df  = DataFrame.agg(by_dept, [Mean("salary"), Count])
+
+-- Stats integration
+let summary          = DataFrame.summarize(df)       -- per-column stats as a DataFrame
+let (train, holdout) = DataFrame.train_test_split(df, 0.8)
+</code></pre>
+
+<p>Also shows <code class="language-plaintext highlighter-rouge">inner_join</code>, <code class="language-plaintext highlighter-rouge">col_z_score</code> normalization, and bridging a column to <code class="language-plaintext highlighter-rouge">Stats</code> via <code class="language-plaintext highlighter-rouge">DataFrame.float_list</code>.</p>
+
+<hr />
+
+<h3 id="csv_examplemarch">csv_example.march</h3>
+
+<p>Four CSV parsing patterns from the stdlib: streaming rows, eager read, header-based field access, and TSV mode. Includes finding the oldest person in a dataset and filtering by column value.</p>
+
+<hr />
+
+<h3 id="read_filemarch">read_file.march</h3>
+
+<p>Three file reading patterns: full file into a string, lines into a list, and lazy line streaming with <code class="language-plaintext highlighter-rouge">File.with_lines</code> and <code class="language-plaintext highlighter-rouge">Seq.take</code>.</p>
+
+<pre><code class="language-march">-- Lazy: only reads lines as needed
+File.with_lines("data.txt", fn lines -&gt;
+  let first10 = Seq.take(lines, 10) |&gt; Seq.to_list()
+  List.each(first10, println)
+)
+</code></pre>
+
+<hr />
+
+<h2 id="advanced">Advanced</h2>
+
+<h3 id="capabilitiesmarch">capabilities.march</h3>
+
+<p>The capability security model. Shows <code class="language-plaintext highlighter-rouge">needs IO</code> declarations, <code class="language-plaintext highlighter-rouge">Cap(IO.Console)</code> and <code class="language-plaintext highlighter-rouge">Cap(IO.Network)</code> in function signatures, capability narrowing with <code class="language-plaintext highlighter-rouge">cap_narrow</code>, and higher-order capability passing.</p>
+
+<pre><code class="language-march">needs IO
+
+-- Pure functions need no capability
+fn format_greeting(name : String) : String do "Hello, " ++ name ++ "!" end
+
+-- IO functions take an explicit capability token
+fn greet(cap : Cap(IO.Console), name : String) : Unit do
+  println(format_greeting(name))
+end
+
+-- Narrow the root cap to least-privilege sub-capabilities
+fn main() : Unit do
+  let cap         = root_cap
+  let console_cap = cap_narrow(cap)
+  let net_cap     = cap_narrow(cap)
+  greet(console_cap, "Alice")
+end
+</code></pre>
+
+<hr />
+
+<h3 id="templatesmarch">templates.march</h3>
+
+<p>HTML templating with <code class="language-plaintext highlighter-rouge">~H</code> sigils and <code class="language-plaintext highlighter-rouge">IOList</code> composition. Covers layout wrapping, nested partials, ETag generation, and HTML-safe interpolation.</p>
+
+<hr />
+
+<h3 id="debuggermarch">debugger.march</h3>
+
+<p>Seven debugging workflows in one file: <code class="language-plaintext highlighter-rouge">dbg(expr)</code> logging, conditional breakpoints, <code class="language-plaintext highlighter-rouge">:find</code> search, <code class="language-plaintext highlighter-rouge">:watch</code> expressions, time-travel with <code class="language-plaintext highlighter-rouge">:tsave</code>/<code class="language-plaintext highlighter-rouge">:tload</code>, and actor message history replay.</p>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

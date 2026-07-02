@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Property Testing — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link active">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="property-testing">Property Testing</h1>
+
+<p>March includes a built-in property testing library inspired by <a href="https://hedgehog.qa/">Hedgehog</a>. Instead of writing individual test cases with specific inputs, you describe <strong>properties</strong> that should hold for all values of a type, and the library generates hundreds of random inputs to verify them.</p>
+
+<p>When a property fails, the library automatically <strong>shrinks</strong> the failing input to the smallest counterexample that still fails — without any extra work from you.</p>
+
+<hr />
+
+<h2 id="quick-start">Quick start</h2>
+
+<pre><code class="language-march">mod MyTests do
+
+  test "addition is commutative" do
+    Check.all(Gen.tuple2(Gen.int(-100, 100), Gen.int(-100, 100)), fn pair -&gt;
+      match pair do
+      (a, b) -&gt; a + b == b + a
+      end
+    )
+  end
+
+end
+</code></pre>
+
+<p>Run it:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nb">test </span>my_tests.march
+</code></pre></div></div>
+
+<p>That’s it. <code class="language-plaintext highlighter-rouge">Check.all</code> runs the property 100 times with growing input sizes. If it passes, the test passes silently. If it fails, you get a minimal counterexample.</p>
+
+<hr />
+
+<h2 id="how-it-works">How it works</h2>
+
+<h3 id="generators-produce-values-with-built-in-shrink-trees">Generators produce values with built-in shrink trees</h3>
+
+<p>Every generator returns not just a value, but a <strong>rose tree</strong> of shrink candidates. When <code class="language-plaintext highlighter-rouge">Gen.int(0, 100)</code> generates <code class="language-plaintext highlighter-rouge">87</code>, the tree looks like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>87
+├── 0      (target)
+├── 43     (halfway)
+├── 65     (three-quarters)
+├── 76
+├── 81
+├── 84
+├── 85
+└── 86
+</code></pre></div></div>
+
+<p>Each of those nodes has its own children, recursively. This is called <strong>integrated shrinking</strong> — the shrink strategy is embedded in the generator, not bolted on as a separate step.</p>
+
+<h3 id="why-integrated-shrinking-matters">Why integrated shrinking matters</h3>
+
+<p>When you compose generators with <code class="language-plaintext highlighter-rouge">Gen.bind</code>, the shrinking automatically stays coherent. If you generate a list and then an index into that list, shrinking the list won’t produce an invalid index — the index is re-derived from the same random bits as the original.</p>
+
+<p>This is the key advantage over QuickCheck-style property testing, where shrinking is separate and can produce invalid combinations from dependent generators.</p>
+
+<hr />
+
+<h2 id="writing-properties">Writing properties</h2>
+
+<p>A property is a function that takes a generated value and returns <code class="language-plaintext highlighter-rouge">Bool</code>:</p>
+
+<pre><code class="language-march">test "reverse is involutive" do
+  Check.all(Gen.list(Gen.int(-50, 50)), fn xs -&gt;
+    List.length(List.reverse(List.reverse(xs))) == List.length(xs)
+  )
+end
+</code></pre>
+
+<h3 id="multiple-assertions">Multiple assertions</h3>
+
+<p>Use <code class="language-plaintext highlighter-rouge">let _ = assert ...</code> to chain multiple assertions. The final expression must be <code class="language-plaintext highlighter-rouge">true</code>:</p>
+
+<pre><code class="language-march">test "sort invariants" do
+  Check.all(Gen.list(Gen.int(-100, 100)), fn xs -&gt;
+    let sorted = List.sort_by(xs, int_lt)
+    let _ = assert (List.length(sorted) == List.length(xs))
+    let _ = assert (is_sorted(sorted))
+    true
+  )
+end
+</code></pre>
+
+<p>If any assertion fails, the runner catches the failure and shrinks to the minimal input that triggers it.</p>
+
+<h3 id="crash-catching">Crash-catching</h3>
+
+<p>Properties that crash (division by zero, match failures, index out of bounds) are also caught and shrunk:</p>
+
+<pre><code class="language-march">test "safe_divide handles all inputs" do
+  Check.all(Gen.tuple2(Gen.int(-100, 100), Gen.int(-100, 100)), fn pair -&gt;
+    match pair do
+    (a, b) -&gt;
+      let _ = safe_divide(a, b)
+      true
+    end
+  )
+end
+</code></pre>
+
+<p>If <code class="language-plaintext highlighter-rouge">safe_divide</code> panics for some input, the runner finds the minimal crashing input.</p>
+
+<hr />
+
+<h2 id="available-generators">Available generators</h2>
+
+<h3 id="primitives">Primitives</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th>Produces</th>
+      <th>Shrinks toward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.int(lo, hi)</code></td>
+      <td>Integer in <code class="language-plaintext highlighter-rouge">[lo, hi]</code></td>
+      <td>0 (or nearest bound)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.bool()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> or <code class="language-plaintext highlighter-rouge">false</code></td>
+      <td><code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.float(lo, hi)</code></td>
+      <td>Float in <code class="language-plaintext highlighter-rouge">[lo, hi)</code></td>
+      <td>0.0 (or nearest bound)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.constant(x)</code></td>
+      <td>Always <code class="language-plaintext highlighter-rouge">x</code></td>
+      <td>No shrinking</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.element(xs)</code></td>
+      <td>Uniform from list</td>
+      <td>First element</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.int_sized()</code></td>
+      <td>Integer in <code class="language-plaintext highlighter-rouge">[0, size]</code></td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="strings-and-characters">Strings and characters</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th>Produces</th>
+      <th>Shrinks toward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.ascii_char()</code></td>
+      <td>Char code 32-126</td>
+      <td><code class="language-plaintext highlighter-rouge">'a'</code> (97)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.lowercase_char()</code></td>
+      <td>Char code 97-122</td>
+      <td><code class="language-plaintext highlighter-rouge">'a'</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.string()</code></td>
+      <td>ASCII string</td>
+      <td>Shorter, simpler chars</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.lowercase_string()</code></td>
+      <td>Lowercase string</td>
+      <td>Shorter</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.string_of(char_gen)</code></td>
+      <td>String from custom char generator</td>
+      <td>Shorter, simpler</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="collections">Collections</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th>Produces</th>
+      <th>Shrinks toward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.list(gen)</code></td>
+      <td>List, length <code class="language-plaintext highlighter-rouge">[0, size]</code></td>
+      <td>Shorter, simpler elements</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.list_of_size(n, gen)</code></td>
+      <td>List of exactly <code class="language-plaintext highlighter-rouge">n</code></td>
+      <td>Simpler elements</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.option(gen)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">None</code> ~25%, <code class="language-plaintext highlighter-rouge">Some(x)</code> ~75%</td>
+      <td><code class="language-plaintext highlighter-rouge">None</code> first</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.tuple2(ga, gb)</code></td>
+      <td>2-tuple</td>
+      <td>Each component independently</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.tuple3(ga, gb, gc)</code></td>
+      <td>3-tuple</td>
+      <td>Each component independently</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="combinators">Combinators</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Combinator</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.map(gen, f)</code></td>
+      <td>Transform values; shrinking inherited</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.filter(gen, pred)</code></td>
+      <td>Rejection sampling; up to 100 attempts</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.bind(gen, f)</code></td>
+      <td>Dependent generators; shrinking stays coherent</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.one_of(gens)</code></td>
+      <td>Uniform choice among generators</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.frequency(pairs)</code></td>
+      <td>Weighted choice: <code class="language-plaintext highlighter-rouge">[(3, gen_a), (1, gen_b)]</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gen.sized(f)</code></td>
+      <td>Access the size hint: <code class="language-plaintext highlighter-rouge">fn size -&gt; gen</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="combinators-in-depth">Combinators in depth</h2>
+
+<h3 id="genmap--transform-values"><code class="language-plaintext highlighter-rouge">Gen.map</code> — transform values</h3>
+
+<pre><code class="language-march">-- Generate even numbers
+let gen_even = Gen.map(Gen.int(0, 50), fn n -&gt; n * 2)
+
+-- Generate record-like tuples
+let gen_point = Gen.map(
+  Gen.tuple2(Gen.float(-1.0, 1.0), Gen.float(-1.0, 1.0)),
+  fn pair -&gt; match pair do (x, y) -&gt; (x, y) end
+)
+</code></pre>
+
+<h3 id="genbind--dependent-generators"><code class="language-plaintext highlighter-rouge">Gen.bind</code> — dependent generators</h3>
+
+<p>When the second generator depends on the first value:</p>
+
+<pre><code class="language-march">-- Generate a list and a valid index into it
+let gen_list_and_index = Gen.bind(
+  Gen.filter(Gen.list(Gen.int(0, 100)), fn xs -&gt; List.length(xs) &gt; 0),
+  fn xs -&gt; Gen.map(Gen.int(0, List.length(xs) - 1), fn i -&gt; (xs, i))
+)
+</code></pre>
+
+<p>Shrinking the list automatically re-derives a valid index.</p>
+
+<h3 id="genstring_of--custom-string-alphabets"><code class="language-plaintext highlighter-rouge">Gen.string_of</code> — custom string alphabets</h3>
+
+<pre><code class="language-march">-- Hex strings
+let hex_char = Gen.element([48, 49, 50, 51, 52, 53, 54, 55,
+                            56, 57, 97, 98, 99, 100, 101, 102])
+let gen_hex = Gen.string_of(hex_char)
+
+-- Digit-only strings
+let gen_digits = Gen.string_of(Gen.int(48, 57))
+</code></pre>
+
+<h3 id="gensized--size-dependent-generation"><code class="language-plaintext highlighter-rouge">Gen.sized</code> — size-dependent generation</h3>
+
+<p>The runner grows the <code class="language-plaintext highlighter-rouge">size</code> parameter from 0 to 100 across runs. Use <code class="language-plaintext highlighter-rouge">Gen.sized</code> to access it:</p>
+
+<pre><code class="language-march">-- Cap list length at 10 regardless of runner size
+let gen_short_list = Gen.sized(fn s -&gt;
+  let cap = if s &gt; 10 do 10 else s end
+  Gen.list_of_size(cap, Gen.int(0, 100))
+)
+</code></pre>
+
+<hr />
+
+<h2 id="configuration">Configuration</h2>
+
+<h3 id="checkall_with"><code class="language-plaintext highlighter-rouge">Check.all_with</code></h3>
+
+<p>Override defaults with <code class="language-plaintext highlighter-rouge">Check.all_with</code>:</p>
+
+<pre><code class="language-march">test "stress test with more runs" do
+  let config = { Check.default_config() with num_runs = 500, max_size = 200 }
+  Check.all_with(Gen.list(Gen.int(0, 100)), fn xs -&gt;
+    List.length(xs) &gt;= 0
+  , config)
+end
+</code></pre>
+
+<p><strong>Config fields:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">num_runs</code></td>
+      <td>100</td>
+      <td>Number of random inputs to test</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">seed</code></td>
+      <td><code class="language-plaintext highlighter-rouge">None</code></td>
+      <td>Fixed seed (<code class="language-plaintext highlighter-rouge">Some(42)</code>); overrides env/clock</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">max_shrink_steps</code></td>
+      <td>1000</td>
+      <td>Max shrink attempts before giving up</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">max_size</code></td>
+      <td>100</td>
+      <td>Maximum size hint passed to generators</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="reproducible-seeds">Reproducible seeds</h3>
+
+<p>When a property fails, the output includes the seed:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>property failed after 23 run(s)
+  counterexample: 50
+  returned false
+  shrunk 3 step(s) from: 94
+  reproduce with seed: 1234567890
+</code></pre></div></div>
+
+<p>Re-run with the same seed:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nb">test </span>my_tests.march <span class="nt">--seed</span><span class="o">=</span>1234567890
+forge <span class="nb">test</span> <span class="nt">--seed</span><span class="o">=</span>1234567890
+</code></pre></div></div>
+
+<h3 id="skipping-property-tests">Skipping property tests</h3>
+
+<p>Property tests run hundreds of iterations and can be slow. Skip them for fast feedback:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nb">test</span> <span class="nt">--skip-properties</span>
+forge <span class="nb">test</span> <span class="nt">--skip-properties</span>
+</code></pre></div></div>
+
+<p>All <code class="language-plaintext highlighter-rouge">Check.all</code> calls return immediately without running.</p>
+
+<hr />
+
+<h2 id="failure-output">Failure output</h2>
+
+<p>A failing property produces a report like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAIL: "list is always non-empty"
+  error: panic: property failed after 1 run(s)
+    counterexample: []
+    returned false
+    shrunk 0 step(s) from: []
+    reproduce with seed: 1776290875
+</code></pre></div></div>
+
+<p>For assertion failures, the assertion diagnostic is included:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAIL: "values are bounded"
+  error: panic: property failed after 5 run(s)
+    counterexample: 10
+    raised: assert 10 &lt; 10
+      left:  10
+      right: 10
+    shrunk 2 step(s) from: 13
+    reproduce with seed: 42
+</code></pre></div></div>
+
+<p>For crashes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAIL: "no division by zero"
+  error: panic: property failed after 21 run(s)
+    counterexample: 0
+    raised: int_div: division by zero
+    shrunk 0 step(s) from: 0
+    reproduce with seed: 99
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="property-patterns">Property patterns</h2>
+
+<h3 id="algebraic-laws">Algebraic laws</h3>
+
+<p>Test mathematical properties that must hold:</p>
+
+<pre><code class="language-march">-- Commutativity: a + b == b + a
+-- Associativity: (a + b) + c == a + (b + c)
+-- Identity: a + 0 == a
+-- Inverse: a - a == 0
+-- Distributivity: a * (b + c) == a*b + a*c
+-- Idempotence: sort(sort(xs)) == sort(xs)
+-- Involution: reverse(reverse(xs)) == xs
+</code></pre>
+
+<h3 id="round-trip-properties">Round-trip properties</h3>
+
+<p>Encode and decode should cancel:</p>
+
+<pre><code class="language-march">test "base64 round-trip" do
+  Check.all(Gen.lowercase_string(), fn s -&gt;
+    let encoded = Base64.encode(Bytes.from_string(s))
+    match Base64.decode(encoded) do
+    Ok(decoded) -&gt; Bytes.to_string(decoded) == s
+    Err(_)      -&gt; false
+    end
+  )
+end
+</code></pre>
+
+<h3 id="structural-invariants">Structural invariants</h3>
+
+<p>Operations should preserve certain properties:</p>
+
+<pre><code class="language-march">-- Length preservation: length(map(f, xs)) == length(xs)
+-- Monotonicity: length(filter(p, xs)) &lt;= length(xs)
+-- Sorted output: is_sorted(sort(xs))
+-- Partition: take(n, xs) ++ drop(n, xs) == xs
+</code></pre>
+
+<h3 id="model-checking">Model checking</h3>
+
+<p>Compare a complex implementation against a simpler reference:</p>
+
+<pre><code class="language-march">test "BigInt mul matches Int for small values" do
+  Check.all(Gen.tuple2(Gen.int(-100, 100), Gen.int(-100, 100)), fn pair -&gt;
+    match pair do (a, b) -&gt;
+      BigInt.to_string(BigInt.mul(BigInt.from_int(a), BigInt.from_int(b)))
+        == int_to_string(a * b)
+    end
+  )
+end
+</code></pre>
+
+<hr />
+
+<h2 id="api-reference">API reference</h2>
+
+<h3 id="gen-module">Gen module</h3>
+
+<p><strong>Primitives:</strong> <code class="language-plaintext highlighter-rouge">int(lo, hi)</code> (bounds required), <code class="language-plaintext highlighter-rouge">int_sized</code>, <code class="language-plaintext highlighter-rouge">bool</code>, <code class="language-plaintext highlighter-rouge">float</code>, <code class="language-plaintext highlighter-rouge">constant</code>, <code class="language-plaintext highlighter-rouge">element</code>, <code class="language-plaintext highlighter-rouge">ascii_char</code>, <code class="language-plaintext highlighter-rouge">lowercase_char</code></p>
+
+<p><strong>Strings:</strong> <code class="language-plaintext highlighter-rouge">string</code>, <code class="language-plaintext highlighter-rouge">lowercase_string</code>, <code class="language-plaintext highlighter-rouge">string_of</code></p>
+
+<p><strong>Collections:</strong> <code class="language-plaintext highlighter-rouge">list</code>, <code class="language-plaintext highlighter-rouge">list_of_size</code>, <code class="language-plaintext highlighter-rouge">option</code>, <code class="language-plaintext highlighter-rouge">tuple2</code>, <code class="language-plaintext highlighter-rouge">tuple3</code></p>
+
+<p><strong>Combinators:</strong> <code class="language-plaintext highlighter-rouge">map</code>, <code class="language-plaintext highlighter-rouge">filter</code>, <code class="language-plaintext highlighter-rouge">bind</code>, <code class="language-plaintext highlighter-rouge">one_of</code>, <code class="language-plaintext highlighter-rouge">frequency</code>, <code class="language-plaintext highlighter-rouge">sized</code></p>
+
+<p><strong>Tree inspection (advanced):</strong> <code class="language-plaintext highlighter-rouge">tree_root</code>, <code class="language-plaintext highlighter-rouge">tree_children</code>, <code class="language-plaintext highlighter-rouge">tree_singleton</code>, <code class="language-plaintext highlighter-rouge">tree_map</code>, <code class="language-plaintext highlighter-rouge">tree_bind</code>, <code class="language-plaintext highlighter-rouge">tree_filter</code>, <code class="language-plaintext highlighter-rouge">run</code></p>
+
+<h3 id="check-module">Check module</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Signature</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Check.all(gen, prop)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Generator(a), (a -&gt; Bool) -&gt; Unit</code></td>
+      <td>Run property with defaults</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Check.all_with(gen, prop, config)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">..., CheckConfig -&gt; Unit</code></td>
+      <td>Run with custom config</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Check.default_config()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">-&gt; CheckConfig</code></td>
+      <td><code class="language-plaintext highlighter-rouge">{num_runs=100, seed=None, max_shrink_steps=1000, max_size=100}</code></td>
+    </tr>
+  </tbody>
+</table>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

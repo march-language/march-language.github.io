@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clustering & RPC — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link active">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="clustering--rpc">Clustering &amp; RPC</h1>
+
+<p>March’s distributed layer lets multiple nodes form a cluster, discover each other, detect failures, and call functions across node boundaries with type-safety guarantees. The full stack is built from composable pure modules layered on top of the <a href="/docs/actors/">actor runtime</a> and its <a href="/docs/supervision/">supervision trees</a>.</p>
+
+<hr />
+
+<h2 id="from-one-node-to-a-cluster">From one node to a cluster</h2>
+
+<p>Start from where <a href="/docs/supervision/">Supervision Trees</a> leaves off: a supervised actor app running on a single machine. You <code class="language-plaintext highlighter-rouge">spawn</code> a worker, it gets a <code class="language-plaintext highlighter-rouge">Pid</code>, and locally you might register it under a name so other parts of the program can find it without threading the <code class="language-plaintext highlighter-rouge">Pid</code> around.</p>
+
+<p><strong>Clustering is that exact pattern, stretched across machines.</strong> <code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is <em>the distributed version of spawning and registering an actor</em>: instead of a name → <code class="language-plaintext highlighter-rouge">Pid</code> map living in one process, it’s a cluster-wide, gossip-replicated name → <code class="language-plaintext highlighter-rouge">{node_id, pid}</code> map that every node converges on. Register a worker under a cluster name on Node A, and Node B can look that name up and call it — without ever holding A’s raw <code class="language-plaintext highlighter-rouge">Pid</code>.</p>
+
+<p>Here’s the whole arc in miniature. On Node A, a supervised worker registers itself under a cluster-wide name:</p>
+
+<pre><code class="language-march">-- Node A: register a local worker under a cluster-wide name.
+-- `my_clock` is this node's VectorClock; `42` is the worker's local Pid as an Int.
+let reg = GlobalRegistry.empty()
+let reg = GlobalRegistry.register(reg, "image-resizer", "a@127.0.0.1", 42, my_clock)
+</code></pre>
+
+<p>That <code class="language-plaintext highlighter-rouge">reg</code> is gossiped to peers (every <code class="language-plaintext highlighter-rouge">merge</code> is idempotent, so re-delivery is safe). On Node B, after the registry has converged, a second node looks the name up and issues a <code class="language-plaintext highlighter-rouge">RemoteCall</code> against it:</p>
+
+<pre><code class="language-march">-- Node B: find the worker by name, then call it across the cluster.
+match GlobalRegistry.lookup(reg, "image-resizer") do
+  None -&gt;
+    -- not registered yet (or tombstoned) — retry later
+    ()
+  Some((node_id, pid)) -&gt;
+    -- Build a type-safe remote reference and a request addressed to that pid.
+    let fref      = RemoteCall.remote_ref("Image", "resize", sig_hash, impl_hash)
+    let reply_to  = GlobalPid.make(my_id.node_id, 1, 1)
+    let args      = Msgpack.encode(Msgpack.int(800))
+    let req       = RemoteCall.request(fref, args, reply_to, 5000, 1)
+    -- `RemoteCall.encode_request(req)` is the frame to send to `node_id`;
+    -- the reply is decoded with `NodeRpc.interpret`. (Full loop below.)
+    ()
+end
+</code></pre>
+
+<p>The rest of this page is the machinery that makes those two snippets safe: how nodes authenticate (handshake), how they agree on who’s alive (membership + SWIM), how a name resolves to a node (<code class="language-plaintext highlighter-rouge">GlobalRegistry</code>), and how a call is type-checked before the remote body runs (<code class="language-plaintext highlighter-rouge">RemoteCall</code> / <code class="language-plaintext highlighter-rouge">NodeRpc</code>). Read it top-to-bottom for the layered model, or jump to <a href="#putting-it-together">Putting It Together</a> for an end-to-end two-node skeleton.</p>
+
+<blockquote>
+  <p><code class="language-plaintext highlighter-rouge">GlobalRegistry.lookup</code> returns <code class="language-plaintext highlighter-rouge">Option((String, Int))</code> — the holder’s <code class="language-plaintext highlighter-rouge">node_id</code> and its <strong>local</strong> <code class="language-plaintext highlighter-rouge">pid</code> on that node. You address remote calls with a <code class="language-plaintext highlighter-rouge">GlobalPid</code> (node + local pid + creation counter), which is what survives a restart unambiguously.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>A March cluster is a set of named nodes connected by authenticated TCP links. The stack is organized in layers:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Module(s)</th>
+      <th>Responsibility</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>L1</td>
+      <td><code class="language-plaintext highlighter-rouge">NetFrame</code>, <code class="language-plaintext highlighter-rouge">Socket</code></td>
+      <td>Length-prefixed framing over TCP</td>
+    </tr>
+    <tr>
+      <td>L2</td>
+      <td><code class="language-plaintext highlighter-rouge">NetKernel</code>, <code class="language-plaintext highlighter-rouge">ClusterConn</code></td>
+      <td>Node-to-node channels, authenticated handshake</td>
+    </tr>
+    <tr>
+      <td>L3</td>
+      <td><code class="language-plaintext highlighter-rouge">Membership</code>, <code class="language-plaintext highlighter-rouge">Swim</code>, <code class="language-plaintext highlighter-rouge">PeerRegistry</code></td>
+      <td>Failure detection, live member set</td>
+    </tr>
+    <tr>
+      <td>L4</td>
+      <td><code class="language-plaintext highlighter-rouge">RemoteCall</code>, <code class="language-plaintext highlighter-rouge">NodeRpc</code>, <code class="language-plaintext highlighter-rouge">GlobalPid</code></td>
+      <td>Safe cross-node function calls</td>
+    </tr>
+    <tr>
+      <td>L5</td>
+      <td><code class="language-plaintext highlighter-rouge">GlobalRegistry</code></td>
+      <td>Cluster-wide name → pid registry (CRDT)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="node-identity">Node Identity</h2>
+
+<p>Every node has a stable identity captured in a <code class="language-plaintext highlighter-rouge">NodeIdentity.Identity</code> record:</p>
+
+<pre><code class="language-march">let id = NodeIdentity.make("alice@host", "alice-public-key", 1)
+-- { name: "alice@host", node_id: &lt;sha256 of pubkey&gt;, incarnation: 1 }
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">make(name, pubkey, incarnation)</code> derives the <code class="language-plaintext highlighter-rouge">node_id</code> by hashing the public key (<code class="language-plaintext highlighter-rouge">Crypto.sha256(pubkey)</code>). The resulting <code class="language-plaintext highlighter-rouge">node_id</code> is the primary key used in every distributed data structure, and it must be unique across the cluster. <code class="language-plaintext highlighter-rouge">incarnation</code> increments each time the node restarts, so peers can tell a fresh start from a stale one.</p>
+
+<h3 id="serialisation">Serialisation</h3>
+
+<p>Node identities are serialised to MessagePack for transport:</p>
+
+<pre><code class="language-march">let bytes = NodeIdentity.encode(id)   -- List(Int)
+match NodeIdentity.decode(bytes) do
+  Ok(id2) -&gt; id2
+  Err(e)  -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="authentication--handshake">Authentication &amp; Handshake</h2>
+
+<p>Before any cluster traffic flows, nodes exchange a challenge-response handshake using a shared secret.</p>
+
+<h3 id="generating-a-secret">Generating a secret</h3>
+
+<pre><code class="language-march">let secret = Crypto.random_hex(32)   -- random hex String shared by all nodes
+</code></pre>
+
+<p>The secret is just a <code class="language-plaintext highlighter-rouge">String</code>; <code class="language-plaintext highlighter-rouge">ClusterAuth.prove(secret, nonce)</code> signs a challenge with <code class="language-plaintext highlighter-rouge">HMAC-SHA256(secret, nonce)</code> and the secret itself never goes on the wire. All nodes in a cluster must share the same secret (distribute it via environment variable or a secrets manager).</p>
+
+<h3 id="performing-the-handshake">Performing the handshake</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Handshake</code> is a pure state machine — call it once per new connection:</p>
+
+<pre><code class="language-march">-- Initiator side
+let nonce  = NetKernel.fresh_nonce()
+let result = NetKernel.handshake(fd, my_id, secret, nonce)
+
+match result do
+  Ok(peer_id) -&gt; -- connection authenticated; peer_id is their NodeIdentity
+  Err(e)      -&gt; -- reject and close fd
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">ClusterConn.accept_one</code> wraps the accept → handshake → enroll flow for the listening side:</p>
+
+<pre><code class="language-march">match ClusterConn.accept_one(registry, listen_fd, my_id, secret) do
+  Ok(peer_id) -&gt; -- new peer enrolled
+  Err(e)      -&gt; -- handshake failed
+end
+</code></pre>
+
+<h3 id="starting-the-listener">Starting the listener</h3>
+
+<pre><code class="language-march">match ClusterConn.listen(9000) do
+  Ok(listen_fd) -&gt;
+    -- accept loop
+    let loop = fn _ -&gt;
+      match ClusterConn.accept_one(registry, listen_fd, my_id, secret) do
+        Ok(peer_id) -&gt; log("connected: " ++ peer_id.node_id)
+        Err(e)      -&gt; log("rejected: " ++ e)
+      end
+      loop(Nil)
+    loop(Nil)
+  Err(e) -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="membership--failure-detection">Membership &amp; Failure Detection</h2>
+
+<h3 id="membership-crdt">Membership CRDT</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Membership</code> maintains the set of known cluster members as a last-write-wins CRDT. Each member carries a <code class="language-plaintext highlighter-rouge">MemberStatus</code> (<code class="language-plaintext highlighter-rouge">Alive</code>, <code class="language-plaintext highlighter-rouge">Suspect</code>, or <code class="language-plaintext highlighter-rouge">Dead</code>) and an <code class="language-plaintext highlighter-rouge">incarnation</code> counter for causal ordering. You build a <code class="language-plaintext highlighter-rouge">Member</code> value with <code class="language-plaintext highlighter-rouge">alive</code>/<code class="language-plaintext highlighter-rouge">suspect</code>/<code class="language-plaintext highlighter-rouge">dead</code>, then fold it into the view with <code class="language-plaintext highlighter-rouge">observe</code>.</p>
+
+<pre><code class="language-march">let members = Membership.empty()
+let members = Membership.observe(members, Membership.alive("alice@192.168.1.10", 1))
+-- Mark a member dead by observing a Dead status at its current incarnation
+let members = Membership.observe(members, Membership.dead("bob@192.168.1.11", 1))
+
+-- Merge two views (safe to call repeatedly — idempotent)
+let merged = Membership.merge(local_view, remote_view)
+
+-- Query
+let alive  = Membership.alive_members(members)   -- List(Member)
+let member = Membership.get(members, "alice@192.168.1.10")   -- Option(Member)
+</code></pre>
+
+<h3 id="swim-failure-detection">SWIM failure detection</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Swim</code> implements the SWIM gossip protocol as a pure state machine. It produces <code class="language-plaintext highlighter-rouge">Action</code> values that tell the runtime what to send — no sockets inside.</p>
+
+<pre><code class="language-march">let cfg   = Swim.config(200, 2000, 3)   -- ack_timeout_ms, suspect_timeout_ms, indirect_k
+let state = Swim.make("alice@192.168.1.10", 1, members, cfg)
+
+-- Tick: begin a probe period by directly pinging a (caller-chosen) target
+let (state, action) = Swim.begin_period(state, now_ms, "bob@192.168.1.11")
+-- action is SendPing(target)
+
+-- Process an incoming ack
+let state = Swim.on_ack(state, "bob@192.168.1.11")
+
+-- Escalate an overdue direct ping to indirect ping-reqs via helper nodes
+let (state, actions) = Swim.escalate_indirect(state, now_ms, helpers)
+
+-- End the period: an unacked probe marks its target Suspect and gossips it
+let (state, actions) = Swim.end_period(state, now_ms)
+
+-- Advance suspect timeouts: promote expired Suspects to Dead
+let (state, actions) = Swim.expire_suspects(state, now_ms)
+</code></pre>
+
+<p>Each <code class="language-plaintext highlighter-rouge">Action</code> maps to a message to send over the cluster connection:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SendPing(target)</code></td>
+      <td>Direct probe to <code class="language-plaintext highlighter-rouge">target</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SendPingReq(target, intermediary)</code></td>
+      <td>Indirect probe via <code class="language-plaintext highlighter-rouge">intermediary</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gossip(member)</code></td>
+      <td>Piggyback member state on next message</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="global-registry">Global Registry</h2>
+
+<p><code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is a cluster-wide name → <code class="language-plaintext highlighter-rouge">{node_id, pid}</code> mapping that merges correctly under concurrent updates (CRDT with vector-clock causal ordering and deterministic tiebreak).</p>
+
+<pre><code class="language-march">let reg = GlobalRegistry.empty()
+
+-- Register a name on this node
+let reg = GlobalRegistry.register(reg, "worker-1", "alice@192.168.1.10", 42, my_clock)
+
+-- Look up a name — returns Option((node_id, pid))
+match GlobalRegistry.lookup(reg, "worker-1") do
+  Some((node_id, pid)) -&gt; pid      -- Int (local pid on node_id)
+  None                 -&gt; ...
+end
+
+-- Remove a name (tombstone — converges with concurrent registrations)
+let reg = GlobalRegistry.unregister(reg, "worker-1", my_clock)
+
+-- Merge two registry views (idempotent)
+let reg = GlobalRegistry.merge(local_reg, remote_reg)
+
+-- Enumerate
+let names = GlobalRegistry.names(reg)   -- List(String)
+let n     = GlobalRegistry.size(reg)
+</code></pre>
+
+<p>Merge is idempotent: applying the same remote view twice produces the same result. This makes gossip-based propagation safe — broadcast to all peers and let them forward.</p>
+
+<hr />
+
+<h2 id="remote-calls">Remote Calls</h2>
+
+<h3 id="globalpid--cluster-wide-process-identifiers">GlobalPid — cluster-wide process identifiers</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">GlobalPid</code> uniquely identifies a process across the cluster:</p>
+
+<pre><code class="language-march">let pid = GlobalPid.make("alice@192.168.1.10", 42, 1)
+-- { node_id: "alice@192.168.1.10", local_pid: 42, creation: 1 }
+
+-- Serialise / deserialise (for inclusion in RPC messages)
+let v    = GlobalPid.to_value(pid)
+let pid2 = GlobalPid.of_value(v)   -- Result(GlobalPid.Pid, String)
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">creation</code> counter lets the runtime distinguish a new process at the same local pid from a restarted one.</p>
+
+<h3 id="remoteref--type-safe-function-references">RemoteRef — type-safe function references</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">RemoteRef</code> pins a remote function by both its type signature hash and its implementation hash:</p>
+
+<pre><code class="language-march">let fref = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+-- { module_name: "Math", fn_name: "add", sig_hash: ..., impl_hash: ... }
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Hash of</th>
+      <th>Guards against</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code></td>
+      <td>Public type signature</td>
+      <td>Calling a function with a different type</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">impl_hash</code></td>
+      <td>Function body (Merkle root)</td>
+      <td>Calling a different version of the same function</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The hashes are recorded in the compiled binary. The responder node’s RPC dispatcher rejects any call where they don’t match its local copy.</p>
+
+<h3 id="making-a-call">Making a call</h3>
+
+<p>Build a <code class="language-plaintext highlighter-rouge">CallRequest</code>, encode it, send it over the connection, then decode the reply:</p>
+
+<pre><code class="language-march">let reply_pid = GlobalPid.make(my_node_id, my_local_pid, 1)
+let fref      = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+let args      = Msgpack.encode(Msgpack.array(Cons(Msgpack.int(2), Cons(Msgpack.int(3), Nil))))
+let req       = RemoteCall.request(fref, args, reply_pid, deadline_ms, correlation_id)
+
+-- Encode to bytes for transport
+let frame = RemoteCall.encode_request(req)
+
+-- On the caller side, when a reply arrives:
+match NodeRpc.interpret(reply) do
+  Ok(payload) -&gt;
+    -- payload is raw Msgpack bytes; decode them
+    match Msgpack.decode(payload) do
+      Ok(Msgpack.Int(n)) -&gt; n
+      _                  -&gt; ...
+    end
+  Err(err) -&gt;
+    -- err is a CallError — see below
+    ...
+end
+</code></pre>
+
+<h3 id="callerror-taxonomy">CallError taxonomy</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Error</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DeadlineExceeded</code></td>
+      <td>No reply before the deadline</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NoConnection</code></td>
+      <td>The peer is unreachable or has disconnected</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">RemoteExit(msg)</code></td>
+      <td>The target function raised an error</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TypeMismatch</code></td>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code> did not match — type API changed</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">VersionSkew</code></td>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code> matched but <code class="language-plaintext highlighter-rouge">impl_hash</code> did not — different body version</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NoTarget</code></td>
+      <td>No function enrolled under that module/function name</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">TypeMismatch</code> and <code class="language-plaintext highlighter-rouge">VersionSkew</code> are safe: the remote body was <strong>never invoked</strong>.</p>
+
+<h3 id="caller-side-helpers">Caller-side helpers</h3>
+
+<pre><code class="language-march">-- Check whether a reply belongs to a given request (by correlation id)
+NodeRpc.matches(req, reply)    -- Bool
+
+-- Timeout check (compare current time to request deadline)
+NodeRpc.timed_out(now_ms, req.deadline)   -- Bool
+
+-- Synthesise a peer-down error reply
+NodeRpc.peer_down_error()   -- CallError
+</code></pre>
+
+<hr />
+
+<h2 id="responder-side-noderpc">Responder Side (NodeRpc)</h2>
+
+<p>Each node runs an RPC dispatcher that maps <code class="language-plaintext highlighter-rouge">(module, function)</code> keys to local stubs. The stubs decode MessagePack arguments, call the local function, and encode the result.</p>
+
+<h3 id="enrolling-a-function">Enrolling a function</h3>
+
+<pre><code class="language-march">-- A stub: decode args, call the real function, encode the result
+fn add_stub(args : List(Int)) : Result(List(Int), String) do
+  match Msgpack.decode(args) do
+    Err(e) -&gt; Err(e)
+    Ok(v)  -&gt;
+      match v do
+        Msgpack.Array(Cons(Msgpack.Int(a), Cons(Msgpack.Int(b), Nil))) -&gt;
+          Ok(Msgpack.encode(Msgpack.int(a + b)))
+        _ -&gt; Err("add: bad args")
+      end
+  end
+end
+
+let targets = NodeRpc.empty()
+let target  = { sig_hash: sig_hash, impl_hash: impl_hash, invoke: add_stub }
+let targets = NodeRpc.enroll(targets, "Math", "add", target)
+</code></pre>
+
+<h3 id="dispatching-incoming-frames">Dispatching incoming frames</h3>
+
+<pre><code class="language-march">-- Given raw bytes from the network:
+match NodeRpc.handle_frame(targets, frame) do
+  Some(reply) -&gt;
+    -- Encode the reply and send it back
+    let reply_bytes = RemoteCall.encode_reply(reply)
+    -- ... write reply_bytes to the peer's socket ...
+  None -&gt;
+    -- Malformed frame — log and discard
+    ()
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">handle_frame</code> decodes the request, verifies <code class="language-plaintext highlighter-rouge">sig_hash</code> and <code class="language-plaintext highlighter-rouge">impl_hash</code> against the enrolled stub, invokes it (if both match), and returns a <code class="language-plaintext highlighter-rouge">CallReply</code>. The verification logic is:</p>
+
+<ol>
+  <li>No stub for <code class="language-plaintext highlighter-rouge">(module, fn)</code> → <code class="language-plaintext highlighter-rouge">NoTarget</code></li>
+  <li><code class="language-plaintext highlighter-rouge">sig_hash</code> mismatch → <code class="language-plaintext highlighter-rouge">TypeMismatch</code> (stub never called)</li>
+  <li><code class="language-plaintext highlighter-rouge">impl_hash</code> mismatch → <code class="language-plaintext highlighter-rouge">VersionSkew</code> (stub never called)</li>
+  <li>Stub returns <code class="language-plaintext highlighter-rouge">Err(msg)</code> → <code class="language-plaintext highlighter-rouge">RemoteExit(msg)</code></li>
+  <li>Stub returns <code class="language-plaintext highlighter-rouge">Ok(bytes)</code> → <code class="language-plaintext highlighter-rouge">Returned(bytes)</code></li>
+</ol>
+
+<hr />
+
+<h2 id="putting-it-together">Putting It Together</h2>
+
+<blockquote>
+  <p><strong>This is a layered API-reference skeleton, not a runnable program.</strong> It shows how the pieces connect — identity, listen/connect, handshake, then a <code class="language-plaintext highlighter-rouge">RemoteCall</code> — but elides two things you must supply for real: (1) the actual byte transport over the socket <code class="language-plaintext highlighter-rouge">fd</code>, and (2) concrete <code class="language-plaintext highlighter-rouge">sig_hash</code> / <code class="language-plaintext highlighter-rouge">impl_hash</code> values, which the compiler bakes into your binary for the specific functions you enroll. The send/recv framing is <code class="language-plaintext highlighter-rouge">NetFrame</code>’s job (length-prefixed frames); see the <em>Wiring up the transport</em> note after the skeleton for how to close the loop.</p>
+</blockquote>
+
+<p>A minimal two-node cluster:</p>
+
+<p><strong>Node A (listener)</strong></p>
+
+<pre><code class="language-march">mod NodeA do
+  fn main() do
+    let my_id = NodeIdentity.make("a@127.0.0.1", "node-a-pubkey", 1)
+    let secret = Crypto.random_hex(32)
+    let reg    = PeerRegistry.empty()
+
+    match ClusterConn.listen(9000) do
+      Err(e) -&gt; Env.exit(1)
+      Ok(listen_fd) -&gt;
+        -- Accept one peer (in practice, loop in an actor)
+        match ClusterConn.accept_one(reg, listen_fd, my_id, secret) do
+          Ok(peer_id) -&gt; run_rpc_loop(peer_id)
+          Err(e)      -&gt; Env.exit(1)
+        end
+    end
+  end
+end
+</code></pre>
+
+<p><strong>Node B (connector)</strong></p>
+
+<pre><code class="language-march">mod NodeB do
+  fn main() do
+    let my_id = NodeIdentity.make("b@127.0.0.1", "node-b-pubkey", 1)
+    let secret = -- same secret as Node A
+
+    match Socket.connect("127.0.0.1", 9000) do
+      Err(e) -&gt; Env.exit(1)
+      Ok(fd) -&gt;
+        let nonce = NetKernel.fresh_nonce()
+        match NetKernel.handshake(fd, my_id, secret, nonce) do
+          Err(e)       -&gt; Env.exit(1)
+          Ok(peer_id)  -&gt;
+            -- Now call Math.add on Node A
+            let fref = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+            let args = Msgpack.encode(
+              Msgpack.array(Cons(Msgpack.int(2), Cons(Msgpack.int(3), Nil))))
+            let reply_pid = GlobalPid.make(my_id.node_id, 1, 1)
+            let req  = RemoteCall.request(fref, args, reply_pid, 5000, 1)
+            -- send RemoteCall.encode_request(req) over fd, read reply ...
+        end
+    end
+  end
+end
+</code></pre>
+
+<h3 id="wiring-up-the-transport">Wiring up the transport</h3>
+
+<p>To turn the skeleton into a running program, close the two gaps the note above flagged:</p>
+
+<ol>
+  <li><strong>Framing.</strong> <code class="language-plaintext highlighter-rouge">RemoteCall.encode_request(req)</code> gives you a <code class="language-plaintext highlighter-rouge">List(Int)</code> of bytes. Wrap it in a length prefix with <code class="language-plaintext highlighter-rouge">NetFrame</code> and write it to the socket <code class="language-plaintext highlighter-rouge">fd</code>; on the other end, read a length-prefixed frame back and hand the bytes to <code class="language-plaintext highlighter-rouge">RemoteCall.decode_reply</code> (caller side) or <code class="language-plaintext highlighter-rouge">NodeRpc.handle_frame</code> (responder side). The accept/recv loop is the same shape as the <code class="language-plaintext highlighter-rouge">ClusterConn.listen</code> example in <a href="#starting-the-listener">Starting the listener</a> — receive a frame, dispatch, write the reply.</li>
+  <li><strong>Hashes.</strong> <code class="language-plaintext highlighter-rouge">sig_hash</code> and <code class="language-plaintext highlighter-rouge">impl_hash</code> are produced by the compiler for the enrolled function (<code class="language-plaintext highlighter-rouge">Image.resize</code>, <code class="language-plaintext highlighter-rouge">Math.add</code>, …) and recorded in the binary; you reference the compiler-provided values rather than inventing them. A mismatch is caught <em>before</em> the remote body runs (<code class="language-plaintext highlighter-rouge">TypeMismatch</code> / <code class="language-plaintext highlighter-rouge">VersionSkew</code>), which is the whole point of the type-safe call path.</li>
+</ol>
+
+<p>For a complete, executing example, see the cluster integration tests under the project’s <code class="language-plaintext highlighter-rouge">test/</code> tree (search with <code class="language-plaintext highlighter-rouge">forge search</code> for <code class="language-plaintext highlighter-rouge">ClusterConn</code>, <code class="language-plaintext highlighter-rouge">NodeRpc</code>, and <code class="language-plaintext highlighter-rouge">GlobalRegistry</code>), which exercise the full accept → handshake → enroll → call → reply loop end to end.</p>
+
+<hr />
+
+<h2 id="see-also">See also</h2>
+
+<ul>
+  <li><a href="/docs/actors/">Actors</a> — <code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code> and the mailbox model the cluster layers on; <code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is the distributed counterpart of registering a <code class="language-plaintext highlighter-rouge">Pid</code> under a name.</li>
+  <li><a href="/docs/supervision/">Supervision Trees</a> — start from a supervised actor app on one node, then register its workers in the cluster as shown in <a href="#from-one-node-to-a-cluster">From one node to a cluster</a>.</li>
+  <li><a href="/docs/session-types/">Session Types</a> — typed two-party protocols, the in-process analogue of a type-safe <code class="language-plaintext highlighter-rouge">RemoteCall</code>.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>

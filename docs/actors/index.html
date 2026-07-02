@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actors — March</title>
+  <meta name="description" content="A statically-typed functional language in the ML/Elixir tradition, compiled to native code via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #4a7898;
+      --text-faint: #1e4060;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 840px; }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link active">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content">
+      
+      <h1 id="actors">Actors</h1>
+
+<p>March’s concurrency model is built on <strong>actors</strong> and <strong>tasks</strong>. Actors are isolated processes that communicate exclusively through message passing — no shared mutable state. Tasks are lightweight one-off computations that run concurrently and return a value.</p>
+
+<p>In the compiled runtime, both actors and tasks run on an M:N green-thread scheduler (multiple OS threads, each running many lightweight green threads). Actors park cooperatively when their mailbox is empty; tasks park when awaiting a result.</p>
+
+<hr />
+
+<h2 id="defining-an-actor">Defining an Actor</h2>
+
+<p>An actor declaration has three parts:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">state { ... }</code> — the state record type</li>
+  <li><code class="language-plaintext highlighter-rouge">init { ... }</code> — the initial state value</li>
+  <li><code class="language-plaintext highlighter-rouge">on Msg(...) do ... end</code> — message handlers, each returning the new state</li>
+</ul>
+
+<pre><code class="language-march">actor Counter do
+  state { value : Int }
+  init  { value: 0 }
+
+  on Increment(n : Int) do
+    { state with value: state.value + n }
+  end
+
+  on Decrement(n : Int) do
+    { state with value: state.value - n }
+  end
+
+  on Reset() do
+    { state with value: 0 }
+  end
+end
+</code></pre>
+
+<p>Inside a handler, <code class="language-plaintext highlighter-rouge">state</code> refers to the current state record. Each handler must return the new state (same type as <code class="language-plaintext highlighter-rouge">state</code>).</p>
+
+<hr />
+
+<h2 id="spawning-actors">Spawning Actors</h2>
+
+<p><code class="language-plaintext highlighter-rouge">spawn</code> creates a new actor and returns its process identifier (<code class="language-plaintext highlighter-rouge">Pid</code>):</p>
+
+<pre><code class="language-march">fn main() do
+  let counter = spawn(Counter)
+  -- counter : Pid
+end
+</code></pre>
+
+<hr />
+
+<h2 id="sending-messages">Sending Messages</h2>
+
+<p><code class="language-plaintext highlighter-rouge">send</code> delivers a message to an actor asynchronously:</p>
+
+<pre><code class="language-march">send(counter, Increment(10))
+send(counter, Increment(5))
+send(counter, Reset())
+</code></pre>
+
+<p>The message is the constructor applied to its arguments. The actor handles it according to its <code class="language-plaintext highlighter-rouge">on</code> clause.</p>
+
+<p><code class="language-plaintext highlighter-rouge">send</code> returns <code class="language-plaintext highlighter-rouge">Some(())</code> if the actor is alive, or <code class="language-plaintext highlighter-rouge">None</code> if the actor is dead:</p>
+
+<pre><code class="language-march">match send(counter, Increment(1)) do
+  Some(_) -&gt; println("message delivered")
+  None    -&gt; println("actor is dead")
+end
+</code></pre>
+
+<hr />
+
+<h2 id="receiving-messages-inside-a-handler">Receiving Messages Inside a Handler</h2>
+
+<p><code class="language-plaintext highlighter-rouge">receive()</code> blocks until the next message arrives in the actor’s mailbox. Use it when a handler needs to wait for a sub-message before continuing:</p>
+
+<pre><code class="language-march">actor Dispatcher do
+  state { got : Int }
+  init  { got: 0 }
+
+  on Dispatch() do
+    -- wait for the follow-up message
+    let follow = receive()
+    match follow do
+      Followup(n) -&gt; { got: n }
+    end
+  end
+end
+
+fn main() do
+  let pid = spawn(Dispatcher)
+  send(pid, Dispatch())
+  send(pid, Followup(99))
+  run_until_idle()
+end
+</code></pre>
+
+<p><strong>Blocking semantics:</strong> If the mailbox is empty when <code class="language-plaintext highlighter-rouge">receive()</code> is called, the actor parks (interpreter: re-queues the triggering message; compiled: green thread parks). It resumes automatically once a message is delivered. <code class="language-plaintext highlighter-rouge">run_until_idle()</code> returns as soon as all actors are either idle or waiting — no deadlock.</p>
+
+<p>Messages are always delivered in FIFO order, so <code class="language-plaintext highlighter-rouge">receive()</code> pops the oldest queued message.</p>
+
+<hr />
+
+<h2 id="checking-if-an-actor-is-alive">Checking if an Actor is Alive</h2>
+
+<pre><code class="language-march">let alive = is_alive(counter)
+println("alive: " ++ bool_to_string(alive))
+</code></pre>
+
+<hr />
+
+<h2 id="stopping-an-actor">Stopping an Actor</h2>
+
+<pre><code class="language-march">kill(counter)
+</code></pre>
+
+<p>After <code class="language-plaintext highlighter-rouge">kill</code>, <code class="language-plaintext highlighter-rouge">is_alive(counter)</code> returns <code class="language-plaintext highlighter-rouge">false</code> and further <code class="language-plaintext highlighter-rouge">send</code>s return <code class="language-plaintext highlighter-rouge">None</code>.</p>
+
+<hr />
+
+<h2 id="capability-based-messaging">Capability-Based Messaging</h2>
+
+<p>For supervision-safe message delivery, use capabilities (<code class="language-plaintext highlighter-rouge">Cap</code>). A capability encodes the actor’s identity and current <em>epoch</em> — it becomes stale (and is rejected) if the actor restarts:</p>
+
+<pre><code class="language-march">-- Obtain a capability for a live actor
+match get_cap(pid) do
+  None      -&gt; println("actor is dead")
+  Some(cap) -&gt;
+    -- send_checked validates the epoch before delivering
+    match send_checked(cap, Increment(1)) do
+      :ok    -&gt; println("delivered")
+      :error -&gt; println("actor dead or cap stale")
+    end
+end
+</code></pre>
+
+<p>Use capabilities when you hold a reference across an actor restart boundary and need to know whether the message was delivered to the <em>current</em> incarnation of the actor. Under a supervisor, a restarted actor gets a fresh epoch, invalidating caps from before the restart.</p>
+
+<hr />
+
+<h2 id="synchronous-request-reply-via-actorcall">Synchronous Request-Reply via <code class="language-plaintext highlighter-rouge">Actor.call</code></h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">Actor</code> module provides a synchronous call pattern:</p>
+
+<pre><code class="language-march">actor Store do
+  state { count : Int }
+  init  { count: 0 }
+
+  on Inc() do
+    { count: state.count + 1 }
+  end
+
+  on Call(ref, Get()) do
+    Actor.reply(ref, state.count)
+    state
+  end
+end
+
+fn main() do
+  let pid = spawn(Store)
+  send(pid, Inc())
+  send(pid, Inc())
+  run_until_idle()
+  match Actor.call(pid, Get(), 5000) do
+    Ok(n)  -&gt; println("count = " ++ int_to_string(n))
+    Err(e) -&gt; println("error: " ++ e)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Actor.call(pid, msg, timeout_ms)</code> sends <code class="language-plaintext highlighter-rouge">Call(ref, msg)</code> to the actor and waits for <code class="language-plaintext highlighter-rouge">Actor.reply(ref, result)</code>. Returns <code class="language-plaintext highlighter-rouge">Ok(result)</code> or <code class="language-plaintext highlighter-rouge">Err(reason)</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Actor.cast(pid, msg)</code> is fire-and-forget — equivalent to <code class="language-plaintext highlighter-rouge">send</code> but goes through the <code class="language-plaintext highlighter-rouge">Actor</code> module.</p>
+
+<hr />
+
+<h2 id="a-complete-actor-example">A Complete Actor Example</h2>
+
+<pre><code class="language-march">mod ActorDemo do
+
+  actor Counter do
+    state { value : Int }
+    init  { value: 0 }
+
+    on Increment(n : Int) do
+      { state with value: state.value + n }
+    end
+
+    on Ping(label : String) do
+      println("[Counter] ping from " ++ label
+              ++ ", value = " ++ int_to_string(state.value))
+      state
+    end
+  end
+
+  actor Logger do
+    state { count : Int }
+    init  { count: 0 }
+
+    on Log(msg : String) do
+      let n = state.count + 1
+      println("[LOG #" ++ int_to_string(n) ++ "] " ++ msg)
+      { state with count: n }
+    end
+  end
+
+  fn main() do
+    let counter = spawn(Counter)
+    let logger  = spawn(Logger)
+
+    send(counter, Increment(10))
+    send(logger,  Log("counter incremented by 10"))
+    send(counter, Increment(5))
+    send(counter, Ping("main"))
+
+    kill(logger)
+    println("logger alive: " ++ bool_to_string(is_alive(logger)))
+
+    match send(logger, Log("dropped")) do
+      None    -&gt; println("message dropped — actor is dead")
+      Some(_) -&gt; ()
+    end
+
+    send(counter, Ping("after kill"))
+    run_until_idle()
+  end
+
+end
+</code></pre>
+
+<hr />
+
+<h2 id="actor-state-with-records">Actor State with Records</h2>
+
+<p>Complex state uses record types. Functional update with <code class="language-plaintext highlighter-rouge">{ state with field: new_value }</code> is the canonical way to update state:</p>
+
+<pre><code class="language-march">actor WebServer do
+  state {
+    request_count : Int,
+    error_count   : Int,
+    last_path     : String
+  }
+  init {
+    request_count: 0,
+    error_count:   0,
+    last_path:     ""
+  }
+
+  on Request(path : String, status : Int) do
+    let rc = state.request_count + 1
+    let ec = if status &gt;= 400 do state.error_count + 1 else state.error_count end
+    { state with
+        request_count: rc,
+        error_count:   ec,
+        last_path:     path }
+  end
+
+  on Stats() do
+    println("requests: " ++ int_to_string(state.request_count))
+    println("errors: "   ++ int_to_string(state.error_count))
+    state
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="tasks-lightweight-concurrent-computations">Tasks: Lightweight Concurrent Computations</h2>
+
+<p>Tasks are a simpler alternative to actors when you just need to run a function concurrently and collect its result. Use the <code class="language-plaintext highlighter-rouge">Task</code> module:</p>
+
+<pre><code class="language-march">-- Spawn a task and await its result
+let t = Task.async(fn () -&gt; expensive_computation())
+let result = Task.await(t)   -- Ok(value) or Err(reason)
+
+-- Parallel map
+let results = Task.async_stream([1, 2, 3], fn n -&gt; n * n)
+-- [Ok(1), Ok(4), Ok(9)]
+
+-- Await multiple tasks
+let t1 = Task.async(fn () -&gt; fetch_user(1))
+let t2 = Task.async(fn () -&gt; fetch_user(2))
+let [r1, r2] = Task.await_many([t1, t2])
+
+-- Unwrap directly (panics on error)
+let value = Task.await!(t)
+</code></pre>
+
+<p>Tasks run on the same M:N green-thread pool as actors. Spawning 250,000+ tasks is routine; the scheduler distributes them across OS threads automatically.</p>
+
+<p>See the <a href="/docs/stdlib/Task.html">Task module docs</a> for the full API including <code class="language-plaintext highlighter-rouge">Task.race</code>, <code class="language-plaintext highlighter-rouge">Task.any</code>, <code class="language-plaintext highlighter-rouge">Task.scope</code>, and <code class="language-plaintext highlighter-rouge">Task.all_settled</code>.</p>
+
+<p>To run a transformation over a whole collection in parallel without wiring up tasks by hand, use the data-parallel <code class="language-plaintext highlighter-rouge">List</code> operations (<code class="language-plaintext highlighter-rouge">pmap</code>, <code class="language-plaintext highlighter-rouge">pmap_n</code>, <code class="language-plaintext highlighter-rouge">pfilter</code>, <code class="language-plaintext highlighter-rouge">preduce</code>) — see <a href="/docs/parallel-collections/">Parallel Collections</a>.</p>
+
+<hr />
+
+<h2 id="running-until-idle">Running Until Idle</h2>
+
+<p>In scripts and tests, <code class="language-plaintext highlighter-rouge">run_until_idle()</code> processes all pending actor messages before continuing:</p>
+
+<pre><code class="language-march">fn main() do
+  let counter = spawn(Counter)
+  send(counter, Increment(1))
+  send(counter, Increment(2))
+  send(counter, Increment(3))
+  run_until_idle()
+  -- All three messages are processed here
+  send(counter, Ping("done"))
+  run_until_idle()
+end
+</code></pre>
+
+<p>In long-running applications, the scheduler runs automatically — you do not call <code class="language-plaintext highlighter-rouge">run_until_idle()</code>.</p>
+
+<hr />
+
+<h2 id="actor-identity-self">Actor Identity: <code class="language-plaintext highlighter-rouge">self()</code></h2>
+
+<p>Inside a handler, <code class="language-plaintext highlighter-rouge">self()</code> returns the current actor’s <code class="language-plaintext highlighter-rouge">Pid</code>. Useful for passing yourself as a reply address:</p>
+
+<pre><code class="language-march">on Request(question : String, caller : Pid) do
+  let answer = compute_answer(question)
+  send(caller, Answer(answer, self()))
+  state
+end
+</code></pre>
+
+<hr />
+
+<h2 id="app-entry-point">App Entry Point</h2>
+
+<p>For long-running applications, use <code class="language-plaintext highlighter-rouge">app</code> instead of (or alongside) <code class="language-plaintext highlighter-rouge">main</code>:</p>
+
+<pre><code class="language-march">mod MyService do
+  actor Worker do
+    state { count : Int }
+    init  { count: 0 }
+    on Tick() do { state with count: state.count + 1 } end
+  end
+
+  app MyService do
+    Supervisor.spec(:one_for_one, [worker(Worker)])
+  end
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">app</code> declaration integrates with the supervision system. See <a href="/docs/supervision/">Supervision</a> for details.</p>
+
+<hr />
+
+<h2 id="choosing-a-concurrency-primitive">Choosing a concurrency primitive</h2>
+
+<p>March gives you several concurrency tools, and they all run on the <strong>same M:N green-thread scheduler</strong> — the choice is about <em>shape of problem</em>, not about performance tiers. One mental model to keep them straight:</p>
+
+<blockquote>
+  <p><strong>Actors</strong> = identity + state + mailbox. <strong>Tasks</strong> = structured fork/join. <strong>Flow</strong> = bounded streaming. <strong><code class="language-plaintext highlighter-rouge">pmap</code></strong> = data-parallel collections. <strong>Session channels</strong> = a typed two-party conversation.</p>
+</blockquote>
+
+<p>Pick by what you need:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>If you need…</th>
+      <th>Reach for</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A long-lived stateful entity many parties talk to (counter, connection, cache)</td>
+      <td><strong>actor</strong> (<code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code>)</td>
+      <td>Identity + private state + a mailbox; survives across messages and restarts</td>
+    </tr>
+    <tr>
+      <td>To fan out independent work and collect <em>all</em> the results</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.async</code></strong> + <strong><code class="language-plaintext highlighter-rouge">Task.await_many</code></strong></td>
+      <td>Structured fork/join; you await every task</td>
+    </tr>
+    <tr>
+      <td>The <em>first</em> result and want to cancel the losers</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.race</code></strong> / <strong><code class="language-plaintext highlighter-rouge">Task.any</code></strong></td>
+      <td>Returns as soon as one finishes (<code class="language-plaintext highlighter-rouge">any</code> = first success; <code class="language-plaintext highlighter-rouge">race</code> = first to settle)</td>
+    </tr>
+    <tr>
+      <td>Fork tasks that are guaranteed to be cleaned up when the block exits</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.scope</code></strong></td>
+      <td>Structured concurrency — no task outlives its scope</td>
+    </tr>
+    <tr>
+      <td>To transform a whole list across cores, identical result to <code class="language-plaintext highlighter-rouge">map</code></td>
+      <td><strong><code class="language-plaintext highlighter-rouge">List.pmap</code></strong> / <strong><code class="language-plaintext highlighter-rouge">pmap_n</code></strong></td>
+      <td>Data-parallel; <code class="language-plaintext highlighter-rouge">pmap_n</code> bounds concurrency for expensive items</td>
+    </tr>
+    <tr>
+      <td>A multi-stage stream where one stage can fall behind a fast producer</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Flow</code></strong></td>
+      <td>Backpressure — the consumer’s demand caps how far the producer runs ahead</td>
+    </tr>
+    <tr>
+      <td>A strict two-party protocol whose message <em>order</em> the compiler should enforce</td>
+      <td><strong>session channels</strong> (<code class="language-plaintext highlighter-rouge">Chan.*</code>)</td>
+      <td>Linear, typed conversation; wrong-order/use-after-close are compile errors</td>
+    </tr>
+    <tr>
+      <td>Raw, un-managed green-thread spawn (you handle joining yourself)</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">task_spawn</code></strong></td>
+      <td>The low-level primitive <code class="language-plaintext highlighter-rouge">Task.*</code> is built on — prefer <code class="language-plaintext highlighter-rouge">Task.*</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Rules of thumb:</p>
+
+<ul>
+  <li><strong>Default to <code class="language-plaintext highlighter-rouge">Task.async</code> / <code class="language-plaintext highlighter-rouge">await_many</code></strong> for “do these N things concurrently, give me the answers.” It’s the simplest structured option.</li>
+  <li><strong>Default to an actor</strong> the moment there’s <em>mutable state with an identity</em> — something that several callers update over time.</li>
+  <li><strong>Choose <code class="language-plaintext highlighter-rouge">Flow</code> over an unbounded <code class="language-plaintext highlighter-rouge">Task.async_stream</code></strong> when a fast producer could overwhelm a slow downstream stage and pile up in-flight work. See <a href="/docs/flow/">Flow &amp; Backpressure</a>.</li>
+  <li><strong>Choose <code class="language-plaintext highlighter-rouge">pmap</code> over hand-wired tasks</strong> when the input is a list, items are independent, and you want the order-preserving, threshold-managed convenience. See <a href="/docs/parallel-collections/">Parallel Collections</a>.</li>
+  <li><strong>Choose session channels over a bare actor</strong> when two parties run a fixed protocol and ordering correctness matters. See <a href="/docs/session-types/">Session Types</a>.</li>
+</ul>
+
+<hr />
+
+<h2 id="builtins-reference">Builtins Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Builtin</th>
+      <th>Signature</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">spawn(Actor)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>Start a new actor</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">send(pid, msg)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Option(())</code></td>
+      <td>Send a message (None if actor is dead)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">receive()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Msg</code></td>
+      <td>Block until the next mailbox message arrives</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">kill(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>Stop an actor</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">is_alive(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Bool</code></td>
+      <td>Check if actor is running</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">self()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>Current actor’s Pid</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">run_until_idle()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>Process all pending messages (interpreter / tests)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">get_cap(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Option(Cap(Msg))</code></td>
+      <td>Obtain an epoch-tagged capability for an actor</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">send_checked(cap, msg)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ :ok \| :error</code></td>
+      <td>Epoch-validated send; fails if actor restarted</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pid_of_int(n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>Convert Int to Pid</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">task_spawn(fn)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Task(a)</code></td>
+      <td>Spawn a green-thread task (use <code class="language-plaintext highlighter-rouge">Task.async</code> instead)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">task_await(t)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Result(a, String)</code></td>
+      <td>Await a task (use <code class="language-plaintext highlighter-rouge">Task.await</code> instead)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>The concurrency and distribution docs form a journey — actors are the foundation; each step below builds on them:</p>
+
+<ul>
+  <li><a href="/docs/supervision/">Supervision Trees</a> — fault-tolerant hierarchies with automatic restart, ending in a capstone crash-tolerant job processor.</li>
+  <li><a href="/docs/parallel-collections/">Parallel Collections</a> — <code class="language-plaintext highlighter-rouge">pmap</code> / <code class="language-plaintext highlighter-rouge">pmap_n</code> for data-parallel work on the same scheduler.</li>
+  <li><a href="/docs/flow/">Flow &amp; Backpressure</a> — bounded streaming pipelines when a fast producer outruns a slow consumer.</li>
+  <li><a href="/docs/session-types/">Session Types</a> — typed two-party protocols whose message order the compiler enforces.</li>
+  <li><a href="/docs/clustering/">Clustering &amp; RPC</a> — take a supervised actor app from one node to a cluster with cross-node calls.</li>
+  <li><a href="/docs/hot-code-reload/">Hot Code Reload</a> — deploy new code to a running server without restarting; actors migrate their state on the fly.</li>
+  <li><a href="/docs/linear-types/">Linear Types</a> — how linear types interact with message passing.</li>
+  <li><a href="/docs/stdlib/Task.html">Task stdlib</a> — full Task API reference.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1783000507"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const btn = document.getElementById('d-theme-btn');
+  if (btn) btn.textContent = dark ? '☀ Light' : '☾ Dark';
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', () => {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+});
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+initTheme();
+</script>
+</body>
+</html>
