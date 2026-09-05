@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory Model — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link active">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="memory-model-how-fbip-works">Memory Model: How FBIP Works</h1>
+
+<p>March’s headline promise is <strong>functional code that runs in place</strong>: you write
+pure transformations over immutable data (the style where you never mutate
+anything, you just build new values from old ones) and the compiler turns
+that into ordinary in-place mutation wherever it can prove no one will notice
+the difference. There is no tracing garbage collector, no stop-the-world
+collection, and, in the common “transform and return” case, no allocation at
+all. This page explains the mechanism end to end, from first principles, so
+you don’t need a compilers background to follow it.</p>
+
+<p>The claim to hold onto is <strong>deterministic, not pauseless</strong>. No collector scans
+your heap and no pause stops your program at a moment it picks. But freeing is real
+work that happens <em>inline</em>, and releasing a large structure costs time
+proportional to its size; see
+<a href="#drop-cascades-freeing-is-work-you-scheduled">drop cascades</a> below. The
+difference from a tracing GC is not that the work disappears; it is that you
+choose when it happens, and it is the same every run.</p>
+
+<p>The two ingredients are <strong><a href="https://www.microsoft.com/en-us/research/publication/perceus-garbage-free-reference-counting-with-reuse/">Perceus</a>
+reference counting</strong> (deterministic, compiled in; the technique comes from
+the 2021 paper <em>“Perceus: Garbage Free Reference Counting with Reuse”</em> by
+Reinking, Xie, de Moura, and Leijen, if you want the formal treatment) and
+<strong>FBIP, Functional But In-Place</strong> (the reuse optimization that builds on top
+of it). The same uniqueness property that makes FBIP work also makes
+<em>parallel</em> FBIP lock-free: no thread coordination needed.</p>
+
+<hr />
+
+<h2 id="perceus-deterministic-reference-counting">Perceus: deterministic reference counting</h2>
+
+<p>Every heap value includes a small <strong>reference count (RC)</strong>: a running count of how many
+places in the program currently hold a pointer to it. The classic problem with
+reference counting is throughput: naively, every time a value is passed,
+returned, or bound, you pay an increment, and every time a reference dies you pay
+a decrement, and those add up fast.</p>
+
+<p><strong>Perceus</strong> eliminates almost all of that cost. Instead of inserting an <code class="language-plaintext highlighter-rouge">inc</code>/<code class="language-plaintext highlighter-rouge">dec</code>
+around every single use, the compiler traces, ahead of time, exactly where each
+value is created and where it’s used for the last time; then it inserts <code class="language-plaintext highlighter-rouge">inc</code>/<code class="language-plaintext highlighter-rouge">dec</code>
+operations <em>only</em> at the points where ownership of a value actually changes, and
+simplifies away as much of that as it can:</p>
+
+<ul>
+  <li>A function that receives a value and immediately returns a transformed version
+often needs <strong>no increment at all</strong>: the caller’s reference is transferred.</li>
+  <li>An <code class="language-plaintext highlighter-rouge">inc</code> followed by a <code class="language-plaintext highlighter-rouge">dec</code> on the same path cancels (a fact the analysis
+can prove) and both are removed.</li>
+  <li>What remains is only the truly uncertain residue.</li>
+</ul>
+
+<p>The result is <em>deterministic</em> memory management. Because the <code class="language-plaintext highlighter-rouge">dec</code> that frees a
+value is <strong>emitted by the compiler at that value’s last use</strong>, deallocation
+happens at a known program point:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Tracing GC (e.g. OCaml’s minor/major)</th>
+      <th>Perceus RC</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>When memory is freed</td>
+      <td>Later, when a collection runs</td>
+      <td>At the value’s last use, in line</td>
+    </tr>
+    <tr>
+      <td>Who chooses the moment</td>
+      <td>The collector</td>
+      <td>Your code’s control flow</td>
+    </tr>
+    <tr>
+      <td>Cost of a free</td>
+      <td>Amortized into collection cycles</td>
+      <td>Paid inline, proportional to the data being released</td>
+    </tr>
+    <tr>
+      <td>Worst-case stall</td>
+      <td>A collection over live data you didn’t choose</td>
+      <td>A drop cascade over a structure you did</td>
+    </tr>
+    <tr>
+      <td>Write barriers</td>
+      <td>On every pointer store</td>
+      <td>None (immutable-by-default has no stores)</td>
+    </tr>
+    <tr>
+      <td>Predictability</td>
+      <td>Depends on heap pressure</td>
+      <td>Compile-time, per-value, identical every run</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>No scan, no write barriers, and no collector deciding when to interrupt you.
+Freeing is just a <code class="language-plaintext highlighter-rouge">dec</code> the compiler already wrote into the code, which is
+exactly why its cost lands where that <code class="language-plaintext highlighter-rouge">dec</code> is, and not somewhere convenient.</p>
+
+<hr />
+
+<h2 id="uniqueness--rc-1">Uniqueness = RC 1</h2>
+
+<p>The key fact Perceus exploits at runtime is simple: <strong>when a value’s last use
+sees RC == 1, that value is uniquely owned.</strong> No other reference exists, so
+no part of the program can observe it again. Its memory is about to become garbage.</p>
+
+<p>If, <em>at that same point</em>, the program is allocating a new value <strong>of the same
+shape</strong> (same constructor arity / size class), the runtime skips the allocator
+entirely and <strong>reuses the dying value’s memory for the new one</strong>. One uniqueness
+check replaces an allocator round-trip, and the new value lands at the same
+address, so it stays hot in cache.</p>
+
+<p>This is the whole trick. FBIP is just this rule applied to constructor rewrites.</p>
+
+<hr />
+
+<h2 id="fbip-a-worked-beforeafter">FBIP: a worked before/after</h2>
+
+<p>Here is the canonical example, incrementing every leaf of a binary tree:</p>
+
+<pre><code class="language-march">mod TreeDemo do
+  ptype Tree = Leaf(Int) | Node(Tree, Tree)
+
+  pfn inc_leaves(t : Tree) : Tree do
+    match t do
+    Leaf(n)    -&gt; Leaf(n + 1)
+    Node(l, r) -&gt; Node(inc_leaves(l), inc_leaves(r))
+    end
+  end
+
+  pfn sum_leaves(t : Tree) : Int do
+    match t do
+    Leaf(n)    -&gt; n
+    Node(l, r) -&gt; sum_leaves(l) + sum_leaves(r)
+    end
+  end
+
+  -- A runnable entry point: build a small tree, increment every leaf, and
+  -- fold it back to a number so the demo cell below can print a result.
+  fn demo() : Int do
+    let t = Node(Leaf(1), Node(Leaf(2), Leaf(3)))
+    sum_leaves(inc_leaves(t))
+  end
+end
+</code></pre>
+
+<p>Read functionally, this allocates a brand-new tree: every <code class="language-plaintext highlighter-rouge">Leaf(n + 1)</code> and
+every <code class="language-plaintext highlighter-rouge">Node(...)</code> is a fresh constructor. A naive implementation would allocate
+a full second tree and then free the first.</p>
+
+<p><strong>What the compiler actually emits.</strong> When <code class="language-plaintext highlighter-rouge">inc_leaves</code> owns <code class="language-plaintext highlighter-rouge">t</code> uniquely (the
+caller transferred its only reference), Perceus knows that the moment the <code class="language-plaintext highlighter-rouge">match</code>
+scrutinizes a <code class="language-plaintext highlighter-rouge">Node(l, r)</code>, that <code class="language-plaintext highlighter-rouge">Node</code> cell is dying: its RC is 1 and its last
+use is right here. The rebuild <code class="language-plaintext highlighter-rouge">Node(inc_leaves(l), inc_leaves(r))</code> has the
+<em>same shape</em> as the cell being matched, so instead of allocating, the compiler
+<strong>reuses the matched cell in place</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>before  (functional reading):           after  (what runs):
+
+  match Node(l, r):                        match cell @0x40 = Node(l, r):
+    allocate a NEW Node                      reuse cell @0x40
+    fill it with (l', r')                    overwrite its two fields with (l', r')
+    free the old Node                        (no alloc, no free — same address)
+</code></pre></div></div>
+
+<p>Conceptually the optimized form is <code class="language-plaintext highlighter-rouge">reuse t as Node(l', r')</code>: the <code class="language-plaintext highlighter-rouge">Node(l, r)</code>
+you matched and the <code class="language-plaintext highlighter-rouge">Node(...)</code> you build are the <em>same heap cell</em>, with its
+fields rewritten. Across the whole tree, a transform that looks like it allocates
+N nodes allocates <strong>zero</strong> after the first pass: it walks the existing tree and
+overwrites it.</p>
+
+<p><strong>Why this is safe.</strong> Immutability is what makes the rewrite invisible. Because
+no other reference to the old <code class="language-plaintext highlighter-rouge">Node</code> can exist (RC == 1) <em>and</em> March values are
+immutable (no aliased reference could have stashed a pointer into the old cell to
+observe later), there is no observer to fool. The language semantics say “old
+value gone, new value fresh”; the runtime states “same bytes, rewritten.” Both
+agree because no one else is looking.</p>
+
+<blockquote>
+  <p>This is why <a href="https://github.com/march-language/march/blob/main/bench/tree_transform.march"><code class="language-plaintext highlighter-rouge">tree_transform</code></a>
+(the FBIP benchmark) runs roughly 15× faster than the equivalent C that
+allocates and frees a fresh tree each pass, and several times faster than
+OCaml’s tracing GC: it does no allocator work at all in steady state. See the
+<a href="https://github.com/march-language/march/blob/main/bench/RESULTS.md">benchmark results</a>
+for the full numbers.</p>
+</blockquote>
+
+<p><strong>Try it.</strong> The <code class="language-plaintext highlighter-rouge">TreeDemo</code> module above is runnable: this cell builds the sample
+tree <code class="language-plaintext highlighter-rouge">Node(Leaf(1), Node(Leaf(2), Leaf(3)))</code>, runs <code class="language-plaintext highlighter-rouge">inc_leaves</code>, and sums the
+result. The leaves <code class="language-plaintext highlighter-rouge">1, 2, 3</code> become <code class="language-plaintext highlighter-rouge">2, 3, 4</code>, so the total is <code class="language-plaintext highlighter-rouge">9</code>:</p>
+
+<pre><code class="language-march">println("sum after inc_leaves: " ++ int_to_string(TreeDemo.demo()))
+</code></pre>
+
+<hr />
+
+<h2 id="when-reuse-fires-vs-falls-back">When reuse fires vs. falls back</h2>
+
+<p>Reuse fires when, at a constructor expression, the compiler can pair it with a
+<strong>uniquely-owned dying value of matching shape</strong>. It falls back to a normal
+allocation when it can’t:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Outcome</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Matched value is uniquely owned (RC == 1) and the rebuild matches its shape</td>
+      <td><strong>Reuse in place</strong> (no allocation)</td>
+    </tr>
+    <tr>
+      <td>Matched value is <strong>shared</strong> (RC &gt; 1; someone else still retains it)</td>
+      <td><strong>Allocate fresh</strong>, leave the shared value untouched</td>
+    </tr>
+    <tr>
+      <td>No same-shape value is dying at this allocation point</td>
+      <td><strong>Allocate fresh</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The crucial property: <strong>the fallback is automatic and always correct.</strong> If a
+value is shared, mutating it in place <em>would</em> be observable, so Perceus simply
+doesn’t. It allocates a new value and decrements the shared one’s count. You
+never get a wrong answer from a missed reuse; you only get an allocation. A
+fallback is a performance characteristic, <strong>never a bug</strong>.</p>
+
+<p>This is also why you can reason about reuse locally: sharing a value (keeping the
+old binding around, storing it in two places) is exactly what <em>disables</em> reuse at
+that site, and the compiler does the safe thing with no visible sign.</p>
+
+<hr />
+
+<h2 id="writing-allocation-free-code">Writing allocation-free code</h2>
+
+<p>You don’t write reuse directives; the compiler chooses. But you can <em>see</em> its
+decisions and steer them. The <a href="/docs/lsp/">LSP</a> reports, as
+inlay hints and per-function code lenses:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">♻ in-place</code>: FBIP fired: this value was reused without allocating.</li>
+  <li><code class="language-plaintext highlighter-rouge">⧉ copied</code>: a value had to be copied (it was shared, so reuse couldn’t fire).</li>
+  <li><code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code>: the value never reached the heap at all.</li>
+</ul>
+
+<p><strong>The practical loop:</strong></p>
+
+<ol>
+  <li>Turn on performance annotations (<code class="language-plaintext highlighter-rouge">march.inlayHints.performanceAnnotations</code>).</li>
+  <li>Scan a hot function. <code class="language-plaintext highlighter-rouge">♻</code> and <code class="language-plaintext highlighter-rouge">⚡</code> are good. A <code class="language-plaintext highlighter-rouge">⧉ copied</code> <em>inside a hot loop</em>
+is a refactor target: that’s an allocation you can probably remove.</li>
+  <li>Rewrite so the value you transform is <strong>consumed</strong>, not aliased.</li>
+</ol>
+
+<p><strong>The rules that keep reuse firing:</strong></p>
+
+<ul>
+  <li><strong>Consume the value you transform.</strong> Destructure it and rebuild from the
+pieces; don’t read the original again afterward.</li>
+  <li><strong>Don’t reuse the old binding after rebuilding.</strong> A second use of the old value
+pushes its RC above 1 at the rebuild point; reuse can’t fire.</li>
+  <li><strong>Keep the constructor shape and arity matched.</strong> Reuse needs the dying cell
+and the new cell to be the same size class.</li>
+</ul>
+
+<p>Here is a <code class="language-plaintext highlighter-rouge">⧉</code>-triggering anti-pattern next to its <code class="language-plaintext highlighter-rouge">♻</code> fix:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">ptype Box = Box(Int, Int)
+
+-- ⧉ copied: `b` is read AGAIN after the new Box is built, so the old Box is
+-- still live (RC &gt; 1) at the rebuild point. The compiler must allocate a copy.
+pfn bump_copied(b : Box) : (Box, Int) do
+  match b do
+  Box(x, y) -&gt;
+    let updated = Box(x + 1, y)
+    let old_x   = match b do Box(ox, _) -&gt; ox end   -- second use of `b`
+    (updated, old_x)
+  end
+end
+
+-- ♻ in-place: `b` is consumed exactly once. Nothing else references the old
+-- Box, so its cell is rewritten in place — zero allocation.
+pfn bump_reused(b : Box) : Box do
+  match b do
+  Box(x, y) -&gt; Box(x + 1, y)
+  end
+end
+</code></pre>
+
+<p><strong>Pinning the result with a contract.</strong> Once a hot function shows only <code class="language-plaintext highlighter-rouge">♻</code> and
+<code class="language-plaintext highlighter-rouge">⚡</code>, you can make the compiler keep it that way:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">@[no_alloc]
+pfn bump_reused(b : Box) : Box do
+  match b do
+  Box(x, y) -&gt; Box(x + 1, y)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">@[no_alloc]</code> is checked on the compiled form, after reuse and stack promotion
+have been decided, so the reusing version above passes and the <code class="language-plaintext highlighter-rouge">⧉ copied</code>
+version does not. A later edit that reintroduces an allocation — here or in
+anything the function calls — fails the build instead of silently regressing.
+<code class="language-plaintext highlighter-rouge">@[no_alloc(warn)]</code> reports the same finding as a warning, and
+<code class="language-plaintext highlighter-rouge">@[no_alloc(assume)]</code> marks a wrapper around an unknown closure or an <code class="language-plaintext highlighter-rouge">extern</code>
+as trusted. <code class="language-plaintext highlighter-rouge">forge fix --contracts</code> adds the attribute to every function the
+compiler has already verified. Two caveats worth knowing: a nullary
+constructor of a variant that also has payload-carrying cases (<code class="language-plaintext highlighter-rouge">Nil</code> in
+<code class="language-plaintext highlighter-rouge">List</code>) is a real heap cell today, so returning a fresh one fails the
+contract, and a <code class="language-plaintext highlighter-rouge">Float</code> stored into a generic field is boxed, which counts.</p>
+
+<p><strong>When “nothing survives” is the real property.</strong> A frame loop, a request
+handler, a tick — code that allocates freely and frees it all again before it
+returns — has a property <code class="language-plaintext highlighter-rouge">@[no_alloc]</code> cannot express. <code class="language-plaintext highlighter-rouge">@[no_alloc(transient)]</code>
+does:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">@[no_alloc(transient)]
+pfn width(i : Int) : Int do
+  String.byte_size(describe(i))     -- `describe` allocates a String
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">describe</code> really does allocate, so the bare form rejects <code class="language-plaintext highlighter-rouge">width</code>. The
+transient form accepts it: the String is gone by the time <code class="language-plaintext highlighter-rouge">width</code> returns. The
+question it asks is where a value <em>ends up</em>, not whether one was made. It fails
+when the function returns something it allocated, writes one into an object it
+did not allocate, or hands one to an actor, a <code class="language-plaintext highlighter-rouge">Vault</code>, a spawned task, an
+<code class="language-plaintext highlighter-rouge">extern</code>, or a call through an unknown closure — and when anything it calls
+does.</p>
+
+<p>One thing it deliberately does <strong>not</strong> cover: an amortized growth path. A
+buffer that reallocates its storage and keeps the new storage has <em>retained</em>
+that storage — it reaches a value the function returns — so <code class="language-plaintext highlighter-rouge">transient</code> rejects
+it just as the bare form does. If you want a growable buffer inside a hot loop,
+the answer is to hoist it out of the loop, not to relabel the contract.</p>
+
+<p><code class="language-plaintext highlighter-rouge">forge fix --contracts</code> inserts whichever form actually holds: <code class="language-plaintext highlighter-rouge">@[no_alloc]</code>
+where a function allocates nothing at all, <code class="language-plaintext highlighter-rouge">@[no_alloc(transient)]</code> where it
+allocates but retains nothing. The editor’s quick fix and the <code class="language-plaintext highlighter-rouge">✓</code> lens name the
+form too.</p>
+
+<p><strong>Promotion sees through a call.</strong> <code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code> used to stop at every
+call boundary: passing a value to any function meant it might escape. It now
+also fires when the only thing done with a value is to hand it to a function in
+the same program that provably does not keep the pointer — one that
+destructures it, reads its fields and returns something else. Storing it,
+returning it, capturing it in a closure, sending it to an actor, or handing it
+to an <code class="language-plaintext highlighter-rouge">extern</code> all still count as escaping, and a closure passed to its own
+apply function is never promoted.</p>
+
+<p>If <code class="language-plaintext highlighter-rouge">bump_copied</code> truly needs the old field, read it <em>before</em> you rebuild
+(bind <code class="language-plaintext highlighter-rouge">x</code> in the same <code class="language-plaintext highlighter-rouge">match</code>, then return it) rather than matching <code class="language-plaintext highlighter-rouge">b</code> a second
+time; that collapses the two uses into one and reuse fires again.</p>
+
+<h3 id="small-scalar-aggregates-never-reach-the-heap-at-all">Small scalar aggregates never reach the heap at all</h3>
+
+<p>Reuse and stack promotion both work on a cell that <em>exists</em>. A third case
+skips the cell entirely: a variant with <strong>one constructor whose fields are all
+<code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Float</code> or <code class="language-plaintext highlighter-rouge">Bool</code></strong>, with two to four of them, is represented inline —
+in registers, not on the heap.</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">type Vec3 = Vec3(Float, Float, Float)
+
+@[no_alloc]
+fn forward(yaw : Float, pitch : Float) : Vec3 do
+  let cp = Math.cos(pitch)
+  Vec3(0.0 -. Math.sin(yaw) *. cp, Math.sin(pitch), 0.0 -. Math.cos(yaw) *. cp)
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">forward</code> builds its result from three scalars, so there is no dying <code class="language-plaintext highlighter-rouge">Vec3</code>
+for reuse to take over and nothing for stack promotion to keep in the frame —
+it used to be an unconditional allocation, and could not carry <code class="language-plaintext highlighter-rouge">@[no_alloc]</code>.
+As three doubles in registers it allocates nothing, and the contract holds
+through any caller that only reads it back.</p>
+
+<p>Two things to know about the boundary:</p>
+
+<ul>
+  <li><strong>A heap slot is eight bytes wide</strong>, so wherever such a value is <em>stored</em> —
+a constructor or record field, a tuple element, something a closure
+captures, a message to an actor, an argument to an <code class="language-plaintext highlighter-rouge">extern</code> — it is boxed
+into the ordinary cell on the way in and unboxed on the way out. Behaviour
+is unchanged, but that box is a real allocation and <code class="language-plaintext highlighter-rouge">@[no_alloc]</code> reports it
+(“a <code class="language-plaintext highlighter-rouge">Vec3</code> is boxed here (it crosses an erased slot)”). Keeping a hot
+function’s aggregates in locals, parameters and returns keeps them off the
+heap.</li>
+  <li><strong>The class is exact</strong>: add a <code class="language-plaintext highlighter-rouge">String</code> field, a fifth field, or a second
+constructor and the type goes back to being an ordinary heap value. That is
+a representation change with a visible performance consequence, so it is
+worth knowing which side of the line a hot type sits on.</li>
+</ul>
+
+<p>Compiler internals, including why the class stops where it does:
+<a href="/docs/value-representation/">Value Representation</a> §7.5.</p>
+
+<hr />
+
+<h2 id="parallel-fbip-needs-no-locks">Parallel FBIP needs no locks</h2>
+
+<p>Normally, running code on two threads at once means you need locks or atomic
+operations to stop them from corrupting the same memory at the same time; even
+something as simple as two threads incrementing the same reference count needs
+synchronization, or you can lose an update. The uniqueness that powers FBIP sidesteps
+this entirely and makes it <strong>lock-free across cores</strong>.</p>
+
+<p>Consider summing or transforming the two children of a tree in parallel:</p>
+
+<!-- scroll:skip -->
+<pre><code class="language-march">Node(l, r) -&gt; Node(inc_leaves(l), inc_leaves(r))
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">l</code> and <code class="language-plaintext highlighter-rouge">r</code> are <strong>disjoint subtrees</strong>. When the parent <code class="language-plaintext highlighter-rouge">Node</code> is uniquely owned,
+each child is uniquely owned within its own branch: RC == 1 in its own context.
+Hand <code class="language-plaintext highlighter-rouge">l</code> to one core and <code class="language-plaintext highlighter-rouge">r</code> to another and each rewrites its subtree in place
+with <strong>no state to synchronize</strong>: there is no shared cell two cores could both
+touch, so there’s no lock, no atomic RC traffic, no contention. Uniqueness <em>is</em>
+the disjointness proof.</p>
+
+<p>This is exactly the property the <code class="language-plaintext highlighter-rouge">parallel</code> benchmark relies on: sibling subtrees
+have independent RC chains, so in-place reuse stays correct on both sides with no
+locking. The same idea scales to actor message passing; see the
+<a href="/docs/parallel-collections/">parallelism</a> guide, and
+<a href="/docs/linear-types/">linear types</a> for the ownership-transfer
+(“zero-copy send”) case where a <code class="language-plaintext highlighter-rouge">linear</code> value is <em>guaranteed</em> RC == 1.</p>
+
+<hr />
+
+<h2 id="drop-cascades-freeing-is-work-you-scheduled">Drop cascades: freeing is work you scheduled</h2>
+
+<p>Deterministic does not mean free. When the last reference to a structure dies,
+its children’s references die with it, and <em>that work happens right there</em>.</p>
+
+<p>March frees an aggregate in one of two ways. Usually the structure is
+<strong>destructured</strong>: a <code class="language-plaintext highlighter-rouge">match</code> arm that owns the value it matched on releases the
+box and hands the children to the extracted bindings, so the cost is spread
+across a traversal you were doing anyway. But when a structure is released
+<strong>without</strong> being taken apart (you borrowed it, or ignored it, and the owner
+simply drops it at the end of its scope), the compiler synthesizes a deep-drop
+function for that type and calls it instead. Conceptually:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>drop a list  =  free this cell, then drop its element, then drop the rest
+</code></pre></div></div>
+
+<p>So dropping a one-million-element list walks one million cells. What that means
+in practice:</p>
+
+<ul>
+  <li><strong>Cost is proportional to what actually dies</strong>, not to heap size, and not to
+how much data is still live. Dropping a <em>shared</em> structure (someone else still
+retains it) is O(1); only the last owner pays the walk.</li>
+  <li><strong>It will not overflow the stack.</strong> The recursive step is in tail position and
+compiles to a loop, so long lists iterate rather than recurse.</li>
+  <li><strong>The stall is schedulable.</strong> Because the release point is a program point you
+can see, you can move it: release a large structure before a latency-critical
+section instead of inside one, or hand it off to a task with a loose
+deadline. That is the real advantage over a tracing GC: not that the work
+vanishes, but that you decide where it lands.</li>
+  <li><strong>Ignore it and it shows up in tail latency.</strong> A request handler that builds
+and releases a large intermediate structure pays that walk inside the request.
+This is the most likely reason a p99 looks poorer than a p50 in otherwise
+allocation-light March code.</li>
+</ul>
+
+<hr />
+
+<h2 id="cycles-not-collected-and-not-reachable-from-ordinary-code">Cycles: not collected, and not reachable from ordinary code</h2>
+
+<p><strong>March has no cycle collector.</strong> Reference counting cannot reclaim a reference
+cycle: each object in the loop is still referenced, so no count can fall to
+zero. If a cycle were to form, it would leak: silently, permanently, with no
+diagnostic.</p>
+
+<p>The reason this is not a practical hazard is that the language makes cycles hard
+to build in the first place, rather than cleaning them up afterwards:</p>
+
+<ul>
+  <li><strong>Immutable data cannot close a cycle.</strong> Closing a loop requires writing a
+back-pointer into a value that already exists. March values are built once and
+never mutated, so ordinary data forms trees and DAGs, never cycles.</li>
+  <li><strong>Linear values cannot participate in one.</strong> A cycle needs at least two
+references to the same value; <code class="language-plaintext highlighter-rouge">linear</code> means exactly one owner.</li>
+  <li><strong>Actors do not share pointers.</strong> One actor reaches another through a
+capability, not a raw pointer into its heap, so there is no material a
+cross-actor cycle could be made of.</li>
+</ul>
+
+<p>Two caveats worth stating clearly. This is a <em>design argument</em>, not a mechanized
+proof: no part of March is mechanically verified today (a Lean 4 metatheory
+effort is planned, not started), and no runtime detector would tell you if the
+argument were wrong. And it covers the data you write: the runtime
+does build self-referential shapes internally (a self-recursive closure captures
+itself), which are handled by compiler-inserted drops on specific paths rather
+than by reference counting by itself. The residual risk therefore sits in the
+compiler, not in your program.</p>
+
+<p>A deferred, per-actor cycle collector is sketched in the GC design notes for a
+future in which March exposes unrestricted mutable values. None of it is
+implemented today, and no part of the language today needs it.</p>
+
+<hr />
+
+<h2 id="where-this-sits-in-the-bigger-picture">Where this sits in the bigger picture</h2>
+
+<p>FBIP doesn’t work in isolation; it’s one layer of several that reinforce each other. You don’t
+need to understand every layer below to use March, but here’s how they fit together:</p>
+
+<ul>
+  <li><strong><a href="/docs/linear-types/"><code class="language-plaintext highlighter-rouge">linear</code> / <code class="language-plaintext highlighter-rouge">affine</code> values</a></strong> have
+statically known lifetimes: the compiler already knows, from just the type,
+<em>exactly</em> where each one is used for the last time, so it can insert <code class="language-plaintext highlighter-rouge">free</code> there
+directly, with zero RC bookkeeping at all. A <code class="language-plaintext highlighter-rouge">linear</code> value is the <em>strongest</em> FBIP
+case: RC == 1 by construction, guaranteed by the type system rather than inferred by
+the compiler.</li>
+  <li><strong>Immutable-by-default</strong> means pointer fields are never written after
+construction, which is what eliminates write barriers, and what makes in-place
+reuse unobservable.</li>
+  <li><strong>Whole-program monomorphization and defunctionalization</strong>, two compile-time passes
+that turn generic, closure-using code into plain, concrete code (a separate copy of a
+generic function per concrete type it’s used with; closures turned into ordinary data
+instead of heap-allocated function values), remove a lot of what would otherwise force
+heap allocation. That, in turn, lets the compiler prove that many values never
+outlive the function call that created them, so it can put them on the stack instead
+of the heap entirely (<code class="language-plaintext highlighter-rouge">⚡ stack-allocated</code>).</li>
+</ul>
+
+<p>The net effect: most values never touch the heap, the ones that do are usually
+reused rather than reallocated, and the residual frees are deterministic <code class="language-plaintext highlighter-rouge">dec</code>
+operations the compiler already wrote, not a collector you have to wait for.</p>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/linear-types/">Linear Types</a>: ownership that
+guarantees RC == 1, and zero-copy actor sends.</li>
+  <li><a href="/docs/safety-by-construction/">Safety by Construction</a>:
+how the safety layers stack on one function.</li>
+  <li><a href="/docs/parallel-collections/">Parallelism</a>: the scheduler that runs
+disjoint, uniquely-owned subtrees across cores.</li>
+  <li><a href="/docs/lsp/">LSP &amp; Editors</a>: turning on the <code class="language-plaintext highlighter-rouge">♻ / ⧉ / ⚡</code>
+performance hints.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

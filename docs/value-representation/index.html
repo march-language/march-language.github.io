@@ -1,0 +1,2736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Value Representation (compiler internals) — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link active">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="value-representation-contract">Value Representation Contract</h1>
+
+<blockquote>
+  <p><strong>Compiler internals.</strong> This documents how the compiler lays out values in
+memory, for contributors to the compiler, not for using March. Learning or
+evaluating the language? Skip this.</p>
+</blockquote>
+
+<p>This is the compiler-internals reference for how March values are laid out in
+memory and on the wire between passes: the object header, the tagged-scalar
+scheme, which slots are erased vs concrete, closure calling convention, and the
+RC contract for in-place record update. It exists because every rule below was
+independently rediscovered as a bug at least once (see the History appendix).
+None of this is new policy: each section <strong>cites the owning module</strong> as the
+source of truth and narrates around it. Where a doc comment is quoted, that
+comment governs; if this page and the code disagree at any point, the code
+comment wins and this page is stale.</p>
+
+<p>Audience: anyone touching <code class="language-plaintext highlighter-rouge">lib/tir/llvm_emit.ml</code> and friends, or debugging a
+“works in the interpreter, crashes/corrupts when compiled” report.</p>
+
+<hr />
+
+<h2 id="1-the-object-header-march_hdr">1. The object header (<code class="language-plaintext highlighter-rouge">march_hdr</code>)</h2>
+
+<p>Every heap-allocated March value shares a 16-byte header, defined once in
+<code class="language-plaintext highlighter-rouge">runtime/march_runtime.h</code>:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span> <span class="kt">int64_t</span> <span class="n">rc</span><span class="p">;</span> <span class="kt">int32_t</span> <span class="n">tag</span><span class="p">;</span> <span class="kt">int32_t</span> <span class="n">pad</span><span class="p">;</span> <span class="p">}</span> <span class="n">march_hdr</span><span class="p">;</span>
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Offset</th>
+      <th>Size</th>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>8</td>
+      <td><code class="language-plaintext highlighter-rouge">rc</code></td>
+      <td>reference count (<code class="language-plaintext highlighter-rouge">int64_t</code>, atomic RC ops cast to <code class="language-plaintext highlighter-rouge">_Atomic int64_t*</code>)</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>4</td>
+      <td><code class="language-plaintext highlighter-rouge">tag</code></td>
+      <td>constructor tag (which variant; <code class="language-plaintext highlighter-rouge">0</code> for single-shape types)</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>4</td>
+      <td><code class="language-plaintext highlighter-rouge">pad</code></td>
+      <td>alignment filler; <strong>repurposed</strong> as a record-shape id for records (see <code class="language-plaintext highlighter-rouge">march_record_shape_intern</code>)</td>
+    </tr>
+    <tr>
+      <td>16+</td>
+      <td>8/field</td>
+      <td>fields</td>
+      <td>one 8-byte slot per field, <code class="language-plaintext highlighter-rouge">n</code> fields → <code class="language-plaintext highlighter-rouge">16 + n*8</code> bytes total</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">lib/tir/llvm_ctx.ml</code>’s <code class="language-plaintext highlighter-rouge">alloc_size n = 16 + n * 8</code> is this same arithmetic
+expressed again as the one pure size formula every allocation site computes from; the
+individual <code class="language-plaintext highlighter-rouge">getelementptr</code> offsets (<code class="language-plaintext highlighter-rouge">i64 8</code> for tag, <code class="language-plaintext highlighter-rouge">i64 12</code> for the
+record-shape pad, <code class="language-plaintext highlighter-rouge">16 + i*8</code> per field) are inline literals repeated at each
+<code class="language-plaintext highlighter-rouge">llvm_emit.ml</code> emit site (<code class="language-plaintext highlighter-rouge">emit_load_tag</code>/<code class="language-plaintext highlighter-rouge">emit_store_tag</code>/<code class="language-plaintext highlighter-rouge">emit_load_field</code>/
+<code class="language-plaintext highlighter-rouge">emit_store_field</code>/<code class="language-plaintext highlighter-rouge">emit_heap_alloc</code>/<code class="language-plaintext highlighter-rouge">emit_stack_alloc</code>) rather than routed
+through a helper, because those sites are the ones with the historical
+back-references; <code class="language-plaintext highlighter-rouge">llvm_ctx.ml</code>’s comment above <code class="language-plaintext highlighter-rouge">alloc_size</code> was verified
+against <code class="language-plaintext highlighter-rouge">runtime/march_runtime.h:11</code> directly on this doc’s writing date
+(2026-07-03); the two still agree byte for byte.</p>
+
+<p><strong>Claim 1: verified.</strong> <code class="language-plaintext highlighter-rouge">march_alloc(i64 32)</code> for a 2-field value (tuple,
+2-field record, or 1-fn-ptr+1-fv closure struct) is exactly <code class="language-plaintext highlighter-rouge">16 + 2*8</code>. See
+§3 Probe A and §5 Probe D below; both show <code class="language-plaintext highlighter-rouge">call ptr @march_alloc(i64 32)</code>
+for their respective 2-field allocations, confirming the same header+stride
+formula underlies tuples, records, and closure structs alike.</p>
+
+<p><code class="language-plaintext highlighter-rouge">march_string</code> (declared immediately below <code class="language-plaintext highlighter-rouge">march_hdr</code> in the same header)
+shares this 16-byte prefix on purpose, so string values can be examined for
+<code class="language-plaintext highlighter-rouge">tag</code>/<code class="language-plaintext highlighter-rouge">rc</code> the same way any other heap cell can before the <code class="language-plaintext highlighter-rouge">len</code>/<code class="language-plaintext highlighter-rouge">data[]</code>
+suffix is interpreted.</p>
+
+<hr />
+
+<h2 id="2-the-tagged-immediate-scheme-and-the-conditional-untag-law">2. The tagged-immediate scheme and the conditional-untag law</h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">lib/tir/llvm_ctx.ml</code>’s <code class="language-plaintext highlighter-rouge">emit_tag_scalar</code> / <code class="language-plaintext highlighter-rouge">emit_untag_scalar</code>
+/ <code class="language-plaintext highlighter-rouge">emit_untag_known_scalar</code> doc comments (lines ~384–458). This section
+narrates; those comments are the law verbatim.</p>
+
+<p>Polymorphic/generic slots in March (tuple fields, closure free-variable
+fields, generic ADT payloads, dynamically-shaped record fields) are typed
+<code class="language-plaintext highlighter-rouge">ptr</code> at the LLVM level regardless of what they actually hold, because the
+same slot must be able to hold either a heap pointer or a scalar (<code class="language-plaintext highlighter-rouge">Int</code>,
+<code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">Atom</code>). The runtime’s <code class="language-plaintext highlighter-rouge">IS_HEAP_PTR</code> macro (<code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>,
+historically documented around lines 139–156 of an earlier revision;
+currently the tag-scheme comment + macro sit at lines 137–155) states the
+scheme these slots share:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Tag scheme:
+ *   immediate integer n  → stored as ptr = (n &lt;&lt; 1) | 1  (low bit = 1)
+ *   heap pointer p       → stored as ptr = p             (low bit = 0)
+ *
+ * Guards (in order, short-circuit):
+ *   1. low bit == 0: any value with bit 0 set is an immediate — reject fast.
+ *   2. addresses below one page (4096) are never valid heap allocations.
+ *   3. values with the sign bit set are never valid heap pointers on any
+ *      supported 64-bit ABI. */</span>
+<span class="cp">#define IS_HEAP_PTR(p) \
+    (((uintptr_t)(p) &amp; 1u) == 0 &amp;&amp; (uintptr_t)(p) &gt;= 4096u &amp;&amp; (intptr_t)(p) &gt; 0)
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">march_alloc</code> (backed by <code class="language-plaintext highlighter-rouge">calloc</code>) always returns an address at least
+8-byte-aligned, so a real heap pointer’s low bit is always <code class="language-plaintext highlighter-rouge">0</code>. An immediate
+scalar is tagged <code class="language-plaintext highlighter-rouge">(n &lt;&lt; 1) | 1</code>, always odd. The two representations can
+never collide.</p>
+
+<p><strong>The law, stated as three helpers (<code class="language-plaintext highlighter-rouge">llvm_ctx.ml</code>), each with an exact
+job:</strong></p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">emit_tag_scalar</code></strong>: unconditional tag on the way <em>into</em> a generic slot:
+<code class="language-plaintext highlighter-rouge">shl 1</code>, <code class="language-plaintext highlighter-rouge">or 1</code>, <code class="language-plaintext highlighter-rouge">inttoptr</code>. Used whenever an <code class="language-plaintext highlighter-rouge">i64</code> (or <code class="language-plaintext highlighter-rouge">i1</code>/scalar) is
+about to be stored somewhere typed <code class="language-plaintext highlighter-rouge">ptr</code>.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">emit_untag_scalar</code></strong>: <strong>conditional</strong> untag reading <em>out of</em> a generic
+slot that may hold either a tagged scalar or a real heap pointer flowing
+through a scalar-typed view (e.g. dynamically-typed record/alist code with a
+static type that lies about the runtime value): <code class="language-plaintext highlighter-rouge">and 1</code> to test the low bit,
+<code class="language-plaintext highlighter-rouge">ashr 1</code> computed unconditionally, then <code class="language-plaintext highlighter-rouge">select</code> on the bit test. An odd
+value is untagged by the shift; an <strong>even</strong> value is preserved <strong>verbatim</strong>:
+it is a full pointer bit pattern, not <code class="language-plaintext highlighter-rouge">p &gt;&gt; 1</code>. This makes tag↔untag a
+lossless roundtrip for every bit pattern that can appear in such a slot.
+<strong>Never apply this to a value already known to be a plain heap pointer with
+no scalar view</strong>; restore those with a bare <code class="language-plaintext highlighter-rouge">inttoptr</code>, not this helper.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">emit_untag_known_scalar</code></strong>: <strong>unconditional</strong> untag for a payload
+<em>proved</em> tagged by construction (a newtype or niche payload that
+<code class="language-plaintext highlighter-rouge">emit_tag_scalar</code> tagged going in, per <code class="language-plaintext highlighter-rouge">Repr.payload_needs_tag</code>): plain
+<code class="language-plaintext highlighter-rouge">ptrtoint</code> + unconditional <code class="language-plaintext highlighter-rouge">ashr 1</code>, no <code class="language-plaintext highlighter-rouge">and</code>/<code class="language-plaintext highlighter-rouge">icmp</code>/<code class="language-plaintext highlighter-rouge">select</code>, because there
+is no other bit pattern to guard against at that specific program point.</li>
+</ul>
+
+<p>The <code class="language-plaintext highlighter-rouge">coerce</code> function’s <code class="language-plaintext highlighter-rouge">("ptr","i64")</code> / <code class="language-plaintext highlighter-rouge">("i64","ptr")</code> cases are the two
+call sites most programmers will actually hit: <code class="language-plaintext highlighter-rouge">coerce ctx "ptr" v "i64"</code> goes
+through <code class="language-plaintext highlighter-rouge">emit_untag_scalar</code> (conditional); <code class="language-plaintext highlighter-rouge">coerce ctx "i64" v "ptr"</code> goes
+through <code class="language-plaintext highlighter-rouge">emit_tag_scalar</code> (unconditional tag, since going <em>in</em> there is never
+an ambiguity to resolve).</p>
+
+<p><strong>Claim 2: verified (IR).</strong> A tuple <code class="language-plaintext highlighter-rouge">(41, 2)</code> destructured back to <code class="language-plaintext highlighter-rouge">Int</code>
+compiles the field-read side as the full four-instruction conditional
+sequence (<code class="language-plaintext highlighter-rouge">and</code>/<code class="language-plaintext highlighter-rouge">icmp</code>/<code class="language-plaintext highlighter-rouge">ashr</code>/<code class="language-plaintext highlighter-rouge">select</code>), matching <code class="language-plaintext highlighter-rouge">emit_untag_scalar</code>
+exactly:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%fv16</span> <span class="p">=</span> <span class="k">load</span> <span class="err">ptr</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp15</span><span class="p">,</span> <span class="k">align</span> <span class="m">8</span>
+<span class="nv">%cv17</span> <span class="p">=</span> <span class="k">ptrtoint</span> <span class="err">ptr</span> <span class="nv">%fv16</span> <span class="k">to</span> <span class="kt">i64</span>
+<span class="nv">%cv18</span> <span class="p">=</span> <span class="k">and</span> <span class="kt">i64</span> <span class="nv">%cv17</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv20</span> <span class="p">=</span> <span class="k">icmp</span> <span class="k">ne</span> <span class="kt">i64</span> <span class="nv">%cv18</span><span class="p">,</span> <span class="m">0</span>
+<span class="nv">%cv19</span> <span class="p">=</span> <span class="k">ashr</span> <span class="kt">i64</span> <span class="nv">%cv17</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv21</span> <span class="p">=</span> <span class="k">select</span> <span class="kt">i1</span> <span class="nv">%cv20</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv19</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv17</span>
+</code></pre></div></div>
+
+<p>(Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe1-tuple.march</code>, <code class="language-plaintext highlighter-rouge">--emit-llvm</code>; see transcript
+item 1.)</p>
+
+<p><strong>Claim 3: verified (behavior).</strong> The same program, compiled and run,
+prints the arithmetically correct sum (<code class="language-plaintext highlighter-rouge">43</code> for inputs <code class="language-plaintext highlighter-rouge">41,2</code> shifted by a
+runtime-derived offset): the tag/untag roundtrip is not just present in the
+IR but semantically transparent. (Transcript item 2.)</p>
+
+<hr />
+
+<h2 id="3-uniform-vs-natural-slots">3. UNIFORM vs NATURAL slots</h2>
+
+<p>Two representations coexist for the same March type depending on <strong>where</strong>
+the value sits:</p>
+
+<ul>
+  <li><strong>UNIFORM</strong> (generic/erased slot): tuple fields, closure free-variable
+fields, generic ADT payloads (<code class="language-plaintext highlighter-rouge">TVar</code> fields), dynamically-shaped record
+fields reached through <code class="language-plaintext highlighter-rouge">record_get</code>/<code class="language-plaintext highlighter-rouge">record_put</code>/<code class="language-plaintext highlighter-rouge">record_from_list</code>. Scalar
+values here are stored <strong>tagged</strong>, <code class="language-plaintext highlighter-rouge">(n&lt;&lt;1)|1</code>, in a <code class="language-plaintext highlighter-rouge">ptr</code>-typed slot,
+because the slot’s static type is erased and must discriminate scalar vs.
+heap-pointer at runtime (§2).</li>
+  <li><strong>NATURAL</strong> (concrete/monomorphic slot): record fields and ADT fields with a
+type that is statically known at the allocation site. Scalar values here are
+stored <strong>untagged</strong>, as a plain <code class="language-plaintext highlighter-rouge">i64</code>/<code class="language-plaintext highlighter-rouge">double</code> in an <code class="language-plaintext highlighter-rouge">i64</code>/<code class="language-plaintext highlighter-rouge">double</code>-typed
+slot; there is no ambiguity to resolve because the static type already
+tells every reader what the bit pattern means.</li>
+</ul>
+
+<p>This is not a documentation nicety: mixing the two up is exactly the B5 and
+the <code class="language-plaintext highlighter-rouge">record_put</code>-uniform-handoff bug families (§7). A NATURAL-repr even <code class="language-plaintext highlighter-rouge">Int</code>
+≥ 4096 shares its exact bit pattern with a plausible heap address; only the static field
+type (record shape) disambiguates it. A UNIFORM slot resolves the same
+ambiguity dynamically via the odd/even tag.</p>
+
+<p><strong>Floats in UNIFORM slots: the open exception.</strong> A <code class="language-plaintext highlighter-rouge">Float</code> in a UNIFORM
+slot is <em>today</em> stored as its raw IEEE-754 bits bitcast into the <code class="language-plaintext highlighter-rouge">ptr</code>
+slot, untagged, and decoded by the reader’s static type. This is <strong>unsound
+against generic code</strong>: the raw bits are even and in the canonical range,
+so <code class="language-plaintext highlighter-rouge">IS_HEAP_PTR</code> accepts them: a generic RC op writes into <code class="language-plaintext highlighter-rouge">*(3.5)</code>
+(SIGSEGV) and a generic <code class="language-plaintext highlighter-rouge">&lt;=</code> integer-compares the bits (correct for
+positive floats by IEEE coincidence, backwards for negatives). The fix
+(<code class="language-plaintext highlighter-rouge">specs/plans/archive/2026-07-13-float-boxing-design.md</code>) is to <strong>box</strong> a Float
+crossing an erasure boundary in a <code class="language-plaintext highlighter-rouge">MARCH_FLOAT_TAG</code> (-3) heap cell, making
+a UNIFORM slot uniformly heap-or-tagged and <code class="language-plaintext highlighter-rouge">needs_rc (TVar _)</code> truly
+sound. The runtime box API (<code class="language-plaintext highlighter-rouge">march_alloc_float</code>/<code class="language-plaintext highlighter-rouge">march_unbox_float</code>,
+value-aware <code class="language-plaintext highlighter-rouge">march_poly_eq</code>/<code class="language-plaintext highlighter-rouge">march_poly_compare</code>) landed additively as
+stage 1; the codegen flip that populates UNIFORM slots with boxes is
+staged (decision-gated). Until it lands, the monomorphism restriction
+keeps unannotated let-bound lambdas monomorphic so generic float
+comparators never reach a UNIFORM Float slot.</p>
+
+<p><strong>Claim 4: verified (IR), Probe A (UNIFORM).</strong> <code class="language-plaintext highlighter-rouge">let t = (n+40, n+1)</code> (tuple,
+runtime-derived so the constant-folder cannot eliminate it) allocates a
+2-field cell and stores <strong>both</strong> fields tagged, as <code class="language-plaintext highlighter-rouge">ptr</code>:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%hp20</span> <span class="p">=</span> <span class="k">call</span> <span class="err">ptr</span> <span class="vg">@march_alloc</span><span class="p">(</span><span class="kt">i64</span> <span class="m">32</span><span class="p">)</span>
+<span class="p">...</span>
+<span class="nv">%cv24</span> <span class="p">=</span> <span class="k">or</span> <span class="kt">i64</span> <span class="nv">%cv23</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv25</span> <span class="p">=</span> <span class="k">inttoptr</span> <span class="kt">i64</span> <span class="nv">%cv24</span> <span class="k">to</span> <span class="err">ptr</span>
+<span class="nv">%fp26</span> <span class="p">=</span> <span class="k">getelementptr</span> <span class="kt">i8</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%hp20</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">16</span>
+<span class="k">store</span> <span class="err">ptr</span> <span class="nv">%cv25</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp26</span><span class="p">,</span> <span class="k">align</span> <span class="m">8</span>      <span class="c1">; UNIFORM: tagged, ptr-typed slot</span>
+</code></pre></div></div>
+
+<p>(Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe1-tuple.march</code>.)</p>
+
+<p><strong>Claim 5: verified (IR), Probe B (NATURAL).</strong> <code class="language-plaintext highlighter-rouge">type Point = { x: Int, y:
+Int }</code>; <code class="language-plaintext highlighter-rouge">{ x: a, y: b }</code> built from runtime-derived <code class="language-plaintext highlighter-rouge">a</code>/<code class="language-plaintext highlighter-rouge">b</code> allocates a
+2-field cell and stores both fields as plain <code class="language-plaintext highlighter-rouge">i64</code>, untagged:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%hp20</span> <span class="p">=</span> <span class="k">call</span> <span class="err">ptr</span> <span class="vg">@march_alloc</span><span class="p">(</span><span class="kt">i64</span> <span class="m">32</span><span class="p">)</span>
+<span class="p">...</span>
+<span class="nv">%ld22</span> <span class="p">=</span> <span class="k">load</span> <span class="kt">i64</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%$t27191.addr</span>
+<span class="nv">%fp23</span> <span class="p">=</span> <span class="k">getelementptr</span> <span class="kt">i8</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%hp20</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">16</span>
+<span class="k">store</span> <span class="kt">i64</span> <span class="nv">%ld22</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp23</span><span class="p">,</span> <span class="k">align</span> <span class="m">8</span>      <span class="c1">; NATURAL: untagged, i64-typed slot</span>
+</code></pre></div></div>
+
+<p>(Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe2-record.march</code>.) Both probes compile and run
+to the arithmetically-correct answer (transcript items 3–6); this isn’t
+just an IR-shape curiosity, it’s the representation the rest of the pipeline
+depends on being right.</p>
+
+<hr />
+
+<h2 id="4-closure-struct-layout-and-the-uniform-ptr-apply-abi">4. Closure struct layout and the uniform-ptr apply ABI</h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">lib/tir/tir_names.ml</code>’s <code class="language-plaintext highlighter-rouge">is_apply_fn</code> doc comment (the
+ABI contract) and <code class="language-plaintext highlighter-rouge">lib/tir/defun.ml</code>’s <code class="language-plaintext highlighter-rouge">lift_lambda</code> doc comment (the struct
+layout); implementation in <code class="language-plaintext highlighter-rouge">lib/tir/llvm_calls.ml</code>’s <code class="language-plaintext highlighter-rouge">clo_wrap_define</code>.</p>
+
+<p><strong>Struct layout</strong> (<code class="language-plaintext highlighter-rouge">defun.ml</code>): every closure struct’s field 0 is the apply
+function pointer (<code class="language-plaintext highlighter-rouge">TPtr TUnit</code>, opaque); fields 1..N are the captured free
+variables, in capture order. An apply wrapper (<code class="language-plaintext highlighter-rouge">Tir_names.apply_fn_name</code>,
+format <code class="language-plaintext highlighter-rouge">&lt;fn&gt;$apply$&lt;uid&gt;</code>) takes the closure pointer as parameter 0
+(<code class="language-plaintext highlighter-rouge">Tir_names.clo_param_name</code>, <code class="language-plaintext highlighter-rouge">"$clo"</code>) followed by the lambda’s original
+parameters, and loads each free variable from <code class="language-plaintext highlighter-rouge">$clo</code> via <code class="language-plaintext highlighter-rouge">Tir_names.fv_field</code>
+(<code class="language-plaintext highlighter-rouge">"$fv" ^ i</code>, 1-based for closures) at entry.</p>
+
+<p><strong>The ABI</strong> (<code class="language-plaintext highlighter-rouge">is_apply_fn</code>’s doc, quoted): <em>“these are dispatched indirectly
+through a closure struct whose fn-pointer is type-erased, so all wrappers
+for a given source <code class="language-plaintext highlighter-rouge">(a) -&gt; b</code> MUST share one calling convention: the generic
+ptr ABI (scalar results tagged via the i64-&gt;ptr coercion; heap pointers pass
+through unchanged; every call site reads the result as ptr). An apply
+function’s first parameter is also always the closure struct (<code class="language-plaintext highlighter-rouge">$clo</code>); the
+closure-apply ABI CONSUMES that argument (ownership transfers to the
+callee).”</em> This uniform-return-as-<code class="language-plaintext highlighter-rouge">ptr</code> rule is why <code class="language-plaintext highlighter-rouge">clo_wrap_define</code>
+(<code class="language-plaintext highlighter-rouge">llvm_calls.ml</code>) exists at all: a closure that only wraps a named
+top-level function (no captures) still needs a trampoline that tags its
+concrete return value before returning, so indirect callers can <code class="language-plaintext highlighter-rouge">ptr</code>-dispatch
+it identically to a real lambda apply-wrapper: an i64-returning wrapper
+tags <code class="language-plaintext highlighter-rouge">(n&lt;&lt;1)|1</code>, a double-returning wrapper bitcasts into the ptr slot, a
+void wrapper returns <code class="language-plaintext highlighter-rouge">ptr null</code>, and a ptr-returning wrapper passes through.
+This is the exact fix class of bug B11 (§7): a wrapper that skips this
+tagging step returns a raw i64 where every caller expects a tagged one, and
+a <code class="language-plaintext highlighter-rouge">Bool</code>-returning predicate reads back inverted.</p>
+
+<p><strong>Claim 6: verified (IR + behavior).</strong> <code class="language-plaintext highlighter-rouge">make_adder(n) = fn x -&gt; x + n</code>
+lifts to a closure struct <code class="language-plaintext highlighter-rouge">$lam...</code> with 2 fields:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%hp4</span> <span class="p">=</span> <span class="k">call</span> <span class="err">ptr</span> <span class="vg">@march_alloc</span><span class="p">(</span><span class="kt">i64</span> <span class="m">32</span><span class="p">)</span>          <span class="c1">; 16 + 2*8: fn ptr + 1 fv</span>
+<span class="k">store</span> <span class="err">ptr</span> <span class="vg">@$lam27190$apply$3662</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp6</span>      <span class="c1">; field 0: apply fn ptr</span>
+<span class="k">store</span> <span class="kt">i64</span> <span class="m">5</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp7</span>                          <span class="c1">; field 1 ($fv1 "n"): NATURAL (concrete Int)</span>
+<span class="p">...</span>
+<span class="k">define</span> <span class="err">ptr</span> <span class="vg">@$lam27190$apply$3662</span><span class="p">(</span><span class="err">ptr</span> <span class="k">nonnull</span> <span class="k">dereferenceable</span><span class="p">(</span><span class="m">16</span><span class="p">)</span> <span class="nv">%$clo.arg</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%x.arg</span><span class="p">)</span> <span class="p">{</span>
+  <span class="p">...</span>
+  <span class="nv">%ld30</span> <span class="p">=</span> <span class="k">load</span> <span class="err">ptr</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%$clo.addr</span>
+  <span class="k">call</span> <span class="kt">void</span> <span class="vg">@march_incrc_local</span><span class="p">(</span><span class="err">ptr</span> <span class="nv">%ld30</span><span class="p">)</span>      <span class="c1">; $clo at arg 0</span>
+  <span class="nv">%fp32</span> <span class="p">=</span> <span class="k">getelementptr</span> <span class="kt">i8</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%ld31</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">24</span>  <span class="c1">; field 1 = $fv1</span>
+  <span class="nv">%fv33</span> <span class="p">=</span> <span class="k">load</span> <span class="kt">i64</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%fp32</span><span class="p">,</span> <span class="k">align</span> <span class="m">8</span>         <span class="c1">; NATURAL load: concrete Int field</span>
+</code></pre></div></div>
+
+<p>and the call site untags the apply wrapper’s <code class="language-plaintext highlighter-rouge">ptr</code> return with the full
+<code class="language-plaintext highlighter-rouge">emit_untag_scalar</code> sequence even though the closure’s logical return type is
+concrete <code class="language-plaintext highlighter-rouge">Int</code>; the uniform-return ABI applies regardless of the closure’s
+static signature. Running <code class="language-plaintext highlighter-rouge">add5 = make_adder(5); add5(37)</code> prints <code class="language-plaintext highlighter-rouge">42</code>.
+(Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe6-closure.march</code>; transcript item 7.)</p>
+
+<p>Note the closure struct’s own free-variable field is stored NATURAL here
+(<code class="language-plaintext highlighter-rouge">store i64 5</code>, not tagged) because the closure struct’s field type for a
+captured concrete <code class="language-plaintext highlighter-rouge">Int</code> is <code class="language-plaintext highlighter-rouge">i64</code>, not a generic slot; UNIFORM vs. NATURAL
+(§3) is a per-slot classification, not a per-data-structure one; a closure
+struct can and does mix both kinds of field depending on each free
+variable’s own type.</p>
+
+<hr />
+
+<h2 id="5-trampoline-double-tagging-4n3">5. Trampoline double-tagging (4n+3)</h2>
+
+<p><strong>Governing source:</strong> the inline doc comment at <code class="language-plaintext highlighter-rouge">lib/tir/llvm_emit.ml</code>’s
+<code class="language-plaintext highlighter-rouge">task_await_unwrap</code> case (search for “task_await_unwrap”; the comment above
+the two conditional untag sequences states this mechanism and governs it; if
+that comment and this section disagree at any point, the comment wins).
+<strong>History:</strong> commit <code class="language-plaintext highlighter-rouge">291f6b5f</code> (“fix(codegen): double-untag i64 results in
+task_await_unwrap”).</p>
+
+<p><code class="language-plaintext highlighter-rouge">task_spawn</code>/<code class="language-plaintext highlighter-rouge">task_await_unwrap</code> hand a task’s result through
+<code class="language-plaintext highlighter-rouge">march_task_await_value</code>, which returns the <em>already-tagged</em> LLVM return
+value (<code class="language-plaintext highlighter-rouge">llvm_ret</code>) stashed in <code class="language-plaintext highlighter-rouge">task[3]</code> by the spawn trampoline. For an
+<code class="language-plaintext highlighter-rouge">i64</code>-typed task result, <code class="language-plaintext highlighter-rouge">llvm_ret</code> is itself <code class="language-plaintext highlighter-rouge">(2n+1)</code> (the function’s normal
+tagged-scalar return, §2); the trampoline stores that value into a <code class="language-plaintext highlighter-rouge">ptr</code>
+slot, tagging it <em>again</em>: <code class="language-plaintext highlighter-rouge">((2n+1) &lt;&lt; 1) | 1 = 4n+3</code>. One <code class="language-plaintext highlighter-rouge">coerce ptr→i64</code>
+undoes exactly one tag layer, leaving <code class="language-plaintext highlighter-rouge">2n+1</code>, still tagged, not <code class="language-plaintext highlighter-rouge">n</code>. The fix
+adds a <strong>second</strong> conditional untag (<code class="language-plaintext highlighter-rouge">emit_untag_scalar</code>) specifically for
+the <code class="language-plaintext highlighter-rouge">i64</code>-result case; the <code class="language-plaintext highlighter-rouge">ptr</code>-result case needs only one, because a heap
+address is even after one <code class="language-plaintext highlighter-rouge">ashr</code> and <code class="language-plaintext highlighter-rouge">inttoptr</code> restores it correctly without
+a second pass.</p>
+
+<p><strong>Claim 7: verified (IR).</strong> <code class="language-plaintext highlighter-rouge">task_await_unwrap</code> on an <code class="language-plaintext highlighter-rouge">Int</code>-returning task
+compiles to <strong>two</strong> full conditional-untag sequences chained:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%tv11</span> <span class="p">=</span> <span class="k">call</span> <span class="err">ptr</span> <span class="vg">@march_task_await_value</span><span class="p">(</span><span class="err">ptr</span> <span class="nv">%ld9</span><span class="p">)</span>
+<span class="nv">%cv12</span> <span class="p">=</span> <span class="k">ptrtoint</span> <span class="err">ptr</span> <span class="nv">%tv11</span> <span class="k">to</span> <span class="kt">i64</span>
+<span class="nv">%cv13</span> <span class="p">=</span> <span class="k">and</span> <span class="kt">i64</span> <span class="nv">%cv12</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv15</span> <span class="p">=</span> <span class="k">icmp</span> <span class="k">ne</span> <span class="kt">i64</span> <span class="nv">%cv13</span><span class="p">,</span> <span class="m">0</span>
+<span class="nv">%cv14</span> <span class="p">=</span> <span class="k">ashr</span> <span class="kt">i64</span> <span class="nv">%cv12</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv16</span> <span class="p">=</span> <span class="k">select</span> <span class="kt">i1</span> <span class="nv">%cv15</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv14</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv12</span>    <span class="c1">; first untag: 4n+3 -&gt; 2n+1</span>
+<span class="nv">%cv17</span> <span class="p">=</span> <span class="k">and</span> <span class="kt">i64</span> <span class="nv">%cv16</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%cv19</span> <span class="p">=</span> <span class="k">icmp</span> <span class="k">ne</span> <span class="kt">i64</span> <span class="nv">%cv17</span><span class="p">,</span> <span class="m">0</span>
+<span class="nv">%cv18</span> <span class="p">=</span> <span class="k">ashr</span> <span class="kt">i64</span> <span class="nv">%cv16</span><span class="p">,</span> <span class="m">1</span>
+<span class="nv">%r20</span>  <span class="p">=</span> <span class="k">select</span> <span class="kt">i1</span> <span class="nv">%cv19</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv18</span><span class="p">,</span> <span class="kt">i64</span> <span class="nv">%cv16</span>    <span class="c1">; second untag: 2n+1 -&gt; n</span>
+</code></pre></div></div>
+
+<p><strong>Claim 8: verified (behavior).</strong> <code class="language-plaintext highlighter-rouge">task_spawn(fn _ -&gt; 41 + 1)</code> awaited and
+printed yields <code class="language-plaintext highlighter-rouge">42</code>, not <code class="language-plaintext highlighter-rouge">84</code> or a scheduler-count-skewed value, confirming
+the double-untag is not just present but correct. (Probe:
+<code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe3-task.march</code>; transcript items 8–9.)</p>
+
+<hr />
+
+<h2 id="6-atom-hashing-bit63--bit62">6. Atom hashing: <code class="language-plaintext highlighter-rouge">bit63 == bit62</code></h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">lib/tir/llvm_ctx.ml</code>’s <code class="language-plaintext highlighter-rouge">atom_hash</code> doc comment.</p>
+
+<p>Atoms (<code class="language-plaintext highlighter-rouge">:foo</code>) are interned as an FNV-1a 64-bit hash of their name
+(<code class="language-plaintext highlighter-rouge">fnv1a_64</code>, an exact mirror of the C runtime’s hash), then
+forced so <strong>bit 63 equals bit 62</strong> before use. Atoms are <code class="language-plaintext highlighter-rouge">i64</code> immediates
+that may flow through a GENERIC (<code class="language-plaintext highlighter-rouge">ptr</code>) slot exactly like any other scalar
+(§2/§3), where they are tag-encoded <code class="language-plaintext highlighter-rouge">(n&lt;&lt;1)|1</code> and later decoded with an
+<strong>arithmetic</strong> <code class="language-plaintext highlighter-rouge">ashr</code>. That roundtrip is lossless only when the value is
+effectively a sign-extended 63-bit integer, i.e. <code class="language-plaintext highlighter-rouge">bit63 == bit62</code>. A raw
+64-bit hash without that property is corrupted on extract (the doc comment
+cites <code class="language-plaintext highlighter-rouge">:put</code> / <code class="language-plaintext highlighter-rouge">:post</code> breaking Router method matching as the historical
+symptom). Forcing <code class="language-plaintext highlighter-rouge">bit63 := bit62</code> preserves 63 bits of entropy while making
+every atom safe for generic-slot transit; both atom-emission sites (literal
+atoms and switch-arm tags) must go through this one function.</p>
+
+<p><strong>Claim 9: verified (IR + arithmetic).</strong> <code class="language-plaintext highlighter-rouge">match a do :put -&gt; ... :post -&gt;
+... end</code> embeds the interned hash constants directly as <code class="language-plaintext highlighter-rouge">switch</code> operands:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">switch</span> <span class="kt">i64</span> <span class="m">878176697232756039</span><span class="p">,</span> <span class="kt">label</span> <span class="nv">%case_default4</span> <span class="p">[</span>
+    <span class="kt">i64</span> <span class="m">-579996672871248402</span><span class="p">,</span> <span class="kt">label</span> <span class="nv">%case_br5</span>
+    <span class="kt">i64</span> <span class="m">878176697232756039</span><span class="p">,</span> <span class="kt">label</span> <span class="nv">%case_br6</span>
+</code></pre></div></div>
+
+<p>Checked both values bit-by-bit: <code class="language-plaintext highlighter-rouge">878176697232756039</code> has bit63=0, bit62=0;
+<code class="language-plaintext highlighter-rouge">-579996672871248402</code> has bit63=1, bit62=1; both satisfy the invariant.
+Simulating the tag/untag roundtrip (<code class="language-plaintext highlighter-rouge">((h&lt;&lt;1)|1)</code> truncated to 64 bits, then
+arithmetic <code class="language-plaintext highlighter-rouge">&gt;&gt;1</code>) on both values recovers the original hash exactly, in both
+the positive and negative case. (Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe5-atom.march</code>;
+transcript item 10; roundtrip computed alongside it.)</p>
+
+<p><strong>Claim 10: verified (behavior).</strong> <code class="language-plaintext highlighter-rouge">classify(:post)</code> (matched against
+<code class="language-plaintext highlighter-rouge">:put -&gt; 1</code>, <code class="language-plaintext highlighter-rouge">:post -&gt; 2</code>) compiles, runs, and prints <code class="language-plaintext highlighter-rouge">2</code>. (Transcript item
+11.)</p>
+
+<hr />
+
+<h2 id="7-niche-and-newtype-representation">7. Niche and newtype representation</h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">lib/tir/repr.ml</code> (the <code class="language-plaintext highlighter-rouge">repr</code> type and <code class="language-plaintext highlighter-rouge">repr_of_ty</code>/
+<code class="language-plaintext highlighter-rouge">niche_payload_ok</code>/<code class="language-plaintext highlighter-rouge">payload_needs_tag</code>), consulted from <code class="language-plaintext highlighter-rouge">llvm_ctx.ml</code>’s
+<code class="language-plaintext highlighter-rouge">type_defs</code>-carrying fields and <code class="language-plaintext highlighter-rouge">llvm_emit.ml</code>’s <code class="language-plaintext highlighter-rouge">EAlloc</code>/<code class="language-plaintext highlighter-rouge">emit_case</code>/
+<code class="language-plaintext highlighter-rouge">ensure_adt_eq_fn</code> (the “repr-audit” infrastructure, <code class="language-plaintext highlighter-rouge">MARCH_REPR_AUDIT=1</code>, added in
+<code class="language-plaintext highlighter-rouge">f0fe40cc</code>).</p>
+
+<p>Four representations a monomorphic variant type can take, decided purely
+from its shape (<code class="language-plaintext highlighter-rouge">Repr.repr</code>):</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">Boxed</code></strong>, the general case: a heap cell with the normal RC header +
+tag, one variant among ≥2 non-degenerate ones.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Newtype of ty</code></strong>: exactly one variant with exactly one field: the value
+<em>is</em> its payload, no wrapper cell at all (except float payloads, which stay
+boxed; float bits can’t be safely tagged).</li>
+  <li>
+    <p><strong><code class="language-plaintext highlighter-rouge">Niche of { payload; tagged }</code></strong>, the Option-shape special case: exactly
+one nullary constructor and one single-field constructor (either order).
+<code class="language-plaintext highlighter-rouge">None</code> is the raw pointer value <code class="language-plaintext highlighter-rouge">0</code>; <code class="language-plaintext highlighter-rouge">Some(x)</code> is <code class="language-plaintext highlighter-rouge">x</code> itself (tagged via
+§2’s scheme when the payload is a scalar, per <code class="language-plaintext highlighter-rouge">payload_needs_tag</code>).
+<code class="language-plaintext highlighter-rouge">niche_payload_ok</code> is the soundness gate: a payload type is safe for the
+raw-<code class="language-plaintext highlighter-rouge">0</code> niche only if it can never itself produce a <code class="language-plaintext highlighter-rouge">0</code> bit pattern in that
+slot (Int/Bool: always tagged-odd; String/heap pointers: <code class="language-plaintext highlighter-rouge">march_alloc</code>
+never returns null; nested niche/Float/Unit/<code class="language-plaintext highlighter-rouge">TVar</code>: rejected as unsafe,
+conservatively boxed).</p>
+  </li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Unboxed of { ctor; fields }</code></strong>, added 2026-09-03: exactly one
+constructor, all of whose fields are <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Float</code>/<code class="language-plaintext highlighter-rouge">Bool</code>, with an arity of
+2..<code class="language-plaintext highlighter-rouge">Repr.max_unboxed_arity</code> (4). The value is an LLVM <strong>struct value</strong> —
+<code class="language-plaintext highlighter-rouge">Vec3(Float, Float, Float)</code> is <code class="language-plaintext highlighter-rouge">{ double, double, double }</code> — passed and
+returned in registers, never allocated and never reference-counted. §7.5
+below is the full treatment; the rest of this section is about the first
+three.</li>
+</ul>
+
+<p>This is what makes <code class="language-plaintext highlighter-rouge">Option(Int)</code>/<code class="language-plaintext highlighter-rouge">Option(String)</code>/etc. essentially free:
+<code class="language-plaintext highlighter-rouge">None</code> has no cost (no allocation, a null check) and <code class="language-plaintext highlighter-rouge">Some</code> has no cost
+beyond the underlying tag.</p>
+
+<p><strong>Claim 11: verified (IR).</strong> <code class="language-plaintext highlighter-rouge">match o do None -&gt; 0 | Some(v) -&gt; v end</code>
+against a runtime-derived <code class="language-plaintext highlighter-rouge">Option(Int)</code> dispatches on a <strong>null check</strong>, no
+tag load, no heap dereference for the <code class="language-plaintext highlighter-rouge">None</code> arm:</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%is_null3</span> <span class="p">=</span> <span class="k">icmp</span> <span class="k">eq</span> <span class="err">ptr</span> <span class="nv">%ld1</span><span class="p">,</span> <span class="k">null</span>
+<span class="k">br</span> <span class="kt">i1</span> <span class="nv">%is_null3</span><span class="p">,</span> <span class="kt">label</span> <span class="nv">%niche_none2</span><span class="p">,</span> <span class="kt">label</span> <span class="nv">%niche_some3</span>
+<span class="nl">niche_some3:</span>
+  <span class="nv">%niche_raw7</span> <span class="p">=</span> <span class="k">ptrtoint</span> <span class="err">ptr</span> <span class="nv">%ld1</span> <span class="k">to</span> <span class="kt">i64</span>
+  <span class="nv">%niche_unt8</span> <span class="p">=</span> <span class="k">ashr</span> <span class="kt">i64</span> <span class="nv">%niche_raw7</span><span class="p">,</span> <span class="m">1</span>        <span class="c1">; unconditional: payload provably tagged</span>
+</code></pre></div></div>
+
+<p>matching <code class="language-plaintext highlighter-rouge">emit_untag_known_scalar</code>’s unconditional-ashr shape exactly (no
+<code class="language-plaintext highlighter-rouge">and</code>/<code class="language-plaintext highlighter-rouge">icmp</code>/<code class="language-plaintext highlighter-rouge">select</code>; the niche infrastructure already proved this slot contains a
+tagged scalar, so the general conditional dance in §2 is unnecessary here).
+(Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe4-niche.march</code>.)</p>
+
+<p><strong>Claim 12: verified (behavior).</strong> The same probe, compiled and run,
+prints the correct payload for the <code class="language-plaintext highlighter-rouge">Some</code> arm actually taken. (Transcript
+item 12–13.)</p>
+
+<hr />
+
+<h2 id="75-unboxed-small-scalar-aggregates">7.5 Unboxed small scalar aggregates</h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">lib/tir/repr.ml</code>’s “Unboxed small scalar aggregates”
+section comment (the registry and <code class="language-plaintext highlighter-rouge">set_unboxed_types</code>), plus
+<code class="language-plaintext highlighter-rouge">Llvm_ctx.llvm_ty</code> / <code class="language-plaintext highlighter-rouge">Llvm_ctx.llvm_field_ty</code> / <code class="language-plaintext highlighter-rouge">Llvm_ctx.coerce</code>’s
+aggregate arms, <code class="language-plaintext highlighter-rouge">Llvm_emit_alloc</code>’s <code class="language-plaintext highlighter-rouge">Repr.Unboxed</code> arm, and <code class="language-plaintext highlighter-rouge">Llvm_case</code>’s.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Vec3(Float, Float, Float)</code> used to be <code class="language-plaintext highlighter-rouge">march_alloc(40)</code>: a 16-byte header
+plus three doubles. Nothing could remove it — the inputs are scalars, so FBIP
+has no dying cell of the same shape to reuse, and the value is returned across
+a call boundary, so escape analysis cannot promote it. A vector-math loop paid
+a heap round trip per vector.</p>
+
+<p>Such a type is now represented <strong>inline</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>boxed</th>
+      <th>unboxed</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>a value in a register / parameter / return</td>
+      <td><code class="language-plaintext highlighter-rouge">ptr</code> to a cell</td>
+      <td><code class="language-plaintext highlighter-rouge">{ double, double, double }</code></td>
+    </tr>
+    <tr>
+      <td>construction</td>
+      <td><code class="language-plaintext highlighter-rouge">march_alloc</code> + 3 stores</td>
+      <td>3 <code class="language-plaintext highlighter-rouge">insertvalue</code></td>
+    </tr>
+    <tr>
+      <td>destructuring</td>
+      <td>tag load + 3 field loads</td>
+      <td>3 <code class="language-plaintext highlighter-rouge">extractvalue</code></td>
+    </tr>
+    <tr>
+      <td>reference counting</td>
+      <td>header <code class="language-plaintext highlighter-rouge">rc</code></td>
+      <td>none (<code class="language-plaintext highlighter-rouge">Rc_types.needs_rc</code> is false)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-eligible-class-and-why-it-stops-there">The eligible class, and why it stops there</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Repr.set_unboxed_types</code> admits a <code class="language-plaintext highlighter-rouge">TDVariant</code> with exactly one constructor,
+all of whose fields are <code class="language-plaintext highlighter-rouge">TInt</code>/<code class="language-plaintext highlighter-rouge">TFloat</code>/<code class="language-plaintext highlighter-rouge">TBool</code>, and whose arity is 2..4.
+Everything else is Boxed, each exclusion for its own reason:</p>
+
+<ul>
+  <li><strong>arity 1</strong> is already <code class="language-plaintext highlighter-rouge">Newtype</code> (the value <em>is</em> the payload);</li>
+  <li><strong>arity &gt; 4</strong> — four 8-byte fields is 32 bytes, two register pairs under
+SysV/AAPCS64; past that the C ABI passes the struct in memory and the copy
+costs more than the cell it replaces;</li>
+  <li><strong>a non-scalar field</strong> would make the struct carry a heap pointer, and with
+no header there is nowhere to reference-count it from;</li>
+  <li><strong>two or more constructors</strong> need a tag, and a struct value has no tag slot;</li>
+  <li><strong>an actor message type</strong> needs a runtime tag so a foreign message can be
+told apart at dispatch (§ finding-19 in <code class="language-plaintext highlighter-rouge">repr.ml</code>);</li>
+  <li><strong>a same-short-name colliding type</strong> needs its globally-unique constructor
+tag readable at a dispatch site that only knows the short name;</li>
+  <li><strong>a type named in an <code class="language-plaintext highlighter-rouge">extern</code> signature</strong> — see “The FFI” below.</li>
+</ul>
+
+<h3 id="the-boundary-what-happens-at-an-erased-slot">The boundary: what happens at an erased slot</h3>
+
+<p><strong>Every heap slot is 8 bytes</strong> (<code class="language-plaintext highlighter-rouge">Llvm_ctx.alloc_size</code> is <code class="language-plaintext highlighter-rouge">16 + n*8</code>), so an
+inline aggregate can never be stored inline in one. Wherever such a value
+reaches a slot — a constructor field, a record field, a tuple element, a
+closure free variable, a generic ADT payload, an actor mailbox, a task
+trampoline, an <code class="language-plaintext highlighter-rouge">extern</code> argument — <code class="language-plaintext highlighter-rouge">Llvm_ctx.coerce</code> <strong>boxes</strong> it into
+exactly the cell the Boxed representation would have built: <code class="language-plaintext highlighter-rouge">march_alloc(16 +
+n*8)</code>, the type’s own constructor tag, one field per slot. Reading it back
+unboxes. This is the same two-form convention a <code class="language-plaintext highlighter-rouge">Float</code> already has
+(<code class="language-plaintext highlighter-rouge">march_alloc_float</code> / <code class="language-plaintext highlighter-rouge">march_unbox_float</code>), and it is what makes the change
+invisible to everything downstream — generic equality, <code class="language-plaintext highlighter-rouge">show</code>, the runtime’s
+own field readers, and the interpreter-vs-compiled oracle all see the layout
+they saw before.</p>
+
+<p>Two rules follow, and both are enforced rather than documented:</p>
+
+<ol>
+  <li><strong>Use <code class="language-plaintext highlighter-rouge">Llvm_ctx.llvm_field_ty</code>, never <code class="language-plaintext highlighter-rouge">llvm_ty</code>, for a slot type.</strong>
+<code class="language-plaintext highlighter-rouge">Llvm_data.emit_store_field</code>/<code class="language-plaintext highlighter-rouge">emit_load_field</code> <code class="language-plaintext highlighter-rouge">failwith</code> on a struct slot
+type, so a site that forgets is a build error rather than a 24-byte store
+into an 8-byte slot silently corrupting the next field.</li>
+  <li><strong>A destructured aggregate field is bound as a COPY, not as the box.</strong>
+<code class="language-plaintext highlighter-rouge">Llvm_case</code> treats it exactly like the erased-slot <code class="language-plaintext highlighter-rouge">Float</code> case
+(<code class="language-plaintext highlighter-rouge">is_boxed_agg</code> alongside <code class="language-plaintext highlighter-rouge">is_boxed_float</code>): the box’s reference belongs to
+the cell, and the binder’s type has no refcount, so binding the box would
+leave a transferred reference with no owner. Copying means the binder
+aliases nothing, which is what lets the unique-path release below it be a
+release of a genuinely unowned box.</li>
+</ol>
+
+<h3 id="reference-counting">Reference counting</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Rc_types.needs_rc</code> and <code class="language-plaintext highlighter-rouge">Rc_types.borrow_eligible</code> are both <strong>false</strong> for an
+unboxed aggregate; that module’s doc comment carries the row and the argument.
+The short version: there is no cell to count, and a value that is copied at
+every boundary has no reference for a borrow to be about.</p>
+
+<p>The box built at a slot boundary is a fresh <code class="language-plaintext highlighter-rouge">rc=1</code> cell that Perceus does not
+track — the same position a boxed <code class="language-plaintext highlighter-rouge">Float</code> is in. <code class="language-plaintext highlighter-rouge">Alloc_contract</code> therefore
+reports crossing that boundary as an allocation (<code class="language-plaintext highlighter-rouge">AggBox</code>, “a <code class="language-plaintext highlighter-rouge">Vec3</code> is boxed
+here (it crosses an erased slot)”), so a <code class="language-plaintext highlighter-rouge">@[no_alloc]</code> function cannot
+silently pay for one.</p>
+
+<h3 id="the-ffi">The FFI</h3>
+
+<p>A type named in an <code class="language-plaintext highlighter-rouge">extern</code> signature is excluded from the representation and
+stays Boxed end to end. The C side would otherwise be handed the boxed cell —
+which is the right layout, and is what every existing <code class="language-plaintext highlighter-rouge">extern</code> was written
+against — but that box would be a fresh unowned cell, and since the aggregate
+has no refcount Perceus emits no caller-side drop for it, so it would leak
+once per call. Keeping the type boxed removes the question rather than
+answering it. <code class="language-plaintext highlighter-rouge">docs/ffi.md</code> states this from the user’s side.</p>
+
+<h3 id="where-it-is-off">Where it is off</h3>
+
+<ul>
+  <li><strong>The REPL and the JIT.</strong> A fragment’s result thunk is invoked as
+<code class="language-plaintext highlighter-rouge">void -&gt; ptr</code> and its value printed by walking a heap cell, so a fragment
+returning a struct in registers would be read as a pointer.
+<code class="language-plaintext highlighter-rouge">Repr.force_disable</code> turns the representation off process-wide for those.</li>
+  <li><strong>The JS backend.</strong> Its runtime is GC’d and <code class="language-plaintext highlighter-rouge">Js_emit</code> has no arm for an
+inline aggregate.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">MARCH_NO_UNBOX=1</code></strong>, the bisection escape hatch: every type classifies
+Boxed, restoring the pre-2026-09-03 representation exactly.</li>
+</ul>
+
+<h3 id="one-registry-read-by-everyone">One registry, read by everyone</h3>
+
+<p>The classification is computed once per compilation unit, by
+<code class="language-plaintext highlighter-rouge">Contract_pipeline.run</code> right after Mono and Defun, and every consultation
+site reads that one table: <code class="language-plaintext highlighter-rouge">repr_of_ty</code>, <code class="language-plaintext highlighter-rouge">llvm_ty</code>, <code class="language-plaintext highlighter-rouge">needs_rc</code>,
+<code class="language-plaintext highlighter-rouge">borrow_eligible</code>, <code class="language-plaintext highlighter-rouge">Escape</code>, <code class="language-plaintext highlighter-rouge">Drop</code>, <code class="language-plaintext highlighter-rouge">Alloc_contract</code>. This is deliberate and
+is the same discipline the actor-message and collision-set exclusions exist to
+enforce: encode, decode and RC must never disagree about a type’s
+representation. One table read by all of them cannot split; two independent
+derivations can. <code class="language-plaintext highlighter-rouge">Repr.rebind_registration</code> hands the pipeline’s answer to the
+emitter unchanged, so a type definition that appears after the decision (a
+later pass’s specialisation) simply stays Boxed everywhere.</p>
+
+<p><strong>Claim 15: verified (IR + gauge).</strong> <code class="language-plaintext highlighter-rouge">test/test_codegen.ml</code>’s
+<code class="language-plaintext highlighter-rouge">unboxed_aggregates</code> group asserts the <code class="language-plaintext highlighter-rouge">%ub.Vec3 = type { double, double,
+double }</code> declaration, an <code class="language-plaintext highlighter-rouge">insertvalue</code>/<code class="language-plaintext highlighter-rouge">extractvalue</code> pair, and zero
+<code class="language-plaintext highlighter-rouge">call ptr @march_alloc(</code> in a <code class="language-plaintext highlighter-rouge">Vec3</code>-only module — with a RED control that
+registers the empty table and shows the same program allocating. A compiled
+20,000-iteration <code class="language-plaintext highlighter-rouge">Vec3</code> loop moves <code class="language-plaintext highlighter-rouge">march_live_allocs</code> by exactly 0.</p>
+
+<hr />
+
+<h2 id="8-the-shallow-free-rc-contract-record-update">8. The shallow-free RC contract (record update)</h2>
+
+<p><strong>Governing text:</strong> <code class="language-plaintext highlighter-rouge">runtime/march_extras.c</code>’s <code class="language-plaintext highlighter-rouge">march_record_update_dyn</code> doc
+comment; contrasted with <code class="language-plaintext highlighter-rouge">march_record_field_dyn</code> immediately above it in the
+same file.</p>
+
+<p>A record update (<code class="language-plaintext highlighter-rouge">{ r with f: v, ... }</code>) on a <strong>statically-known</strong> shape
+(<code class="language-plaintext highlighter-rouge">llvm_emit.ml</code>’s <code class="language-plaintext highlighter-rouge">EUpdate</code>, non-erased branch) allocates a new cell of the
+same field count, copies every field from the base, then overwrites the
+named ones: an ordinary NATURAL-repr copy, one allocation.</p>
+
+<p>On a <strong>type-erased</strong> base (no static field list; the value arrived through
+<code class="language-plaintext highlighter-rouge">record_get</code>/<code class="language-plaintext highlighter-rouge">record_put</code>/<code class="language-plaintext highlighter-rouge">record_from_list</code>, or crossed a generic boundary),
+<code class="language-plaintext highlighter-rouge">llvm_emit.ml</code> cannot compute field offsets, so it calls
+<code class="language-plaintext highlighter-rouge">march_record_update_dyn</code> (the by-name, shape-registry-aware runtime path;
+this is the <strong>B5 fix site</strong>, see §9). Its RC contract, from the doc comment:
+one allocation; each <strong>untouched field is copied with <code class="language-plaintext highlighter-rouge">rec_field_copy</code></strong>,
+which, like <code class="language-plaintext highlighter-rouge">march_record_put</code>’s established convention, takes a <code class="language-plaintext highlighter-rouge">+1</code>
+reference on any heap-pointer child field being copied forward (a <em>shallow</em>
+dup: the child cell itself is not deep-copied, only its reference count is
+bumped, since the new record now retains an independent reference to the same
+child). Each <strong>updated field</strong> takes ownership of the caller-supplied new
+value directly (no incref: the caller already transferred it in). Update
+names are resolved against the shape registry <strong>before</strong> any refcount
+mutation begins (“resolve every name FIRST — fail loudly before touching
+refcounts”, per the C comment): a missing field name panics before any
+<code class="language-plaintext highlighter-rouge">rec_field_copy</code> has run, so a bad update can never leave a partially-mutated
+record’s RC in an inconsistent state. Values arrive in <strong>UNIFORM</strong>
+representation (scalars low-bit tagged) regardless of the base’s field
+kinds, exactly matching <code class="language-plaintext highlighter-rouge">march_record_put</code>’s calling convention; this is
+intentional: NATURAL representation is ambiguous for a type-erased value (an
+even <code class="language-plaintext highlighter-rouge">Int</code> ≥ 4096 shares its exact bit pattern with a plausible heap pointer, so a
+plausible-heap sniff would wrongly <code class="language-plaintext highlighter-rouge">incrc</code>/dereference the integer; this is
+exactly the <code class="language-plaintext highlighter-rouge">record_put</code>-large-even-int regression, §9).</p>
+
+<p><strong>Claim 13: verified (IR).</strong> <code class="language-plaintext highlighter-rouge">{ built with x: built.x + 100 }</code> on a
+<code class="language-plaintext highlighter-rouge">record_from_list</code>-erased base compiles to a <code class="language-plaintext highlighter-rouge">march_record_update_dyn</code> call
+with a value argument that is tagged (kind byte <code class="language-plaintext highlighter-rouge">105 = 'i'</code>):</p>
+
+<div class="language-llvm highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">%ru69</span> <span class="p">=</span> <span class="k">call</span> <span class="err">ptr</span> <span class="p">(</span><span class="err">ptr</span><span class="p">,</span> <span class="kt">i64</span><span class="p">,</span> <span class="p">...)</span> <span class="vg">@march_record_update_dyn</span><span class="p">(</span><span class="err">ptr</span> <span class="nv">%ld64</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">1</span><span class="p">,</span> <span class="err">ptr</span> <span class="vg">@.str4</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">1</span><span class="p">,</span> <span class="err">ptr</span> <span class="nv">%cv68</span><span class="p">,</span> <span class="kt">i64</span> <span class="m">105</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Claim 14: verified (behavior).</strong> The same probe, compiled and run,
+produces the arithmetically correct sum with no crash and no memory
+corruption; this exercises exactly the erased-update path the B5 fix
+guards. (Probe: <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-probe7-update.march</code>; transcript items
+14–15.) The pinned regression <code class="language-plaintext highlighter-rouge">test_compiled_record_put_large_even_int</code> in
+<code class="language-plaintext highlighter-rouge">test/test_stdlib_suite.ml</code> covers the large-even-int + 20k-iteration case
+this doc’s probe does not re-run.</p>
+
+<hr />
+
+<h2 id="history-bugs-this-contract-would-have-prevented">History: bugs this contract would have prevented</h2>
+
+<p>One line per bug with a root cause that is a violation of a rule stated above,
+with the fixing commit:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Bug</th>
+      <th>Rule violated</th>
+      <th>Fix commit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>B5</strong>: <code class="language-plaintext highlighter-rouge">EUpdate</code> on a type-erased record allocated a 0-field cell then wrote fields past it (OOB)</td>
+      <td>§8: erased updates must route through the shape-registry-aware runtime path, never a static field-count allocation</td>
+      <td><code class="language-plaintext highlighter-rouge">0d1a829e</code></td>
+    </tr>
+    <tr>
+      <td><strong>B9</strong>: <code class="language-plaintext highlighter-rouge">march_</code>-prefixed runtime-extern-as-value check was off-by-one (6 vs 7 chars), making the arm dead and falling through to a 0-arg extern call</td>
+      <td>not a repr rule per se, but the same “single source of truth” discipline this doc follows (<code class="language-plaintext highlighter-rouge">Tir_names</code>); included as the namespace-collision sibling of the repr bugs</td>
+      <td><code class="language-plaintext highlighter-rouge">cd0770d9</code>, regression-hardened in <code class="language-plaintext highlighter-rouge">5de438e8</code>/<code class="language-plaintext highlighter-rouge">e2d31a9f</code></td>
+    </tr>
+    <tr>
+      <td><strong>B11</strong>: REPL closure wrapper missed the uniform ptr-ABI fix, so a REPL closure returning a concrete <code class="language-plaintext highlighter-rouge">Int</code> came back halved/garbled on odd results</td>
+      <td>§4: every apply/dispatch path (including REPL wrappers) MUST return through the generic-ptr ABI, not a shortcut concrete return</td>
+      <td><code class="language-plaintext highlighter-rouge">b32d8569</code> (sibling <code class="language-plaintext highlighter-rouge">3af54ede</code>)</td>
+    </tr>
+    <tr>
+      <td><strong><code class="language-plaintext highlighter-rouge">task_await</code> double-tag</strong>: <code class="language-plaintext highlighter-rouge">i64</code>-valued parallel task results (psum/preduce/par_fib) came back as <code class="language-plaintext highlighter-rouge">2×correct + N_workers</code></td>
+      <td>§5: the trampoline’s <code class="language-plaintext highlighter-rouge">task[3]</code> slot is <em>doubly</em> tagged for <code class="language-plaintext highlighter-rouge">i64</code> results and needs two conditional untags, not one</td>
+      <td><code class="language-plaintext highlighter-rouge">291f6b5f</code></td>
+    </tr>
+    <tr>
+      <td><strong>Cross-module/erased Option repr drift</strong>: a boxed <code class="language-plaintext highlighter-rouge">None</code> (non-null) read by niche-matching code as <code class="language-plaintext highlighter-rouge">Some</code>, and a boxed <code class="language-plaintext highlighter-rouge">Some</code> cell read by niche code as the payload itself, for <code class="language-plaintext highlighter-rouge">Option(TVar)</code> crossing <code class="language-plaintext highlighter-rouge">record_get</code>/<code class="language-plaintext highlighter-rouge">alist_get</code>/generic helpers</td>
+      <td>§7: erased (<code class="language-plaintext highlighter-rouge">TVar</code>) Option payloads must stay NICHE at every commitment site, never fall back to <code class="language-plaintext highlighter-rouge">Boxed</code> inconsistently across sites</td>
+      <td><code class="language-plaintext highlighter-rouge">f0fe40cc</code> (adds <code class="language-plaintext highlighter-rouge">MARCH_REPR_AUDIT</code>, diagnoses both drifts), unified further in <code class="language-plaintext highlighter-rouge">fbdadce4</code></td>
+    </tr>
+    <tr>
+      <td><strong><code class="language-plaintext highlighter-rouge">record_put</code> large-even-int SIGSEGV</strong>: a NATURAL-repr even <code class="language-plaintext highlighter-rouge">Int</code> ≥ 4096 passed to <code class="language-plaintext highlighter-rouge">record_put</code> was sniffed as a heap pointer and dereferenced</td>
+      <td>§3/§8: type-erased record field writes must use UNIFORM (tagged) representation, never a “plausible heap pointer” runtime sniff over NATURAL bits</td>
+      <td><code class="language-plaintext highlighter-rouge">b439d0f0</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="verification-transcript-numbered-maps-to-claims-114-above">Verification transcript (numbered, maps to Claims 1–14 above)</h2>
+
+<p>All probes compiled against HEAD <code class="language-plaintext highlighter-rouge">1b0bd91b</code> with
+<code class="language-plaintext highlighter-rouge">./_build/default/bin/main.exe</code>, output always redirected (never piped).
+Probe sources under <code class="language-plaintext highlighter-rouge">/tmp/w4-kapitsa-*.march</code>.</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe1-tuple.march</code> (<code class="language-plaintext highlighter-rouge">(n+40, n+1)</code> destructured) →
+exit 0; IR shows the 4-instruction <code class="language-plaintext highlighter-rouge">and</code>/<code class="language-plaintext highlighter-rouge">icmp</code>/<code class="language-plaintext highlighter-rouge">ashr</code>/<code class="language-plaintext highlighter-rouge">select</code> untag
+(Claim 2).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe1-tuple</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">43</code> (Claim 3).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe1-tuple.march</code> again, allocation site → <code class="language-plaintext highlighter-rouge">store ptr</code>
+of tagged values into a 32-byte cell (Claim 4, Probe A).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe2-record.march</code> (<code class="language-plaintext highlighter-rouge">mk_point(n+40, n+1)</code>) → exit 0;
+allocation site shows <code class="language-plaintext highlighter-rouge">store i64</code> untagged into a 32-byte cell (Claim 5,
+Probe B).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe2-record</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">43</code>.</li>
+  <li>(same run as 5, folded into Claim 5’s “both probes run correctly.”)</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> + <code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe6-closure.march</code>
+(<code class="language-plaintext highlighter-rouge">make_adder(5)(37)</code>) → exit 0 each step; IR shows the 2-field closure
+struct, <code class="language-plaintext highlighter-rouge">$fv1</code> NATURAL load, apply-wrapper <code class="language-plaintext highlighter-rouge">ptr</code> return + full untag at
+the call site; run prints <code class="language-plaintext highlighter-rouge">42</code> (Claim 6).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe3-task.march</code> (<code class="language-plaintext highlighter-rouge">task_spawn</code>/<code class="language-plaintext highlighter-rouge">task_await_unwrap</code> on
+<code class="language-plaintext highlighter-rouge">41+1</code>) → exit 0; IR shows two chained conditional-untag sequences
+(Claim 7).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe3-task</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">42</code> (not <code class="language-plaintext highlighter-rouge">84</code>) (Claim 8).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe5-atom.march</code> (<code class="language-plaintext highlighter-rouge">match :post do :put/:post/_</code>) →
+exit 0; switch operands <code class="language-plaintext highlighter-rouge">878176697232756039</code> / <code class="language-plaintext highlighter-rouge">-579996672871248402</code>
+checked bit-by-bit (<code class="language-plaintext highlighter-rouge">python3</code>) for <code class="language-plaintext highlighter-rouge">bit63==bit62</code>, both hold; tag/untag
+roundtrip simulated arithmetically on both, both lossless (Claim 9).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe5-atom</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">2</code> (Claim 10).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe4-niche.march</code> (<code class="language-plaintext highlighter-rouge">Option(Int)</code> runtime-derived) →
+exit 0; IR shows <code class="language-plaintext highlighter-rouge">icmp eq ptr %ld1, null</code> dispatch + unconditional
+<code class="language-plaintext highlighter-rouge">ashr</code> on the <code class="language-plaintext highlighter-rouge">Some</code> arm (Claim 11).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe4-niche</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">2</code> (Claim 12).</li>
+  <li><code class="language-plaintext highlighter-rouge">--emit-llvm</code> on <code class="language-plaintext highlighter-rouge">probe7-update.march</code> (<code class="language-plaintext highlighter-rouge">record_from_list</code> +
+<code class="language-plaintext highlighter-rouge">{ built with x: ... }</code>) → exit 0; IR shows
+<code class="language-plaintext highlighter-rouge">@march_record_update_dyn</code> called with kind byte <code class="language-plaintext highlighter-rouge">105</code> (‘i’, tagged
+UNIFORM value) (Claim 13).</li>
+  <li><code class="language-plaintext highlighter-rouge">--compile</code> + run <code class="language-plaintext highlighter-rouge">probe7-update</code> → exit 0, prints <code class="language-plaintext highlighter-rouge">103</code> (Claim 14).</li>
+</ol>
+
+<p>Claims stated without a probe number (header layout arithmetic, the tag law’s
+exact instruction shapes, the closure struct field-index convention, the RC
+shallow-copy contract’s prose) are cited to their governing module/doc
+comment/commit directly, per the plan’s citation rule, rather than
+re-executed independently; the probes above exercise the code paths that
+implement them.</p>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

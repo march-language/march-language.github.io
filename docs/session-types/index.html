@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session Types — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link active">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="session-types">Session Types</h1>
+
+<p>A protocol is an agreement about <em>who sends what, and in what order</em>. Two programs that disagree (one sends before the other is ready, or a channel is used after it’s closed) deadlock or corrupt data at runtime, usually under load, usually in production.</p>
+
+<p>March’s <strong>session types</strong> turn those agreements into types the compiler checks. You declare a <code class="language-plaintext highlighter-rouge">protocol</code>, the compiler derives each side’s obligations, and any program that breaks the protocol <strong>fails to compile</strong>. Two guarantees are hard and unconditional: if your program compiles, <strong>every send and receive happens in the protocol’s declared order</strong>, and <strong>no endpoint is used after it’s closed</strong>. A handful of related properties (closing a channel you abandoned midway, handling every branch a peer might choose) are weaker (they hold <em>usually</em>, not mechanically) and are collected once in <a href="#the-guarantees-in-one-place">The guarantees, in one place</a>.</p>
+
+<p>These are <em>binary</em> session types: a protocol describes exactly two roles talking over one channel. (For data-parallel fan-out across a whole collection, see <a href="/docs/parallel-collections/">Parallel Collections</a>; for actor mailboxes, see <a href="/docs/actors/">Actors</a>, and the <a href="#session-types-and-actors">section below</a> on how the two relate.)</p>
+
+<p><strong>Binary vs multi-party, and what’s safe to compile today.</strong> The <strong>binary channel plane</strong>
+(<code class="language-plaintext highlighter-rouge">Chan.*</code>) with <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>/<code class="language-plaintext highlighter-rouge">String</code> payloads, correctly interleaved, works identically
+interpreted and compiled; this is the production-ready surface, and every example on
+this page uses it. <strong>Multi-party session types (<code class="language-plaintext highlighter-rouge">MPST.*</code>) are typing-only right now</strong>:
+every <code class="language-plaintext highlighter-rouge">MPST.*</code> program crashes compiled even though the interpreter runs it correctly.
+Stick to binary (two-role) protocols if you need a compiled binary.</p>
+
+<hr />
+
+<h2 id="the-idea">The idea</h2>
+
+<p>Without session types, a channel is just a pipe: there is no protection against reading when you should write, or closing while the other side is still talking. With them, the channel is given a <strong>linear type that advances at every operation</strong>. After you <code class="language-plaintext highlighter-rouge">send</code>, the type states “now receive”; after you <code class="language-plaintext highlighter-rouge">receive</code>, it states “now send” or “now close.” The compiler reads that type and rejects code that does the wrong thing next.</p>
+
+<p>Two classes of bug become compile errors:</p>
+
+<ul>
+  <li><strong>Wrong-order / wrong-direction communication.</strong> <code class="language-plaintext highlighter-rouge">Chan.send</code> on a channel with a protocol that states “receive next” doesn’t type-check.</li>
+  <li><strong>Use-after-close.</strong> The channel is <em>linear</em>: you cannot keep using an endpoint after <code class="language-plaintext highlighter-rouge">Chan.close</code>, or use the same continuation twice.</li>
+</ul>
+
+<p>These two are the hard guarantees: if your program compiles, the two sides agree on the conversation and the channel is never used after close. The narrower, weaker properties (unhandled <code class="language-plaintext highlighter-rouge">offer</code> branches, and abandoning a channel before it reaches <code class="language-plaintext highlighter-rouge">end</code>) are collected in <a href="#the-guarantees-in-one-place">The guarantees, in one place</a> below.</p>
+
+<hr />
+
+<h2 id="declaring-a-protocol">Declaring a protocol</h2>
+
+<p>A protocol is declared with the <code class="language-plaintext highlighter-rouge">protocol</code> keyword (not <code class="language-plaintext highlighter-rouge">session</code>). Each step is <code class="language-plaintext highlighter-rouge">Role -&gt; Role : Type</code>, read as “this role sends a value of this type to that role.” Roles are <strong>inferred</strong> from the steps; there is no <code class="language-plaintext highlighter-rouge">between A, B</code> clause to write.</p>
+
+<pre><code class="language-march">protocol Echo do
+  Alice -&gt; Bob : String
+  Bob -&gt; Alice : String
+end
+</code></pre>
+
+<p>This reads: Alice sends a <code class="language-plaintext highlighter-rouge">String</code> to Bob, then Bob sends a <code class="language-plaintext highlighter-rouge">String</code> back to Alice. The compiler <strong>projects</strong> the global protocol onto each role’s local view and checks <strong>duality</strong>: that one side’s “send” is exactly the other side’s “receive.” For <code class="language-plaintext highlighter-rouge">Echo</code>:</p>
+
+<ul>
+  <li>Alice’s view: <code class="language-plaintext highlighter-rouge">send String</code>, then <code class="language-plaintext highlighter-rouge">recv String</code>, then end.</li>
+  <li>Bob’s view: <code class="language-plaintext highlighter-rouge">recv String</code>, then <code class="language-plaintext highlighter-rouge">send String</code>, then end.</li>
+</ul>
+
+<p>These are duals, so the protocol is well-formed. If they weren’t (say both roles tried to send first), the protocol itself would be rejected.</p>
+
+<hr />
+
+<h2 id="the-chan-api">The <code class="language-plaintext highlighter-rouge">Chan</code> API</h2>
+
+<p>A session-typed channel is created from a protocol and used through five operations. Each one advances the channel’s linear type, so the idiomatic style is to <strong>rebind the channel</strong> at every step (<code class="language-plaintext highlighter-rouge">let ch = Chan.send(ch, …)</code>), threading the freshly-advanced endpoint forward.</p>
+
+<p>A channel endpoint’s type is written <code class="language-plaintext highlighter-rouge">Chan(Role, Protocol)</code>; for example, <code class="language-plaintext highlighter-rouge">Chan(Alice, Echo)</code> is Alice’s end of the <code class="language-plaintext highlighter-rouge">Echo</code> protocol. That annotation is what lets the compiler project the protocol onto the role and check each operation; a bare <code class="language-plaintext highlighter-rouge">Chan</code> has no role and can’t be checked.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operation</th>
+      <th>Type transition</th>
+      <th>Returns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.new(Proto)</code></td>
+      <td>creates two <strong>dual</strong> endpoints (protocol named bare, not as a string)</td>
+      <td><code class="language-plaintext highlighter-rouge">(Chan, Chan)</code>, one per role</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.send(ch, v)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">send T, then S</code> ⟶ <code class="language-plaintext highlighter-rouge">S</code></td>
+      <td>the advanced <code class="language-plaintext highlighter-rouge">Chan</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.recv(ch)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">recv T, then S</code> ⟶ <code class="language-plaintext highlighter-rouge">S</code></td>
+      <td><code class="language-plaintext highlighter-rouge">(value, advanced Chan)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.choose(ch, :label)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">choose {…}</code> ⟶ the chosen branch</td>
+      <td>the advanced <code class="language-plaintext highlighter-rouge">Chan</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.offer(ch)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">offer {…}</code> ⟶ the picked branch</td>
+      <td><code class="language-plaintext highlighter-rouge">(label, advanced Chan)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Chan.close(ch)</code></td>
+      <td>requires the protocol be <strong>complete</strong> (<code class="language-plaintext highlighter-rouge">end</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">()</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A few rules the type checker enforces, so they never reach runtime:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">Chan.new(proto)</code> returns the two endpoints.</strong> Hand one to each role. They are linked: what one side sends, the other receives.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">send</code>/<code class="language-plaintext highlighter-rouge">recv</code> must match the protocol’s next step.</strong> Calling <code class="language-plaintext highlighter-rouge">Chan.send</code> when the protocol states “receive next” is a type error.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Chan.close</code> only type-checks at the end of the protocol.</strong> If there are still steps left, closing is rejected: you can’t hang up mid-conversation.</li>
+  <li><strong>The endpoint is linear.</strong> Each rebinding consumes the previous one, so you can’t accidentally reuse a stale (pre-advance) handle, including a channel parameter (its re-use is tracked as affine). A <code class="language-plaintext highlighter-rouge">let</code>-bound channel that reaches the end of the protocol and is then dropped without <code class="language-plaintext highlighter-rouge">Chan.close</code> is also rejected. See <a href="#the-guarantees-in-one-place">The guarantees, in one place</a> for the precise shape of what this check does and doesn’t cover.</li>
+</ul>
+
+<hr />
+
+<h2 id="a-worked-example-requestreply">A worked example: request–reply</h2>
+
+<p>Here is the <code class="language-plaintext highlighter-rouge">Echo</code> protocol, fully implemented and <strong>runnable</strong>. Because a channel’s two directional queues have no scheduler behind them (<code class="language-plaintext highlighter-rouge">Chan.recv</code> never suspends; see the Runtime note below), a working program interleaves both sides’ <em>steps</em> into a single control flow, so every <code class="language-plaintext highlighter-rouge">send</code> runs before its matching <code class="language-plaintext highlighter-rouge">recv</code>:</p>
+
+<pre><code class="language-march">fn main() do
+  let (alice, bob) = Chan.new(Echo)
+  let alice = Chan.send(alice, "hello")     -- Alice sends first
+  let (msg, bob) = Chan.recv(bob)           -- Bob receives
+  let bob = Chan.send(bob, "echo: " ++ msg) -- Bob replies
+  let (reply, alice) = Chan.recv(alice)     -- Alice receives the echo
+  Chan.close(bob)
+  Chan.close(alice)
+  println(reply)   -- echo: hello
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Chan.new(Echo)</code> takes the protocol as a bare name and returns Alice’s and Bob’s dual endpoints; each <code class="language-plaintext highlighter-rouge">Chan.send</code>/<code class="language-plaintext highlighter-rouge">Chan.recv</code> advances one of them, and both are closed once the protocol reaches <code class="language-plaintext highlighter-rouge">end</code>. Every operation is checked against the protocol: a <code class="language-plaintext highlighter-rouge">send</code> out of order, or a <code class="language-plaintext highlighter-rouge">recv</code> of a value that isn’t due yet, simply wouldn’t compile.</p>
+
+<h3 id="each-roles-view">Each role’s view</h3>
+
+<p>The same protocol can be written as two functions, one per role; each takes its own endpoint as <code class="language-plaintext highlighter-rouge">Chan(Role, Echo)</code> and threads it through <code class="language-plaintext highlighter-rouge">send</code> → <code class="language-plaintext highlighter-rouge">recv</code> → <code class="language-plaintext highlighter-rouge">close</code>. This is the shape you’d use if each side ran as its own actor or under an external scheduler:</p>
+
+<pre><code class="language-march">mod EchoDemo do
+
+  protocol Echo do
+    Alice -&gt; Bob : String
+    Bob -&gt; Alice : String
+  end
+
+  -- Alice's side: send, then receive the echo, then close.
+  fn client(ch : Chan(Alice, Echo)) : String do
+    let ch = Chan.send(ch, "hello")
+    let (reply, ch) = Chan.recv(ch)
+    Chan.close(ch)
+    reply
+  end
+
+  -- Bob's side: receive, send the echo back, then close.
+  fn server(ch : Chan(Bob, Echo)) : Unit do
+    let (msg, ch) = Chan.recv(ch)
+    let ch = Chan.send(ch, "echo: " ++ msg)
+    Chan.close(ch)
+  end
+end
+</code></pre>
+
+<p>Each function documents <em>one role’s own view</em> of the protocol, enforced through the type system rather than by discipline. If <code class="language-plaintext highlighter-rouge">client</code> tried to <code class="language-plaintext highlighter-rouge">Chan.recv</code> before <code class="language-plaintext highlighter-rouge">Chan.send</code>, the projected type for Alice’s endpoint states “send next,” so the receive is a type error; if <code class="language-plaintext highlighter-rouge">server</code> forgot to <code class="language-plaintext highlighter-rouge">Chan.close</code>, the linear endpoint would be left unconsumed, also an error.</p>
+
+<p><strong>But these two functions are not, by themselves, a call sequence you can drop into one <code class="language-plaintext highlighter-rouge">main</code>.</strong> <code class="language-plaintext highlighter-rouge">client</code> starts with a <code class="language-plaintext highlighter-rouge">send</code>, <code class="language-plaintext highlighter-rouge">server</code> with a <code class="language-plaintext highlighter-rouge">recv</code>; because <code class="language-plaintext highlighter-rouge">Chan.recv</code> never suspends, calling them as two ordinary uninterrupted calls, in <em>either</em> order, crashes at the first <code class="language-plaintext highlighter-rouge">recv</code> for which the value hasn’t been sent yet, on both backends. The two-function form documents each role’s view; the interleaved <code class="language-plaintext highlighter-rouge">main</code> above is the form that actually runs. (The function-structured form is exactly that interleaving split across two functions; it does not run the two sides concurrently on separate green threads.)</p>
+
+<blockquote>
+  <p><strong>Runtime note.</strong> A channel is backed by two directional queues (one per direction), on <strong>both</strong> backends. Session <em>safety</em> (correct order, no use-after-close) is checked entirely at compile time; the runtime does not re-verify it. <code class="language-plaintext highlighter-rouge">Chan.recv</code> does <strong>not</strong> block or suspend on <em>either</em> backend: if the matching value hasn’t been sent yet, <code class="language-plaintext highlighter-rouge">recv</code> fails immediately with a runtime error (interpreted) or aborts (compiled); there is no scheduler backing channels the way there is for actor mailboxes. Session types here are a linear protocol-conformance checker over a same-thread mailbox, not a concurrent scheduler: the compiler checks that operations happen in the right order, not that they happen on different threads at the same time.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="choice-choose-and-offer">Choice: <code class="language-plaintext highlighter-rouge">choose</code> and <code class="language-plaintext highlighter-rouge">offer</code></h2>
+
+<p>Protocols can branch. One role actively <strong>chooses</strong> a labeled branch; the other passively <strong>offers</strong> to handle whichever is picked. The branch point is declared in the protocol with <code class="language-plaintext highlighter-rouge">choose by Role:</code>, listing each labeled alternative:</p>
+
+<pre><code class="language-march">protocol Decision do
+  Client -&gt; Server : Int        -- client sends a request
+  choose by Server:             -- the server then picks a branch
+    ok  -&gt; Server -&gt; Client : Bool
+    err -&gt; Server -&gt; Client : Int
+  end
+end
+</code></pre>
+
+<p>The role named in <code class="language-plaintext highlighter-rouge">choose by</code> (here <code class="language-plaintext highlighter-rouge">Server</code>) drives the choice with <code class="language-plaintext highlighter-rouge">Chan.choose(ch, :label)</code>; the <em>other</em> role (here <code class="language-plaintext highlighter-rouge">Client</code>) receives the picked branch with <code class="language-plaintext highlighter-rouge">Chan.offer(ch)</code>:</p>
+
+<pre><code class="language-march">-- Server's side: receive, pick the :ok branch, send the Bool, close.
+fn server_side(ch : Chan(Server, Decision)) : Unit do
+  let (n, ch)  = Chan.recv(ch)
+  let ch       = Chan.choose(ch, :ok)
+  let ch       = Chan.send(ch, true)
+  Chan.close(ch)
+end
+
+-- Client's side: send, then offer — handling each label the server might pick.
+fn client_side(ch : Chan(Client, Decision)) : Unit do
+  let ch          = Chan.send(ch, 42)
+  let (label, ch) = Chan.offer(ch)
+  match label do
+    :ok  -&gt; ...   -- recv a Bool, then close
+    :err -&gt; ...   -- recv an Int,  then close
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Chan.choose(ch, :label)</code> advances the channel into the chosen branch; <code class="language-plaintext highlighter-rouge">Chan.offer(ch)</code> returns <code class="language-plaintext highlighter-rouge">(picked_label, advanced_channel)</code>. An invalid label passed to <code class="language-plaintext highlighter-rouge">choose</code> (one the protocol didn’t declare) is rejected at typecheck time. Handling the picked label is an ordinary <code class="language-plaintext highlighter-rouge">match</code> on the returned <code class="language-plaintext highlighter-rouge">Atom</code>, so ordinary <code class="language-plaintext highlighter-rouge">match</code> rules apply, including that a missing arm is only a warning (see <a href="#the-guarantees-in-one-place">The guarantees, in one place</a>), not the hard error you might expect from “the compiler enforces the protocol.”</p>
+
+<hr />
+
+<h2 id="the-guarantees-in-one-place">The guarantees, in one place</h2>
+
+<p>If a program using session-typed channels compiles, then:</p>
+
+<ul>
+  <li><strong>No protocol violations.</strong> Every <code class="language-plaintext highlighter-rouge">send</code>/<code class="language-plaintext highlighter-rouge">recv</code> matches the protocol’s next step, on both sides, by construction (duality is checked when the protocol is declared).</li>
+  <li><strong>No use-after-close.</strong> The channel is linear; an endpoint cannot be used after <code class="language-plaintext highlighter-rouge">Chan.close</code>, and <code class="language-plaintext highlighter-rouge">close</code> only type-checks once the protocol is complete.</li>
+  <li><strong>A <code class="language-plaintext highlighter-rouge">let</code>-bound endpoint that reaches the end of the protocol must be closed.</strong> Dropping it unclosed at that point is rejected, and re-using a channel <em>parameter</em> (not just a <code class="language-plaintext highlighter-rouge">let</code>-bound continuation) is also caught.</li>
+</ul>
+
+<p>These properties are the same ones you’d otherwise chase with runtime assertions and integration tests, promoted to compile-time checks that hold for <em>all</em> executions, not just the ones your tests happened to hit.</p>
+
+<p><strong>Two things that sound like guarantees but aren’t, yet:</strong></p>
+
+<ul>
+  <li><strong>An <code class="language-plaintext highlighter-rouge">offer</code> that doesn’t handle every label is a warning, not an error.</strong> <code class="language-plaintext highlighter-rouge">match</code>’s exhaustiveness check (the same one that governs every other <code class="language-plaintext highlighter-rouge">match</code> in March) only warns on a missing case, so an unhandled label still compiles.</li>
+  <li><strong>Abandoning a channel mid-protocol isn’t caught.</strong> The must-close check only fires once an endpoint has reached the <em>end</em> of its protocol. Creating a channel and never touching one side again, before either endpoint reaches <code class="language-plaintext highlighter-rouge">end</code>, still typechecks and runs cleanly.</li>
+</ul>
+
+<hr />
+
+<h2 id="session-types-and-actors">Session types and actors</h2>
+
+<p>Session types and <a href="/docs/actors/">actors</a> are <strong>complementary</strong> mechanisms, not competitors. They solve different shapes of problem:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Actors (mailboxes)</th>
+      <th>Session-typed channels</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Shape</strong></td>
+      <td>identity + state + a mailbox; many senders, one receiver</td>
+      <td>a two-party conversation over one linear channel</td>
+    </tr>
+    <tr>
+      <td><strong>Typing</strong></td>
+      <td>each <code class="language-plaintext highlighter-rouge">on Msg(...)</code> handler is typed, but message <em>order</em> is unconstrained: any actor can <code class="language-plaintext highlighter-rouge">send</code> any message at any time</td>
+      <td>the <em>sequence</em> of sends/receives is typed; order is enforced</td>
+    </tr>
+    <tr>
+      <td><strong>Multiplicity</strong></td>
+      <td>one mailbox, fan-in from anywhere</td>
+      <td>exactly two endpoints, point-to-point</td>
+    </tr>
+    <tr>
+      <td><strong>Lifetime</strong></td>
+      <td>long-lived process; mailbox always open</td>
+      <td>the channel <em>ends</em>, <code class="language-plaintext highlighter-rouge">close</code> is checked once the protocol is complete, and (see above) dropping it unclosed once it gets there is now also rejected, though no check forces the conversation to <em>reach</em> the end in the first place</td>
+    </tr>
+    <tr>
+      <td><strong>Best for</strong></td>
+      <td>stateful services, supervision, fan-in event handling</td>
+      <td>strict request/reply or multi-step handshakes where ordering correctness matters</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The mental model: <strong>an actor’s mailbox guarantees each message is well-typed; a session channel additionally guarantees the sends and receives that do happen arrive in the agreed order.</strong> Reach for an actor when you have a stateful entity that many parties talk to (a counter, a connection, a supervised worker). Reach for a session channel when two parties run a fixed protocol and you want the compiler to prove they follow it: a login handshake, a request/reply exchange, a negotiation with branches.</p>
+
+<p><strong>The two do not layer as freely as they might first appear.</strong> An actor’s mailbox is backed by the scheduler: <code class="language-plaintext highlighter-rouge">receive()</code> truly suspends the actor’s green thread until a message arrives, so two actors can <code class="language-plaintext highlighter-rouge">send</code>/<code class="language-plaintext highlighter-rouge">receive</code> in whatever order and the scheduler sorts it out. A session channel has no such backing: <code class="language-plaintext highlighter-rouge">Chan.recv</code> never suspends (see the Runtime note above), so a session conducted between two actor handlers still needs its <code class="language-plaintext highlighter-rouge">send</code>s and <code class="language-plaintext highlighter-rouge">recv</code>s to land in the right order relative to each other; the channel does not gain scheduler-backed blocking just because its endpoints happen to live inside actors. An actor handler <em>can</em> open a session channel to conduct a typed sub-conversation with another actor, but only if the two handlers’ message-driven control flow already guarantees each <code class="language-plaintext highlighter-rouge">send</code> happens before its matching <code class="language-plaintext highlighter-rouge">recv</code> is attempted.</p>
+
+<h3 id="worked-example-handing-an-endpoint-to-an-actor">Worked example: handing an endpoint to an actor</h3>
+
+<p>An endpoint is an ordinary (linear) value, so it can ride inside an actor message. This
+is the safe composition pattern, verified on both backends: the requester advances its
+side of the session <em>before</em> handing the peer endpoint over, so mailbox causality (
+messages are processed after they are sent) guarantees the responder’s <code class="language-plaintext highlighter-rouge">recv</code> finds its
+value waiting:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  type Alice = Alice
+  type Bob = Bob
+
+  protocol Echo do
+    Alice -&gt; Bob : String
+    Bob -&gt; Alice : String
+  end
+
+  actor Responder do
+    state { done : Int }
+    init  { done: 0 }
+
+    on Serve(ch : Chan(Bob, Echo)) do
+      let (msg, ch2) = Chan.recv(ch)          -- safe: sent before Serve was
+      let ch3 = Chan.send(ch2, "echo: " ++ msg)
+      Chan.close(ch3)
+      { done: 1 }
+    end
+  end
+
+  fn main(_cap_console : Cap(IO.Console)) do
+    let (alice, bob) = Chan.new(Echo)
+    let pid = spawn(Responder)
+    let alice2 = Chan.send(alice, "hello")    -- 1: advance OUR side first
+    send(pid, Serve(bob))                     -- 2: then hand Bob's end over
+    run_until_idle()                          -- 3: responder has now replied
+    let (reply, alice3) = Chan.recv(alice2)   -- safe: causally after the send
+    Chan.close(alice3)
+    println(reply)
+  end
+end
+</code></pre>
+
+<p>Two disciplines make this correct, and both generalize:</p>
+
+<ol>
+  <li><strong>Send-before-handoff.</strong> Every <code class="language-plaintext highlighter-rouge">Chan.send</code> the receiving handler will <code class="language-plaintext highlighter-rouge">recv</code> must
+happen <em>before</em> the actor message that delivers the endpoint. The mailbox’s
+sent-before-processed ordering then does the work a channel scheduler would.</li>
+  <li><strong>Synchronize before the reply direction.</strong> The requester must not <code class="language-plaintext highlighter-rouge">Chan.recv</code> the
+response until the responder has demonstrably run; here <code class="language-plaintext highlighter-rouge">run_until_idle()</code> provides
+that; in a live system, an <code class="language-plaintext highlighter-rouge">Actor.call</code> round-trip to the responder (or a completion
+message back) is the equivalent causal fence.</li>
+</ol>
+
+<p>Linearity persists across the handoff: after <code class="language-plaintext highlighter-rouge">send(pid, Serve(bob))</code>, the endpoint is consumed;
+any further use of <code class="language-plaintext highlighter-rouge">bob</code> in the sender is rejected at compile time (<code class="language-plaintext highlighter-rouge">The linear value
+</code>bob<code class="language-plaintext highlighter-rouge"> is used more than once</code>), so the protocol’s exactly-once discipline is maintained even
+though the conversation now spans two actors. What the compiler does <em>not</em> check is the
+causal ordering itself: skip discipline 1 or 2 and the program still typechecks, then
+dies at runtime with <code class="language-plaintext highlighter-rouge">Chan.recv: … no pending value</code>; that footgun is the scope
+boundary described above, repeated in concrete terms.</p>
+
+<hr />
+
+<h2 id="swapping-the-transport-session">Swapping the transport: <code class="language-plaintext highlighter-rouge">Session</code></h2>
+
+<p><code class="language-plaintext highlighter-rouge">Chan</code> and <code class="language-plaintext highlighter-rouge">MPST</code> run over an in-process queue baked into the runtime. For code
+that must run over a <em>real</em> transport in production and <em>deterministically</em> in
+a test, the standard library’s <code class="language-plaintext highlighter-rouge">Session</code> module puts the transport behind a
+capability instead.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(Session.Live)</code> carries a <strong>dictionary</strong> — the transport — and every
+operation dispatches through it:</p>
+
+<pre><code class="language-march">type Ops = {
+  register : Int -&gt; Int -&gt; Int,                     -- access point, role -&gt; endpoint
+  emit     : Int -&gt; Int -&gt; Bytes -&gt; Int,            -- endpoint, to-role, msg -&gt; endpoint
+  suspend  : Int -&gt; (Int -&gt; Bytes -&gt; Int -&gt; Int) -&gt; Int,  -- install a handler, yield
+  close    : Int -&gt; ()
+}
+</code></pre>
+
+<p>It is protocol-agnostic on purpose: no field is named after a protocol, a role
+or a message. Endpoints, roles and access points are opaque <code class="language-plaintext highlighter-rouge">Int</code> handles the
+transport hands out, and a message is <code class="language-plaintext highlighter-rouge">Bytes</code> — a transport must serialise
+anyway, and the code that knows the real message type sits on both sides of
+it. There is no <code class="language-plaintext highlighter-rouge">recv</code>: an event-driven endpoint never blocks; delivery is the
+handler you pass to <code class="language-plaintext highlighter-rouge">suspend</code>, which is entered exactly once, in tail position.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Session.attach(io, ops)</code> is the only way to obtain a <code class="language-plaintext highlighter-rouge">Cap(Session.Live)</code>, and
+a session with nothing attached <strong>panics</strong> rather than silently doing nothing.</p>
+
+<p>An endpoint for the <code class="language-plaintext highlighter-rouge">Stream</code> protocol above, written the way a projector would
+emit it — it names no transport:</p>
+
+<pre><code class="language-march">pfn prod_send(s : Cap(Session.Live), ep : Int, next : Int) : Int do
+  let ep1 = Session.emit(s, ep, cons(), enc_item(next))
+  Session.suspend(s, ep1, fn (_from, msg, ep2) -&gt;
+    if tag(msg) == "M" do prod_send(s, ep2, next + 1)
+    else Session.close(s, ep2)  ep2 end)
+end
+</code></pre>
+
+<p>Under test, attach an in-process transport whose <code class="language-plaintext highlighter-rouge">emit</code> only <em>enqueues</em> and
+whose run queue is drained in FIFO order after every endpoint has had its turn;
+the interleaving is then fixed and the trace is the same on every run. The
+worked version, with both <code class="language-plaintext highlighter-rouge">Stream</code> roles and the deterministic trace they
+produce, is <code class="language-plaintext highlighter-rouge">test/session/stream_replay.march</code>. (A transport that delivers
+synchronously inside <code class="language-plaintext highlighter-rouge">emit</code> is wrong for this shape: an endpoint sends <em>before</em>
+it suspends, so a synchronous reply arrives before its handler exists.)</p>
+
+<p>Any module that takes a <code class="language-plaintext highlighter-rouge">Cap(Session.Live)</code> parameter declares
+<code class="language-plaintext highlighter-rouge">needs Session.Live</code>, as for any proof capability.</p>
+
+<h2 id="see-also">See also</h2>
+
+<ul>
+  <li><a href="/docs/actors/">Actors</a>: mailboxes, <code class="language-plaintext highlighter-rouge">spawn</code>/<code class="language-plaintext highlighter-rouge">send</code>, and the scheduler these channels run on.</li>
+  <li><a href="/docs/linear-types/">Linear Types</a>: the linearity discipline that makes “use exactly once, then close” checkable.</li>
+  <li><a href="/docs/actors/#choosing-a-concurrency-primitive">Choosing a concurrency primitive</a>: where session channels fit among the other concurrency tools.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

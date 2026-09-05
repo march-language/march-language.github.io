@@ -1,0 +1,3096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tooling — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link active">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="tooling">Tooling</h1>
+
+<p>March ships with a build tool, an LSP server, and a tree-sitter grammar for editor syntax highlighting.</p>
+
+<hr />
+
+<h2 id="installing-forge">Installing forge</h2>
+
+<p>After cloning and building the repo, install <code class="language-plaintext highlighter-rouge">forge</code> to your PATH with:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dune build <span class="o">&amp;&amp;</span> dune <span class="nb">install </span>forge
+</code></pre></div></div>
+
+<p>Then all forge commands are available directly:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge build
+forge <span class="nb">test
+</span>forge search <span class="s2">"map"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="forge-build-tool">forge: Build Tool</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge</code> is the official project manager for March.</p>
+
+<h3 id="creating-a-project">Creating a Project</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge new my_app           <span class="c"># application project (default)</span>
+forge new my_lib <span class="nt">--lib</span>     <span class="c"># library project</span>
+forge new my_tool <span class="nt">--tool</span>   <span class="c"># CLI tool project</span>
+<span class="nb">cd </span>my_app
+</code></pre></div></div>
+
+<p>Scaffolded layout:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_app/
+├── forge.toml          # project manifest
+├── lib/
+│   └── my_app.march    # entry point (mod MyApp do ... end)
+└── test/
+    └── my_app_test.march
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge.toml</code>:</p>
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[package]</span>
+<span class="py">name</span> <span class="p">=</span> <span class="s">"my_app"</span>
+<span class="py">version</span> <span class="p">=</span> <span class="s">"0.1.0"</span>
+
+<span class="nn">[deps]</span>
+<span class="c"># add deps here</span>
+</code></pre></div></div>
+
+<p>To add a <code class="language-plaintext highlighter-rouge">forge.toml</code> to an existing directory without scaffolding:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge init
+</code></pre></div></div>
+
+<h3 id="building-and-running">Building and Running</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build the project</span>
+forge build
+
+<span class="c"># Build in release mode (optimized)</span>
+forge build <span class="nt">--release</span>
+
+<span class="c"># Build and run</span>
+forge run                        <span class="c"># run the project entry (interpreted)</span>
+forge run <span class="nt">--compiled</span>             <span class="c"># compile via LLVM, then run the binary</span>
+forge run foo.march              <span class="c"># run a single file</span>
+forge run <span class="nt">--compiled</span> foo.march   <span class="c"># compile and run a single file</span>
+forge run foo.march <span class="nt">--</span> a b       <span class="c"># pass a and b to the program as its argv</span>
+
+<span class="c"># Dump compiler IR phases to trace/phases/phases.json</span>
+forge build <span class="nt">--dump-phases</span>
+forge run <span class="nt">--dump-phases</span>
+
+<span class="c"># Fail if forge.lock is out of sync with forge.toml</span>
+forge build <span class="nt">--frozen</span>
+</code></pre></div></div>
+
+<p>A file named on the command line still sees the surrounding project’s modules
+and FFI shims when it is inside a project, so a scratch file can import your own
+code; outside a project it runs standalone. Arguments after <code class="language-plaintext highlighter-rouge">--</code> reach the
+program as <code class="language-plaintext highlighter-rouge">System.argv()</code>, with <code class="language-plaintext highlighter-rouge">argv[0]</code> the script path when interpreted and
+the binary path when compiled. Passing arguments requires naming a FILE.</p>
+
+<p>In a workspace, build a single member:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge build <span class="nt">-p</span> my_lib
+</code></pre></div></div>
+
+<h3 id="javascript-backend">JavaScript Backend</h3>
+
+<p>March compiles to ES modules with <code class="language-plaintext highlighter-rouge">--target js</code>. The output is a self-contained <code class="language-plaintext highlighter-rouge">.mjs</code> file that runs in Node.js or any modern browser:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Compile to ES module</span>
+march <span class="nt">--target</span> js <span class="nt">-o</span> dist/app.mjs src/app.march
+
+<span class="c"># Copy the runtime alongside the output (default; omit --no-copy-runtime)</span>
+march <span class="nt">--target</span> js <span class="nt">-o</span> dist/app.mjs src/app.march
+<span class="c"># → dist/app.mjs + dist/march_runtime.mjs + dist/march_dom.mjs</span>
+
+<span class="c"># Run with Node</span>
+node dist/app.mjs
+
+<span class="c"># Skip runtime copy (e.g. build tool manages it)</span>
+march <span class="nt">--target</span> js <span class="nt">--no-copy-runtime</span> <span class="nt">-o</span> dist/app.mjs src/app.march
+</code></pre></div></div>
+
+<p>The JS backend auto-loads <code class="language-plaintext highlighter-rouge">dom.march</code> from stdlib, so <code class="language-plaintext highlighter-rouge">Js.Dom.*</code> functions are available without any extra imports in JS builds:</p>
+
+<pre><code class="language-march">mod Counter do
+  fn main() : Unit do
+    match Js.Dom.find("counter") do
+      None    -&gt; ()
+      Some(el) -&gt;
+        Js.Dom.set_text(el, "0")
+        Js.Dom.listen(el, "click", fn _ -&gt; Js.Dom.set_text(el, "clicked!"))
+    end
+  end
+end
+</code></pre>
+
+<p>In HTML, import the output as an ES module:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"module"</span> <span class="na">src=</span><span class="s">"dist/app.mjs"</span><span class="nt">&gt;&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">Js.Dom</code> module is JS-only: calling DOM functions in a native build is a compile-time error at the capability level, but a runtime panic if you bypass the type system with FFI.</p>
+
+<h4 id="forge-build-and-watch-with-target-js">forge build and watch with –target js</h4>
+
+<p><code class="language-plaintext highlighter-rouge">forge build</code> and <code class="language-plaintext highlighter-rouge">forge watch</code> both accept <code class="language-plaintext highlighter-rouge">--target js</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge build <span class="nt">--target</span> js          <span class="c"># compile → .march/build/debug/&lt;name&gt;.mjs</span>
+forge watch <span class="nt">--target</span> js          <span class="c"># rebuild on change</span>
+forge watch run <span class="nt">--target</span> js      <span class="c"># rebuild + re-run with node on change</span>
+</code></pre></div></div>
+
+<h4 id="js-ffi-calling-npm-packages">JS FFI: calling npm packages</h4>
+
+<p>Import any npm package via an <code class="language-plaintext highlighter-rouge">extern</code> block. Use the bare npm package name (no <code class="language-plaintext highlighter-rouge">npm:</code> prefix; Node.js resolves those directly):</p>
+
+<pre><code class="language-march">mod App do
+  needs IO.Foreign
+  extern "lodash" : Cap(IO.Foreign) do
+    fn chunk(arr: List(String), size: Int) : List(List(String)) = "chunk"
+  end
+end
+</code></pre>
+
+<p>Declare npm dependencies in forge.toml under <code class="language-plaintext highlighter-rouge">[js_deps]</code>. <code class="language-plaintext highlighter-rouge">forge build --target js</code> will write a <code class="language-plaintext highlighter-rouge">package.json</code> and run <code class="language-plaintext highlighter-rouge">npm install</code> automatically:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[js_deps]</span>
+<span class="py">lodash</span> <span class="p">=</span> <span class="s">"^4.17.21"</span>
+<span class="py">react</span>  <span class="p">=</span> <span class="s">"^18.3.0"</span>
+</code></pre></div></div>
+
+<p>The generated <code class="language-plaintext highlighter-rouge">package.json</code> sets <code class="language-plaintext highlighter-rouge">"type": "module"</code> so your <code class="language-plaintext highlighter-rouge">.mjs</code> output loads cleanly. For Deno or Bun, use their native specifiers (<code class="language-plaintext highlighter-rouge">npm:lodash</code>, <code class="language-plaintext highlighter-rouge">jsr:@std/path</code>) directly in the <code class="language-plaintext highlighter-rouge">extern</code> lib name; no <code class="language-plaintext highlighter-rouge">[js_deps]</code> needed since those runtimes fetch packages on demand.</p>
+
+<h3 id="cross-compiling-to-linux">Cross-compiling to Linux</h3>
+
+<p>March can build a <strong>Linux</strong> binary from any host (including macOS) the way Go’s
+<code class="language-plaintext highlighter-rouge">GOOS=linux go build</code> does. Pass a <code class="language-plaintext highlighter-rouge">linux/*</code> target and you get a native Linux
+ELF without a Linux box, VM, or Docker build step:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nt">--compile</span> <span class="nt">--target</span> linux/amd64 app.march <span class="nt">-o</span> app   <span class="c"># x86-64 Linux</span>
+march <span class="nt">--compile</span> <span class="nt">--target</span> linux/arm64 app.march <span class="nt">-o</span> app   <span class="c"># aarch64 Linux</span>
+
+forge build <span class="nt">--target</span> linux/amd64                          <span class="c"># via forge</span>
+forge build <span class="nt">--target</span> linux/arm64
+</code></pre></div></div>
+
+<p>Accepted aliases: <code class="language-plaintext highlighter-rouge">linux/amd64</code> (= <code class="language-plaintext highlighter-rouge">linux/x86_64</code>) and <code class="language-plaintext highlighter-rouge">linux/arm64</code>
+(= <code class="language-plaintext highlighter-rouge">linux/aarch64</code>).</p>
+
+<p><strong>Prerequisite: <code class="language-plaintext highlighter-rouge">zig</code>.</strong> Cross-compilation uses <a href="https://ziglang.org"><code class="language-plaintext highlighter-rouge">zig cc</code></a>
+as the C cross-compiler (it bundles a clang plus the Linux sysroots, so there’s
+no further install step). Put <code class="language-plaintext highlighter-rouge">zig</code> on your <code class="language-plaintext highlighter-rouge">PATH</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew <span class="nb">install </span>zig          <span class="c"># macOS</span>
+<span class="c"># or download from https://ziglang.org/download/</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge build --target linux/…</code> checks for <code class="language-plaintext highlighter-rouge">zig</code> up front and tells you if it’s
+missing; a bare <code class="language-plaintext highlighter-rouge">march --compile --target linux/…</code> will fail at the link step
+without it.</p>
+
+<p><strong>Output.</strong> <code class="language-plaintext highlighter-rouge">forge</code> writes cross builds to a per-target directory so they never
+clobber your host binary:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.march/build/linux-amd64/debug/&lt;name&gt;
+.march/build/linux-arm64/release/&lt;name&gt;
+</code></pre></div></div>
+
+<p><strong>What you get.</strong> A <strong>dynamically-linked glibc</strong> binary (minimum glibc 2.31,
+Ubuntu 20.04 / Debian 11 and newer). It runs on mainstream distributions and in
+glibc-based containers (<code class="language-plaintext highlighter-rouge">debian:*-slim</code>, <code class="language-plaintext highlighter-rouge">ubuntu:*</code>, distroless-cc), e.g.:</p>
+
+<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> debian:bookworm-slim</span>
+<span class="k">COPY</span><span class="s"> app /usr/local/bin/app</span>
+<span class="k">CMD</span><span class="s"> ["app"]</span>
+</code></pre></div></div>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Smoke-test a cross build locally, without deploying:</span>
+march <span class="nt">--compile</span> <span class="nt">--target</span> linux/amd64 app.march <span class="nt">-o</span> app
+docker run <span class="nt">--rm</span> <span class="nt">--platform</span> linux/amd64 <span class="nt">-v</span> <span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/app"</span>:/app:ro debian:bookworm-slim /app
+</code></pre></div></div>
+
+<p><strong>Scope (current).</strong> Cross-compilation currently targets <strong>compute and CLI
+workloads</strong>. Not yet included in a cross build:</p>
+
+<ul>
+  <li><strong>TLS/HTTPS</strong> and <strong>compression</strong> (zstd/brotli/zlib): these runtime modules are
+omitted from cross builds for now.</li>
+  <li><strong>Hot code reload</strong>: the reload <code class="language-plaintext highlighter-rouge">.so</code> path is host-only today; deploy a
+pre-built artifact instead (see <a href="/docs/hot-code-reload/">Hot Code Reload</a>).</li>
+  <li><strong>Rust FFI</strong> (<code class="language-plaintext highlighter-rouge">[ffi.rust]</code>): <code class="language-plaintext highlighter-rouge">forge build --target linux/…</code> fails with a clear
+message rather than mislinking a host-architecture static library.</li>
+  <li><strong>Concurrency/actor programs</strong> are not yet validated on cross targets.</li>
+</ul>
+
+<p>Correctness is guarded by a differential test that cross-compiles a corpus and
+checks each program’s output against the native build to the exact byte, so a
+codegen regression on a cross target is caught in CI.</p>
+
+<h3 id="checking-types">Checking Types</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge check</code> typechecks every <code class="language-plaintext highlighter-rouge">.march</code> file in the project without producing a binary. It’s fast; use it for pre-commit checks or continuous editor feedback:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge check
+</code></pre></div></div>
+
+<p>This catches type errors in every file under <code class="language-plaintext highlighter-rouge">lib/</code> (including orphaned modules that aren’t reachable from the entry point), without paying for codegen or linking.</p>
+
+<h3 id="auto-fixing-diagnostics">Auto-fixing Diagnostics</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge fix</code> reads compiler warnings and applies mechanically-determined fixes automatically: no human judgment needed, no ambiguity. It’s the equivalent of <code class="language-plaintext highlighter-rouge">cargo fix</code> or <code class="language-plaintext highlighter-rouge">eslint --fix</code>.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge fix              <span class="c"># apply all auto-fixable warnings in the project</span>
+forge fix <span class="nt">--dry-run</span>    <span class="c"># show what would change without writing any files</span>
+</code></pre></div></div>
+
+<p><strong>What it fixes:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Warning</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Missing <code class="language-plaintext highlighter-rouge">needs X</code> declaration</td>
+      <td>Inserts <code class="language-plaintext highlighter-rouge">needs X</code> after the <code class="language-plaintext highlighter-rouge">mod Name do</code> opening line</td>
+    </tr>
+    <tr>
+      <td>Unused <code class="language-plaintext highlighter-rouge">needs X</code> declaration</td>
+      <td>Deletes the <code class="language-plaintext highlighter-rouge">needs X</code> line</td>
+    </tr>
+    <tr>
+      <td>Unused function parameter</td>
+      <td>Prefixes the parameter name with <code class="language-plaintext highlighter-rouge">_</code></td>
+    </tr>
+    <tr>
+      <td>Redundant (unreachable) match arm</td>
+      <td>Deletes the entire arm (pattern + body)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">forge fix</code> will not apply any fixes if the project has errors; fix those first. It only touches files inside your project root, applies edits bottom-up so earlier line offsets stay valid, and deduplicates identical fixes before writing.</p>
+
+<h3 id="testing">Testing</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Run all tests</span>
+forge <span class="nb">test</span>
+
+<span class="c"># Run tests matching a filter</span>
+forge <span class="nb">test</span> <span class="nt">--filter</span> <span class="s2">"list operations"</span>
+
+<span class="c"># Show each test name as it runs</span>
+forge <span class="nb">test</span> <span class="nt">--verbose</span>
+
+<span class="c"># Run a specific test file</span>
+forge <span class="nb">test test</span>/parser_test.march
+
+<span class="c"># Property tests: run with a fixed seed (for reproducibility)</span>
+forge <span class="nb">test</span> <span class="nt">--seed</span> 42
+
+<span class="c"># Skip property-based tests (Check.all)</span>
+forge <span class="nb">test</span> <span class="nt">--skip-properties</span>
+
+<span class="c"># Collect and report coverage</span>
+forge <span class="nb">test</span> <span class="nt">--coverage</span>
+
+<span class="c"># Compile test binary at -O2 (slower build, faster runtime)</span>
+forge <span class="nb">test</span> <span class="nt">--release</span>
+</code></pre></div></div>
+
+<h3 id="linting">Linting</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge lint</code> runs the March coding-standard rule engine across all source files:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge lint               <span class="c"># report errors and warnings</span>
+forge lint <span class="nt">--strict</span>      <span class="c"># treat warnings as errors; exit 1 on any finding</span>
+forge lint <span class="nt">--all</span>         <span class="c"># also report hint-level findings</span>
+</code></pre></div></div>
+
+<p>Rules are configurable via <code class="language-plaintext highlighter-rouge">.march-lint.toml</code> at the project root:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[rules]</span>
+<span class="py">snake_case_functions</span> <span class="p">=</span> <span class="s">"error"</span>
+<span class="py">unused_let</span>           <span class="p">=</span> <span class="s">"warning"</span>
+<span class="py">missing_doc</span>          <span class="p">=</span> <span class="s">"off"</span>
+</code></pre></div></div>
+
+<h3 id="watch-mode">Watch Mode</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge watch</code> reruns a command whenever a source file changes. It never exits on failure; it reports and keeps watching. Press Ctrl-C to stop.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge watch                     <span class="c"># rebuild on change (default)</span>
+forge watch <span class="nb">test</span>                <span class="c"># rerun tests on change</span>
+forge watch run                 <span class="c"># rerun the app on change</span>
+
+forge watch <span class="nt">--target</span> js         <span class="c"># rebuild .mjs on change</span>
+forge watch run <span class="nt">--target</span> js     <span class="c"># rebuild + re-run with node on change</span>
+
+forge watch <span class="nt">--clear</span>             <span class="c"># clear the screen before each run</span>
+forge watch <span class="nt">--interval</span> 500      <span class="c"># poll every 500 ms (default: 300 ms)</span>
+</code></pre></div></div>
+
+<h3 id="formatting">Formatting</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge format                <span class="c"># format all .march files</span>
+forge format <span class="nt">--check</span>        <span class="c"># check without modifying (for CI)</span>
+forge format <span class="nt">--stdin</span>        <span class="c"># read from stdin, write to stdout (editor integration)</span>
+</code></pre></div></div>
+
+<h3 id="cleaning-build-artifacts">Cleaning Build Artifacts</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge clean           <span class="c"># remove build outputs under .march/build/</span>
+forge clean <span class="nt">--cas</span>     <span class="c"># also remove the content-addressable cache (.march/cas/)</span>
+forge clean <span class="nt">--all</span>     <span class="c"># remove the entire .march/ directory</span>
+</code></pre></div></div>
+
+<h3 id="interactive-mode-repl">Interactive Mode (REPL)</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge interactive
+<span class="c"># alias:</span>
+forge i
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="forge-search-hoogle-style-search">forge search: Hoogle-style Search</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge search</code> lets you find functions by name, type signature, or documentation keyword.</p>
+
+<h3 id="search-by-name">Search by Name</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge search <span class="s2">"map"</span>
+<span class="c"># Finds: List.map, Map.map_values, Option.map, Result.map, ...</span>
+
+forge search <span class="s2">"fold"</span>
+<span class="c"># Finds: List.fold_left, List.fold_right, Map.fold, Enum.fold, ...</span>
+</code></pre></div></div>
+
+<h3 id="search-by-type-signature">Search by Type Signature</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge search <span class="nt">--type</span> <span class="s2">"List(a) -&gt; (a -&gt; b) -&gt; List(b)"</span>
+<span class="c"># Finds: List.map, Enum.map</span>
+
+forge search <span class="nt">--type</span> <span class="s2">"Option(a) -&gt; a -&gt; a"</span>
+<span class="c"># Finds: Option.unwrap_or</span>
+
+forge search <span class="nt">--type</span> <span class="s2">"String -&gt; Int"</span>
+<span class="c"># Finds: String.byte_size, String.to_int (partial)</span>
+</code></pre></div></div>
+
+<h3 id="search-by-documentation-keyword">Search by Documentation Keyword</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge search <span class="nt">--doc</span> <span class="s2">"sort"</span>
+<span class="c"># Finds functions with "sort" in their docstrings</span>
+
+forge search <span class="nt">--doc</span> <span class="s2">"hash"</span>
+</code></pre></div></div>
+
+<h3 id="output-options">Output Options</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge search <span class="s2">"map"</span> <span class="nt">--limit</span> 5      <span class="c"># cap results (default: 20)</span>
+forge search <span class="s2">"map"</span> <span class="nt">--json</span>         <span class="c"># JSON output</span>
+forge search <span class="s2">"map"</span> <span class="nt">--plain</span>        <span class="c"># plain text, no colors (for piping or LLM use)</span>
+</code></pre></div></div>
+
+<h3 id="rebuilding-the-search-index">Rebuilding the Search Index</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge search <span class="nt">--rebuild</span>
+</code></pre></div></div>
+
+<p>The search index is cached at <code class="language-plaintext highlighter-rouge">.march/search-index.json</code> and rebuilt when source changes.</p>
+
+<hr />
+
+<h2 id="ai-assistant-search-spec-search-claude-skill">AI assistant search: spec-search Claude Skill</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge search</code> (above) finds <em>code</em>: functions, types, signatures. <code class="language-plaintext highlighter-rouge">spec-search</code>
+is its counterpart for <em>documentation</em>: a Claude Code skill that full-text
+searches March’s language reference (<code class="language-plaintext highlighter-rouge">specs/lang/</code>), internals reference
+(<code class="language-plaintext highlighter-rouge">specs/impl/</code>), and feature design docs (<code class="language-plaintext highlighter-rouge">specs/features/</code>), roughly 44
+files, 20-25k lines, via a bundled SQLite <a href="https://sqlite.org/fts5.html">FTS5</a>
+index.</p>
+
+<p>It’s fully self-contained: the markdown docs and the prebuilt index ship
+<em>inside</em> the skill directory, so it works in any March project, not just a
+checkout of the compiler repo.</p>
+
+<h3 id="installing">Installing</h3>
+
+<p>Install once, at the user level, and it’s available to Claude in every
+project on the machine:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/march-language/march.git
+<span class="nb">mkdir</span> <span class="nt">-p</span> ~/.claude/skills
+<span class="nb">cp</span> <span class="nt">-R</span> march/.claude/skills/spec-search ~/.claude/skills/spec-search
+</code></pre></div></div>
+
+<p>(Vendoring a copy into a specific project’s own <code class="language-plaintext highlighter-rouge">.claude/skills/</code> instead
+also works, if you want that project pinned to a particular spec snapshot;
+the directory is self-contained either way.)</p>
+
+<h3 id="using-it">Using it</h3>
+
+<p>Claude invokes the skill automatically for March language/design questions
+that go beyond syntax basics: actor supervision semantics, refinement
+types, session types, capabilities, module resolution, etc. You can also
+run the query script directly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>~/.claude/skills/spec-search/spec-search.sh <span class="s2">"actor supervision restart"</span>
+~/.claude/skills/spec-search/spec-search.sh <span class="nt">--json</span> <span class="nt">-n</span> 5 <span class="s2">"refinement predicate"</span>
+</code></pre></div></div>
+
+<p>Output is ranked by relevance (SQLite’s <code class="language-plaintext highlighter-rouge">bm25()</code>), one hit per matched
+markdown section (file, heading path, line range, and a highlighted
+snippet), so answers are grounded in a precise slice of the docs rather
+than a whole 1000-line chapter.</p>
+
+<h3 id="rebuilding-the-index">Rebuilding the index</h3>
+
+<p>Run this from a clone of the <a href="https://github.com/march-language/march">march-language/march</a>
+repo after <code class="language-plaintext highlighter-rouge">specs/lang/</code>, <code class="language-plaintext highlighter-rouge">specs/impl/</code>, or <code class="language-plaintext highlighter-rouge">specs/features/</code> change:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./scripts/build-spec-index.sh
+</code></pre></div></div>
+
+<p>This vendors the current docs and rebuilds <code class="language-plaintext highlighter-rouge">.claude/skills/spec-search/spec-search.db</code>
+in place. Review the diff, commit it, then re-copy the directory to
+<code class="language-plaintext highlighter-rouge">~/.claude/skills/spec-search/</code> to pick up the change. The index includes a
+<code class="language-plaintext highlighter-rouge">meta</code> table stamping the source commit and build date; check it if search
+results look out of date:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sqlite3 ~/.claude/skills/spec-search/spec-search.db <span class="s2">"SELECT * FROM meta;"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="forge-refine-suggest-a-refinement-type">forge refine: Suggest a refinement type</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge refine &lt;fn&gt;</code> proposes the parameter refinement that discharges the
+refinement obligations a function’s body leaves unproven. If <code class="language-plaintext highlighter-rouge">n</code> is passed to a
+callee declaring <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code>, the contract <code class="language-plaintext highlighter-rouge">n</code> itself has to carry is the
+thing the tool works out for you:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge refine <span class="nb">split</span>           <span class="c"># one function (bare or qualified name)</span>
+forge refine <span class="nb">split</span> <span class="nt">--apply</span>   <span class="c"># write the annotation into the source</span>
+forge refine <span class="nt">--all</span>           <span class="c"># sweep every function in the project</span>
+forge refine <span class="nt">--all</span> <span class="nt">--apply</span> <span class="nt">--fixpoint</span>   <span class="c"># …and keep going until nothing changes</span>
+</code></pre></div></div>
+
+<p>A contract only becomes visible to a <em>caller</em> once the callee bears it, so one
+<code class="language-plaintext highlighter-rouge">--apply</code> pass propagates exactly one call hop. <code class="language-plaintext highlighter-rouge">--fixpoint</code> repeats until a round
+applies no change (bounded at 10 rounds; hitting the bound is reported as such, not
+mistaken for convergence).</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lib/text.march:10  split
+    n : Int  -&gt;  n : {Int | _ &gt; 0}
+  discharges all 1 unproven obligation(s)
+</code></pre></div></div>
+
+<p><strong>A suggestion is never a guess.</strong> Each candidate is hypothesised onto the
+signature and the <em>real</em> refinement checker is re-run over the function; the
+candidate is proposed only if the checker discharges obligations under it and
+introduces no new violation. So <code class="language-plaintext highlighter-rouge">march check</code> after <code class="language-plaintext highlighter-rouge">--apply</code> agrees with what
+was printed, and there is no second implementation of the prover to drift.</p>
+
+<p>When several candidates work, the <strong>weakest</strong> wins: a divisor contract is
+reported as <code class="language-plaintext highlighter-rouge">_ != 0</code> rather than <code class="language-plaintext highlighter-rouge">_ &gt; 0</code>, so accepting the suggestion does not
+invisibly reject callers the function would have accepted.</p>
+
+<p>Silence is never ambiguous. Every function reports one of:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Outcome</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>a proposal</td>
+      <td>the listed annotations discharge the listed obligations</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">nothing to prove</code></td>
+      <td>the body has no unproven obligation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">no candidate…</code></td>
+      <td>there is debt, but no candidate in the grammar shifts it</td>
+    </tr>
+    <tr>
+      <td>partial</td>
+      <td>some obligations discharged; the rest are counted</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">search stopped at the probe budget…</code></td>
+      <td>the search was <strong>truncated</strong>, not exhausted; raise <code class="language-plaintext highlighter-rouge">--budget</code> and ask again</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>A contract that contradicts the function is not proposed.</strong> A <code class="language-plaintext highlighter-rouge">_safe</code> wrapper that
+matches <code class="language-plaintext highlighter-rouge">Nil -&gt; Err(...)</code> and does the real work in the other arm bears real
+unproven debt, and <code class="language-plaintext highlighter-rouge">{List(a) | len(_) &gt; 0}</code> would discharge it, by forbidding the
+exact input the function exists to accept. <code class="language-plaintext highlighter-rouge">forge refine</code> suppresses that: if the
+function handles the excluded case <strong>non-fatally</strong>, no contract is proposed. If it
+handles it by <strong>panicking</strong>, the contract still is; turning that panic into a compile
+error is the whole point.</p>
+
+<p>The candidate grammar covers sign and non-zero contracts on <code class="language-plaintext highlighter-rouge">Int</code> and <code class="language-plaintext highlighter-rouge">Float</code>,
+<code class="language-plaintext highlighter-rouge">len(_) &gt; 0</code> on <code class="language-plaintext highlighter-rouge">List</code>/<code class="language-plaintext highlighter-rouge">String</code>, and index contracts (<code class="language-plaintext highlighter-rouge">_ &gt;= 0 &amp;&amp; _ &lt; len(xs)</code>)
+against each list or string parameter in the same signature. A parameter with
+no type annotation, or one that is already refined, is left as-is.</p>
+
+<p>Requires Z3 on <code class="language-plaintext highlighter-rouge">PATH</code>, like the rest of refinement checking. <code class="language-plaintext highlighter-rouge">--budget N</code> caps
+how many hypothesis re-checks the inference may spend <strong>per function</strong> (default
+200), so a <code class="language-plaintext highlighter-rouge">--all</code> sweep cannot have its answers silently truncated by whichever
+functions happen to be visited first.</p>
+
+<p>In an editor, the same inference is available as the <strong>“Suggest a refinement
+type for <code class="language-plaintext highlighter-rouge">f</code>“</strong> code action on a function’s name; accepting it applies the
+identical edit.</p>
+
+<hr />
+
+<h2 id="forge-cap-capability-and-typestate-inspection">forge cap: Capability and typestate inspection</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge cap query</code> prints a capability and typestate summary across all <code class="language-plaintext highlighter-rouge">.march</code> files in your project. It parses (but does not typecheck) each file and reports every <code class="language-plaintext highlighter-rouge">needs</code>, <code class="language-plaintext highlighter-rouge">always_linear type</code>, <code class="language-plaintext highlighter-rouge">transitions</code>, and <code class="language-plaintext highlighter-rouge">proof cap</code> declaration.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge cap query              <span class="c"># scan the whole project</span>
+forge cap query <span class="nt">--dir</span> lib/   <span class="c"># scan a specific directory</span>
+</code></pre></div></div>
+
+<p>Example output for a project with a typestate database handle:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./lib/db.march
+  needs:
+    IO.Network
+  always_linear:
+    Handle
+  transitions:
+    Handle:
+      ConnTag: Closed -&gt; Open  via connect
+      ConnTag: Open -&gt; Open    via query
+      ConnTag: Open -&gt; Closed  via close
+  proof_caps:
+    Migrated
+
+./lib/auth.march
+  needs:
+    IO.Network
+    Db.Migrated
+</code></pre></div></div>
+
+<p>This gives you a top-level map of what your codebase touches and what resource lifecycles it manages, useful during code review, security audits, or onboarding a new contributor.</p>
+
+<p><code class="language-plaintext highlighter-rouge">forge cap coverage</code> reports which of the capabilities your project possesses are exercised by tests and which are not (a <code class="language-plaintext highlighter-rouge">Covered</code> / <code class="language-plaintext highlighter-rouge">Uncovered</code> list and an <code class="language-plaintext highlighter-rouge">N/M capabilities covered (X%)</code> summary), so a capability that no test exercises is easy to spot.</p>
+
+<h3 id="reading-and-enforcing-a-compiled-binary">Reading and enforcing a compiled binary</h3>
+
+<p>The subcommands above read source. Two more work on a built artifact:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge cap inspect ./build/myapp                          <span class="c"># what capabilities does this binary hold?</span>
+forge cap inspect ./build/myapp <span class="nt">--deny</span> IO.Network         <span class="c"># fail if it holds IO.Network (repeatable)</span>
+forge cap inspect ./build/myapp <span class="nt">--allow-only</span> IO.Console    <span class="c"># fail if it holds anything outside this set</span>
+forge cap run ./build/myapp                               <span class="c"># run it under a sandbox forge installs</span>
+forge cap run <span class="nt">--allow-only</span> IO.Console ./untrusted          <span class="c"># run untrusted code with a policy YOU choose</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge cap inspect</code> cross-checks capability markers the compiler emitted, capability-bearing runtime symbols that persisted through dead-stripping, and an embedded manifest when present; <code class="language-plaintext highlighter-rouge">--deny</code>/<code class="language-plaintext highlighter-rouge">--allow-only</code> are <strong>fail-closed</strong> (they fail on a binary with coverage that is not full, and foreign code requires <code class="language-plaintext highlighter-rouge">--allow-foreign</code>). <code class="language-plaintext highlighter-rouge">forge cap run</code> is the enforcing counterpart: it launches the binary under an OS sandbox before the program gets control. Both are covered in depth on the <a href="/docs/capability-audit/">Capability Audit</a> page and under <a href="/docs/capability-enforcement/#os-level-enforcement-sandboxing-the-compiled-binary">OS-level enforcement</a>; a binary can also sandbox <em>itself</em> at startup when compiled with <code class="language-plaintext highlighter-rouge">march --compile --cap-sandbox</code>.</p>
+
+<hr />
+
+<h2 id="dependency-management">Dependency Management</h2>
+
+<h3 id="adding-dependencies">Adding Dependencies</h3>
+
+<p>Use <code class="language-plaintext highlighter-rouge">forge add</code> to add a dependency without manually editing <code class="language-plaintext highlighter-rouge">forge.toml</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Git dependency (pinned to a tag)</span>
+forge add depot <span class="nt">--git</span> https://github.com/march-language/depot <span class="nt">--tag</span> v1.2.0
+
+<span class="c"># Git dependency (tracked branch)</span>
+forge add depot <span class="nt">--git</span> https://github.com/march-language/depot <span class="nt">--branch</span> main
+
+<span class="c"># Git dependency (exact commit)</span>
+forge add depot <span class="nt">--git</span> https://github.com/march-language/depot <span class="nt">--rev</span> a3f1c9b
+
+<span class="c"># Local path dependency</span>
+forge add my_lib <span class="nt">--path</span> ../my_lib
+
+<span class="c"># Dev dependency (available in dev + test builds)</span>
+forge add check <span class="nt">--git</span> https://github.com/march-language/check <span class="nt">--tag</span> v0.3.0 <span class="nt">--dev</span>
+
+<span class="c"># Test-only dependency</span>
+forge add fixtures <span class="nt">--path</span> ../fixtures <span class="nt">--test</span>
+
+<span class="c"># Overwrite an existing dependency entry</span>
+forge add depot <span class="nt">--git</span> https://github.com/march-language/depot <span class="nt">--tag</span> v1.3.0 <span class="nt">--force</span>
+</code></pre></div></div>
+
+<p>Or edit <code class="language-plaintext highlighter-rouge">forge.toml</code> directly:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[deps]</span>
+<span class="nn">depot</span> <span class="o">=</span> <span class="p">{</span> <span class="py">git</span> <span class="p">=</span> <span class="s">"https://github.com/march-language/depot"</span><span class="p">,</span> <span class="py">tag</span> <span class="p">=</span> <span class="s">"v1.2.0"</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Then resolve:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge deps
+</code></pre></div></div>
+
+<h3 id="updating-dependencies">Updating Dependencies</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge deps update
+forge deps update depot   <span class="c"># update a specific package</span>
+</code></pre></div></div>
+
+<h3 id="lock-file">Lock File</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge.lock</code> pins exact versions for reproducible builds. Commit it to version control.</p>
+
+<h3 id="semver-constraints">Semver Constraints</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Syntax</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">~&gt; 1.2</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&gt;= 1.2.0, &lt; 2.0.0</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">~&gt; 1.2.3</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&gt;= 1.2.3, &lt; 1.3.0</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&gt;= 1.0.0</code></td>
+      <td>At least 1.0.0</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">= 1.2.3</code></td>
+      <td>Exactly 1.2.3</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="dependency-tree">Dependency Tree</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge tree         <span class="c"># print the full dependency graph</span>
+forge why depot    <span class="c"># show all paths that pull in `depot`</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="refactoring">Refactoring</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge refactor</code> provides project-wide, parser-based refactorings. All subcommands accept <code class="language-plaintext highlighter-rouge">--dry-run</code> / <code class="language-plaintext highlighter-rouge">-n</code> to preview changes without writing any files.</p>
+
+<h3 id="rename-a-symbol">Rename a Symbol</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Rename a function, type, constructor, or any symbol</span>
+forge refactor rename old_name new_name
+
+<span class="c"># Restrict to a specific kind (fn, type, ctor, module, field, var)</span>
+forge refactor rename Parser.parse Parser.run <span class="nt">--kind</span> fn
+
+<span class="c"># Regex rename with backreferences</span>
+forge refactor rename <span class="s1">'get_(.+)'</span> <span class="s1">'fetch_\1'</span> <span class="nt">--pattern</span>
+</code></pre></div></div>
+
+<h3 id="move-a-declaration">Move a Declaration</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Move a top-level declaration to another file</span>
+forge refactor move MyParser lib/parser.march
+</code></pre></div></div>
+
+<h3 id="structural-find-and-replace">Structural Find-and-Replace</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Swap argument order at all call sites</span>
+forge refactor replace <span class="s1">'f($a, $b)'</span> <span class="s1">'f($b, $a)'</span>
+</code></pre></div></div>
+
+<h3 id="apply-naming-conventions">Apply Naming Conventions</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Auto-fix snake_case function names project-wide</span>
+forge refactor fix
+
+<span class="c"># Preview without writing</span>
+forge refactor fix <span class="nt">--dry-run</span>
+</code></pre></div></div>
+
+<h3 id="bundle-parameters-into-a-record">Bundle Parameters into a Record</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Turn a function's parameters into a generated record type</span>
+forge refactor bundle parse_options
+forge refactor bundle parse_options <span class="nt">--record</span> ParseConfig
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="documentation-generation">Documentation Generation</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge doc</code> generates HTML documentation from March source files. It requires the <code class="language-plaintext highlighter-rouge">march_doc</code> archive:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge <span class="nb">install </span>march_doc   <span class="c"># install once</span>
+</code></pre></div></div>
+
+<p>Then:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge doc                    <span class="c"># generate to doc/ (default)</span>
+forge doc <span class="nt">-o</span> docs/api        <span class="c"># custom output directory</span>
+forge doc <span class="nt">--private</span>          <span class="c"># include private (pfn) functions</span>
+forge doc <span class="nt">--stdlib</span>           <span class="c"># document stdlib only</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="notebooks">Notebooks</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge notebook</code> provides a Livebook-style interactive environment for March using <code class="language-plaintext highlighter-rouge">.scrollmd</code> files. The live server requires the <code class="language-plaintext highlighter-rouge">scroll</code> archive:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge <span class="nb">install </span>scroll   <span class="c"># install once</span>
+</code></pre></div></div>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Start a fresh notebook in the browser</span>
+forge notebook
+
+<span class="c"># Open or create a specific notebook</span>
+forge notebook my_notes.scrollmd
+
+<span class="c"># Start the live server explicitly</span>
+forge notebook my_notes.scrollmd <span class="nt">--serve</span>
+
+<span class="c"># Render a notebook to static HTML</span>
+forge notebook my_notes.scrollmd <span class="nt">-o</span> output.html
+
+<span class="c"># Use a custom port (default: 4040)</span>
+forge notebook <span class="nt">--port</span> 8080
+
+<span class="c"># Don't open the browser automatically</span>
+forge notebook <span class="nt">--no-open</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="hot-code-reload">Hot Code Reload</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge deploy hot</code> deploys new code to a running server without restarting the process. Actors keep running and their state is preserved; only changed functions are uploaded and activated.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build and deploy to the configured remote server</span>
+forge deploy hot
+
+<span class="c"># Deploy a pre-built artifact (e.g. cross-compiled for Linux)</span>
+forge deploy hot <span class="nt">--so</span> /path/to/my_app.so
+</code></pre></div></div>
+
+<p>Configure the target server in <code class="language-plaintext highlighter-rouge">forge.toml</code>:</p>
+
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[hot-reload]</span>
+<span class="py">ssh_host</span>   <span class="p">=</span> <span class="s">"my-server"</span>      <span class="c"># SSH host alias</span>
+<span class="py">socket</span>     <span class="p">=</span> <span class="s">"/tmp/app.sock"</span>  <span class="c"># Unix socket path on the remote</span>
+<span class="py">public_key</span> <span class="p">=</span> <span class="py">"base64key</span><span class="p">=</span><span class="s">"     # ed25519 public key</span><span class="err">
+</span></code></pre></div></div>
+
+<p>When actor state changes, provide a <code class="language-plaintext highlighter-rouge">&lt;actor&gt;_migrate_state</code> function to upgrade live actors. If the actor bears an <code class="language-plaintext highlighter-rouge">@invariant</code>, the compiler verifies the migration preserves it before anything is uploaded.</p>
+
+<p>See <a href="/docs/hot-code-reload/">Hot Code Reload</a> for the full guide.</p>
+
+<hr />
+
+<h2 id="versioning-and-release">Versioning and Release</h2>
+
+<h3 id="inspect-and-bump-versions">Inspect and Bump Versions</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge version                <span class="c"># print current version</span>
+forge version patch          <span class="c"># bump patch: 1.2.3 -&gt; 1.2.4</span>
+forge version minor          <span class="c"># bump minor: 1.2.3 -&gt; 1.3.0</span>
+forge version major          <span class="c"># bump major: 1.2.3 -&gt; 2.0.0</span>
+forge version 1.5.0          <span class="c"># set an explicit version</span>
+
+<span class="c"># Commit the bump and create an annotated git tag</span>
+forge version patch <span class="nt">--tag</span>
+</code></pre></div></div>
+
+<h3 id="guarded-release-pipeline">Guarded Release Pipeline</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge release</code> requires a clean working tree, then runs build → test → version bump → git tag in sequence. Any failure aborts before the tag is created:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge release                <span class="c"># patch bump (default)</span>
+forge release <span class="nt">--bump</span> minor
+forge release <span class="nt">--bump</span> major
+</code></pre></div></div>
+
+<h3 id="publishing">Publishing</h3>
+
+<p><code class="language-plaintext highlighter-rouge">forge publish</code> validates the package and optionally checks that the version bump is correct given the API changes:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge publish
+forge publish <span class="nt">--dry-run</span>                          <span class="c"># validate only, don't submit</span>
+forge publish <span class="nt">--old-source</span> ../my_lib-v1.0        <span class="c"># enforce semver against old API surface</span>
+</code></pre></div></div>
+
+<p>When <code class="language-plaintext highlighter-rouge">--old-source</code> is provided, forge computes the API surface diff and errors if the declared version bump is too small (e.g. a breaking change requires a major bump).</p>
+
+<hr />
+
+<h2 id="archive-management">Archive Management</h2>
+
+<p>Archives are globally installed forge extensions: tools, task runners, and generators.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install from the registry or a git URL</span>
+forge <span class="nb">install </span>march_doc
+forge <span class="nb">install </span>scroll
+forge <span class="nb">install </span>https://github.com/march-language/my_tool
+forge <span class="nb">install</span> <span class="nt">--force</span> scroll     <span class="c"># reinstall even if already installed</span>
+
+<span class="c"># Remove an archive</span>
+forge uninstall march_doc
+
+<span class="c"># List installed archives</span>
+forge archives
+
+<span class="c"># Update installed archives</span>
+forge update                     <span class="c"># update all</span>
+forge update march_doc           <span class="c"># update one</span>
+
+<span class="c"># Verify archive integrity</span>
+forge verify                     <span class="c"># verify all</span>
+forge verify march_doc           <span class="c"># verify one</span>
+</code></pre></div></div>
+
+<p>Archive tasks are invoked as <code class="language-plaintext highlighter-rouge">forge &lt;archive&gt;.&lt;task&gt;</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge march_doc.build    <span class="c"># run the `build` task of march_doc</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="toolchain-management">Toolchain Management</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge toolchain</code> manages installed March compiler versions.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># List installed toolchains</span>
+forge toolchain list
+
+<span class="c"># List available versions from GitHub releases</span>
+forge toolchain list <span class="nt">--remote</span>
+
+<span class="c"># Install a specific version</span>
+forge toolchain <span class="nb">install </span>v0.3.0
+forge toolchain <span class="nb">install </span>nightly          <span class="c"># latest nightly</span>
+forge toolchain <span class="nb">install </span>nightly-20251201
+
+<span class="c"># Switch the active toolchain</span>
+forge toolchain use v0.3.0
+
+<span class="c"># Pin this project to a specific version (writes .march-version)</span>
+forge toolchain pin v0.3.0
+
+<span class="c"># Show which toolchain resolves for the current directory</span>
+forge toolchain which
+
+<span class="c"># Remove an installed toolchain</span>
+forge toolchain uninstall v0.2.0
+
+<span class="c"># Install the latest stable and make it active</span>
+forge upgrade
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="license-audit">License Audit</h2>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge licenses             <span class="c"># list each dependency and its declared license</span>
+forge licenses <span class="nt">--json</span>      <span class="c"># JSON output for tooling</span>
+forge licenses <span class="nt">--strict</span>    <span class="c"># exit non-zero if any dependency has no license</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="shell-completions">Shell Completions</h2>
+
+<p>Generate a completion script for your shell and source it:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge completions bash <span class="o">&gt;&gt;</span> ~/.bashrc
+forge completions zsh  <span class="o">&gt;&gt;</span> ~/.zshrc
+forge completions fish <span class="o">&gt;</span> ~/.config/fish/completions/forge.fish
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="lsp-server">LSP Server</h2>
+
+<p>March ships <code class="language-plaintext highlighter-rouge">march-lsp</code>, a Language Server Protocol server built on the
+compiler’s own parse/typecheck pipeline, so diagnostics, hover types, and
+completions are always accurate. It provides diagnostics, hover, go-to-definition
+and find-references (cross-file), completions with auto-import, a large
+code-action suite, rename, signature help, inlay hints, semantic tokens, call
+hierarchy, workspace symbols, and per-function performance insights. A Debug
+Adapter Protocol server (<code class="language-plaintext highlighter-rouge">march dap</code>) and a standalone JSON query CLI ship
+alongside it.</p>
+
+<p><strong>See the dedicated <a href="/docs/lsp/">LSP &amp; Editors</a> page</strong> for the full feature list,
+per-editor setup (Neovim, Helix, Zed, Emacs, VS Code), the <code class="language-plaintext highlighter-rouge">march-lsp query</code>
+CLI, and the DAP debugger.</p>
+
+<hr />
+
+<h2 id="zed-editor">Zed Editor</h2>
+
+<p>March ships a tree-sitter grammar for Zed with syntax highlighting and bracket matching.</p>
+
+<h3 id="installing-the-extension">Installing the Extension</h3>
+
+<p>The grammar is at <code class="language-plaintext highlighter-rouge">tree-sitter-march/</code> in the repository. In Zed:</p>
+
+<ol>
+  <li>Open the command palette: <code class="language-plaintext highlighter-rouge">Cmd+Shift+P</code></li>
+  <li>Search for “Install Dev Extension”</li>
+  <li>Point to <code class="language-plaintext highlighter-rouge">tree-sitter-march/</code></li>
+</ol>
+
+<p>Alternatively, the compiled <code class="language-plaintext highlighter-rouge">march.dylib</code> can be installed directly into Zed’s extension directory.</p>
+
+<h3 id="whats-highlighted">What’s Highlighted</h3>
+
+<ul>
+  <li>Keywords: <code class="language-plaintext highlighter-rouge">fn</code>, <code class="language-plaintext highlighter-rouge">pfn</code>, <code class="language-plaintext highlighter-rouge">let</code>, <code class="language-plaintext highlighter-rouge">match</code>, <code class="language-plaintext highlighter-rouge">do</code>, <code class="language-plaintext highlighter-rouge">end</code>, <code class="language-plaintext highlighter-rouge">mod</code>, <code class="language-plaintext highlighter-rouge">actor</code>, <code class="language-plaintext highlighter-rouge">on</code>, <code class="language-plaintext highlighter-rouge">type</code>, etc.</li>
+  <li>String literals and interpolation (<code class="language-plaintext highlighter-rouge">${}</code>)</li>
+  <li>Comments (<code class="language-plaintext highlighter-rouge">--</code> and <code class="language-plaintext highlighter-rouge">{- -}</code>)</li>
+  <li>Operators and punctuation</li>
+  <li>Type annotations</li>
+  <li>Constructors (capitalized identifiers)</li>
+  <li>Atoms (<code class="language-plaintext highlighter-rouge">:name</code>)</li>
+</ul>
+
+<hr />
+
+<h2 id="time-travel-debugger">Time-Travel Debugger</h2>
+
+<p>Place a <code class="language-plaintext highlighter-rouge">dbg()</code> breakpoint anywhere in your code:</p>
+
+<pre><code class="language-march">fn process(items : List(Int)) : Int do
+  let filtered = List.filter(items, fn x -&gt; x &gt; 0)
+  dbg()    -- breakpoint: REPL opens here
+  let result = List.fold_left(filtered, 0, fn (acc, x) -&gt; acc + x)
+  result
+end
+</code></pre>
+
+<p>When execution reaches <code class="language-plaintext highlighter-rouge">dbg()</code>, the program pauses and enters debug mode:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[debug] Breakpoint hit — :continue to resume, :help for commands
+
+dbg&gt; :where
+process  examples/debug.march:5
+main     examples/debug.march:12
+
+dbg&gt; filtered
+[1, 3, 5] : List(Int)
+
+dbg&gt; :back 2
+-- stepped back 2 steps
+
+dbg&gt; :continue
+-- resuming...
+</code></pre></div></div>
+
+<p>Debug REPL commands:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>:continue           — resume execution
+:back N             — step N steps backward in time
+:forward N          — step N steps forward
+:goto N             — jump to step N
+:where              — show current call stack
+:diff N [names]     — show what changed at step N
+:find               — search for a step matching a condition
+:trace N            — show N steps of execution trace
+:actors             — list all actors and their state history
+:actor ID           — show a specific actor's message history
+</code></pre></div></div>
+
+<p>The debugger captures a full execution trace including all actor message sends and receives.</p>
+
+<hr />
+
+<h2 id="compiler-analysis">Compiler Analysis</h2>
+
+<h3 id="dumping-ir-phases">Dumping IR Phases</h3>
+
+<p>Add <code class="language-plaintext highlighter-rouge">--dump-phases</code> to any build or run command to serialize each compiler IR stage to <code class="language-plaintext highlighter-rouge">trace/phases/phases.json</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge build <span class="nt">--dump-phases</span>
+forge run <span class="nt">--dump-phases</span>
+</code></pre></div></div>
+
+<p>To compile a single <code class="language-plaintext highlighter-rouge">.march</code> file and dump phases (without a forge project):</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge compile my_program.march
+</code></pre></div></div>
+
+<p>This compiles the file, writes the binary to <code class="language-plaintext highlighter-rouge">.forge/compile/my_program</code>, and writes phases to <code class="language-plaintext highlighter-rouge">trace/phases/phases.json</code>.</p>
+
+<h3 id="viewing-phases-in-the-browser">Viewing Phases in the Browser</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge phases          <span class="c"># serve phase viewer at http://localhost:7777</span>
+forge phases <span class="nt">--port</span> 8888
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge phases</code> opens the browser automatically and serves an interactive viewer showing:</p>
+<ul>
+  <li>Per-function TIR dumps at each compiler pass</li>
+  <li>Inline eligibility and reasoning</li>
+  <li>RC density visualization (which values are reference-counted most)</li>
+</ul>
+
+<h3 id="analyzing-gc-traces">Analyzing GC Traces</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">MARCH_TRACE_GC</span><span class="o">=</span>1 forge run my_program.march
+</code></pre></div></div>
+
+<p>With <code class="language-plaintext highlighter-rouge">MARCH_TRACE_GC=1</code> set, the runtime logs all reference-counting operations to <code class="language-plaintext highlighter-rouge">trace/gc/gc.jsonl</code>. The analysis command reports:</p>
+<ul>
+  <li>Leaked objects (allocated but never freed)</li>
+  <li>Double frees</li>
+  <li>Negative reference counts (invariant violations)</li>
+</ul>
+
+<p>Open <code class="language-plaintext highlighter-rouge">tools/gc-viewer.html</code> after running with <code class="language-plaintext highlighter-rouge">MARCH_TRACE_GC=1</code>:</p>
+<ul>
+  <li>Timeline of alloc/free/inc_ref/dec_ref events</li>
+  <li>Live-object count chart</li>
+  <li>Address history for any specific object</li>
+</ul>
+
+<h3 id="benchmarking">Benchmarking</h3>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge bench                   <span class="c"># run all benchmarks under bench/</span>
+forge bench list_ops          <span class="c"># run only benchmarks whose name contains "list_ops"</span>
+forge bench <span class="nt">--json</span>            <span class="c"># emit timings as JSON (for CI tracking)</span>
+</code></pre></div></div>
+
+<p>Each <code class="language-plaintext highlighter-rouge">bench/*.march</code> file is a standalone benchmark program with a <code class="language-plaintext highlighter-rouge">main()</code> function. Benchmarks are compiled at <code class="language-plaintext highlighter-rouge">-O2</code> and timed.</p>
+
+<hr />
+
+<h2 id="environment-variables">Environment Variables</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code></td>
+      <td>Colon-separated paths for multi-file project discovery</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_TRACE_GC</code></td>
+      <td>Set to <code class="language-plaintext highlighter-rouge">1</code> to log GC events to <code class="language-plaintext highlighter-rouge">trace/gc/gc.jsonl</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_HISTORY_FILE</code></td>
+      <td>REPL history file path (default: <code class="language-plaintext highlighter-rouge">~/.march_history</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_HISTORY_SIZE</code></td>
+      <td>Max REPL history entries (default: 1000)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_ENV</code></td>
+      <td><code class="language-plaintext highlighter-rouge">development</code> / <code class="language-plaintext highlighter-rouge">test</code> / <code class="language-plaintext highlighter-rouge">production</code> (read by <code class="language-plaintext highlighter-rouge">Config.env</code>)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/getting-started/">Getting Started</a>: set up your first project with forge</li>
+  <li><a href="/docs/repl/">REPL</a>: interactive exploration</li>
+  <li><a href="/docs/stdlib-guide/">Standard Library</a>: what you can search with <code class="language-plaintext highlighter-rouge">forge search</code></li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

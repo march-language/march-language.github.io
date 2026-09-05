@@ -1,0 +1,3824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Refinement Types — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link active">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="refinement-types">Refinement Types</h1>
+
+<p>Normally, a type like <code class="language-plaintext highlighter-rouge">Int</code> only tells the compiler “this is a whole number”: it gives
+no hint about <em>which</em> whole numbers are actually valid here. A <strong>refinement type</strong> lets
+you attach an extra condition to a type, so <code class="language-plaintext highlighter-rouge">{Int | _ &gt;= 0}</code> means “an <code class="language-plaintext highlighter-rouge">Int</code>, and
+specifically one that’s never negative.” The condition (<code class="language-plaintext highlighter-rouge">_ &gt;= 0</code> here) is called a
+<strong>predicate</strong>, just a true/false check on the value.</p>
+
+<p>The clever part is that March doesn’t just remember the condition as documentation: it
+actually <em>proves</em> it, at compile time, using an automated reasoning tool called an
+<strong>SMT solver</strong> (specifically <a href="https://github.com/Z3Prover/z3">Z3</a>). An SMT solver is
+software that can mechanically work out whether a set of logical/arithmetic statements
+is possible or is a contradiction, the same kind of tool used to verify hardware
+designs and cryptographic protocols. In March, it’s put to work checking your function
+contracts, so a whole class of bugs (out-of-bounds indices, negative sizes, division by
+zero, broken invariants) becomes a <strong>compile error</strong> instead of a runtime panic.</p>
+
+<p>If you’ve heard the term <strong>dependent typing</strong> (types that depend on <em>values</em>, not just
+other types), refinements are March’s practical, restricted slice of it. You get the
+safety where it pays off (preconditions, bounds, postconditions) without a proof
+assistant’s ceremony; and, crucially, <strong>without false positives</strong>: if the checker can’t
+prove a value is definitely wrong, it stays silent rather than guessing.</p>
+
+<blockquote>
+  <p><strong>Requires Z3.</strong> Refinement checking runs only when the <code class="language-plaintext highlighter-rouge">z3</code> solver is on your
+<code class="language-plaintext highlighter-rouge">PATH</code>. Without it, the predicates type-check as their base type and no
+refinement diagnostics are produced (the build still succeeds).</p>
+</blockquote>
+
+<p><strong>New to this?</strong> Read <a href="#syntax">Syntax</a> through
+<a href="#contracts-compose-a-parameters-promise-applies-inside-its-body">Contracts Compose</a>
+and you’ll be able to write and read everyday refinements. Everything after
+<a href="#postconditions">Postconditions</a> goes deeper: measures over your own data
+structures, <code class="language-plaintext highlighter-rouge">Bool</code>/<code class="language-plaintext highlighter-rouge">Float</code>/tag refinements, the strict <code class="language-plaintext highlighter-rouge">cap verified</code> /
+<code class="language-plaintext highlighter-rouge">cap no_panic</code> modes, and the full <a href="#limitations">Limitations</a> list. If you
+just want to know why a specific contract <em>isn’t</em> catching something, jump
+straight to Limitations or to
+<a href="#seeing-what-got-checked---refine-report"><code class="language-plaintext highlighter-rouge">--refine-report</code></a>.</p>
+
+<hr />
+
+<h2 id="the-problem-they-solve">The Problem They Solve</h2>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : Int) : Int do
+  -- if i is out of range this panics at runtime
+  List.nth(xs, i)
+end
+
+at([10, 20, 30], 5)   -- boom, eventually, at runtime
+</code></pre>
+
+<p>A refinement moves the contract into the type, where the compiler checks it:</p>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; len(xs)}) : Int do
+  List.nth(xs, i)
+end
+
+at([10, 20, 30], 5)   -- compile error: 5 is not &lt; len([10,20,30]) = 3
+at([10, 20, 30], 1)   -- ok
+</code></pre>
+
+<hr />
+
+<h2 id="syntax">Syntax</h2>
+
+<p>A refinement is written <code class="language-plaintext highlighter-rouge">{ BaseType | predicate }</code>. The placeholder <code class="language-plaintext highlighter-rouge">_</code> stands
+for the value being refined:</p>
+
+<pre><code class="language-march">{Int | _ &gt;= 0}              -- a non-negative Int
+{Int | _ &gt; 0}              -- a positive Int
+{Int | _ != 0}             -- a non-zero Int (safe divisor)
+{Int | _ &gt;= 0 &amp;&amp; _ &lt; 100}  -- a bounded Int
+</code></pre>
+
+<p>You can name the value instead of using <code class="language-plaintext highlighter-rouge">_</code>:</p>
+
+<pre><code class="language-march">{v : Int | v &gt;= 0 &amp;&amp; v &lt; 100}
+</code></pre>
+
+<p>Refinements appear anywhere a type does, <strong>parameters</strong> (preconditions) and
+<strong>return types</strong> (postconditions):</p>
+
+<pre><code class="language-march">-- precondition: callers must pass a positive size
+fn chunks(xs : List(a), size : {Int | _ &gt; 0}) : List(List(a)) do ... end
+
+-- postcondition: this function promises a non-negative result
+fn count(xs : List(a)) : {Int | _ &gt;= 0} do List.length(xs) end
+</code></pre>
+
+<p>The supported predicate fragment is <strong><code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code> linear arithmetic</strong>:
+<code class="language-plaintext highlighter-rouge">+ - *</code> (multiplication by a literal), the comparisons <code class="language-plaintext highlighter-rouge">== != &lt; &lt;= &gt; &gt;=</code>, the
+connectives <code class="language-plaintext highlighter-rouge">&amp;&amp; || not</code>, integer/bool literals, and <strong>measures</strong> (below).
+<code class="language-plaintext highlighter-rouge">Bool</code> and <code class="language-plaintext highlighter-rouge">Float</code> values are refinable too; see
+<a href="#bool-and-float-refinements">Bool and Float Refinements</a>.</p>
+
+<hr />
+
+<h2 id="how-checking-works-definite-failure">How Checking Works: Definite Failure</h2>
+
+<p>Think of the checker as a cautious lawyer rather than an eager one: it only objects when
+it can prove, beyond doubt, that you’re wrong. There are exactly three outcomes for a
+predicate at a given point in your code:</p>
+
+<ul>
+  <li>The value <strong>always</strong> satisfies the predicate → <strong>pass</strong>, silently.</li>
+  <li>The predicate is <strong>demonstrably violated</strong> → <strong>compile error</strong> with a counterexample.
+The checker has two ways to demonstrate that: the solver proves the predicate can
+never hold, or it finds a concrete input, <em>runs it</em>, and watches the contract fail
+(see <a href="#counterexamples-the-failing-input-in-source-terms">Counterexamples</a>).</li>
+  <li>Neither is established (the value is unknown, the solver can’t decide, and no failing
+input was found) → <strong>skipped</strong>, silently.</li>
+</ul>
+
+<pre><code class="language-march">fn take_pos(n : {Int | _ &gt;= 0}) : Int do n end
+
+take_pos(-3)                     -- error: -3 can never be &gt;= 0
+take_pos(5)                      -- pass
+
+fn f(k : Int) : Int do
+  take_pos(k)                    -- skipped: k is unknown, might be &gt;= 0
+end
+</code></pre>
+
+<p>The consequence: <strong>no false positives, by design, but incomplete.</strong> The
+checker never flags correct code, and never blocks a build over something it
+can’t disprove. It also won’t <em>prove</em> everything you might hope; facts it can’t
+establish are conservatively let through. This trade is intentional: a
+refinement checker that cries wolf is one developers turn off.</p>
+
+<hr />
+
+<h2 id="counterexamples-the-failing-input-in-source-terms">Counterexamples: the failing input, in source terms</h2>
+
+<p>Being told a contract is broken is only half an answer; the useful half is <em>which
+input breaks it</em>. When March reports a violation, it names a concrete input — and,
+for a function body, the value that input actually produced:</p>
+
+<pre><code class="language-march">fn bump_progress(pct : {Int | _ &gt;= 0 &amp;&amp; _ &lt;= 100}) : {Int | _ &lt;= 100} do
+  pct + 1
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`bump_progress` does not satisfy its return type constraint on all code paths.
+
+The return type requires:
+
+    _ &lt;= 100
+
+but bump_progress(100) returns 101.
+
+3 |   fn bump_progress(pct : {Int | _ &gt;= 0 &amp;&amp; _ &lt;= 100}) : {Int | _ &lt;= 100} do
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Every branch must produce a return value satisfying `_ &lt;= 100`.
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">bump_progress(100)</code> isn’t a guess from the solver, and it isn’t a random probe: it
+is <em>the</em> input that breaks this function, sitting exactly on the boundary — the case
+a reviewer skims past and the tests forget. The checker turned the solver’s model
+into a real March value, <strong>called <code class="language-plaintext highlighter-rouge">bump_progress(100)</code></strong>, and watched <code class="language-plaintext highlighter-rouge">101</code> come back
+and fail the predicate. Everything it prints, it ran.</p>
+
+<p>Off-by-one bugs are where this earns its keep, because the counterexample <em>is</em> the
+edge case:</p>
+
+<pre><code class="language-march">fn next_slot(i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; 16}) : {Int | _ &lt; 16} do
+  i + 1
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>but next_slot(15) returns 16.
+</code></pre></div></div>
+
+<h3 id="why-running-it-matters">Why running it matters</h3>
+
+<p>The formula the solver sees is an <em>approximation</em> of your program. Anything March
+can’t translate into logic — nonlinear arithmetic, a call it can’t see inside — is
+dropped from the question rather than guessed at. That keeps proofs honest, but it
+means a raw “here’s a failing input” answer can describe a situation your program
+never actually reaches:</p>
+
+<pre><code class="language-march">fn always_one(x : Int) : {Int | _ &gt;= 0} do
+  if x * x &gt;= 0 do 1 else x end     -- the else branch can never run
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">x * x &gt;= 0</code> is nonlinear, so the guard is dropped, and the solver duly “finds” a
+failure down the <code class="language-plaintext highlighter-rouge">else</code> branch. Printing that would be a false alarm on correct
+code — the one thing this design refuses to do. Running the candidate returns <code class="language-plaintext highlighter-rouge">1</code>,
+the predicate holds, the answer is thrown away, and <strong>the checker stays quiet</strong>.</p>
+
+<p>So the rule is simple, and worth trusting: <strong>every counterexample you see was
+actually executed and observed to fail.</strong> Candidates that can’t be run — a function
+needing real I/O, one that loops forever, a value the checker can’t build — are not
+reported at all; the obligation stays skipped, exactly as before.</p>
+
+<h3 id="counterexamples-respect-your-other-contracts">Counterexamples respect your other contracts</h3>
+
+<p>A counterexample is only fair if your function ever promised to handle that input.
+Witnesses must satisfy the parameters’ own refinements:</p>
+
+<pre><code class="language-march">fn scale(x : {Int | _ &gt; 0}, y : {Int | _ &gt; 0}) : {Int | _ &gt; 100} do
+  x * y
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>but scale(1, 1) returns 1.
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">scale(0, 0)</code> would be an easier counterexample, but <code class="language-plaintext highlighter-rouge">0</code> is ruled out by
+<code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code>, so it’s never blamed.</p>
+
+<p>Counterexamples are also <strong>shrunk</strong> to the smallest failing input rather than
+whatever the solver happened to pick — which is often the most useful number in the
+whole message, because it’s the <em>threshold</em> where things start going wrong:</p>
+
+<pre><code class="language-march">fn backoff_ms(attempt : {Int | _ &gt;= 0}) : {Int | _ &lt;= 30000} do
+  attempt * 1000
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>but backoff_ms(31) returns 31000.
+</code></pre></div></div>
+
+<p>Every attempt from 31 up blows the cap; you’re told the first one, so the fix (clamp
+at 30) reads straight off the diagnostic. Shrinking is deterministic, so the same
+program always reports the same counterexample.</p>
+
+<p>Note that <code class="language-plaintext highlighter-rouge">x * y</code> never reaches the solver at all. When a contract falls outside what
+March can translate, it tries a small batch of likely inputs through the same
+run-and-check process. A confirmed failure gets reported; finding nothing leaves the
+contract skipped. So a contract that is unprovable <em>and</em> true — <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> over
+<code class="language-plaintext highlighter-rouge">x * x + 1</code> — stays silent rather than being guessed at in either direction.</p>
+
+<h3 id="records-and-lists-print-the-way-youd-write-them">Records and lists print the way you’d write them</h3>
+
+<pre><code class="language-march">type Config = { port : Int, workers : Int }
+
+fn with_port(cfg : Config, p : Int) : {v : Config | v.port &gt;= 1024} do
+  { port: p, workers: cfg.workers }
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>but with_port({ port: 0, workers: 0 }, 0) returns { port: 0, workers: 0 }.
+</code></pre></div></div>
+
+<p>At a <strong>call site</strong>, the example is given in terms of the caller’s own variables:</p>
+
+<pre><code class="language-march">fn median(xs : {List(Int) | len(_) &gt; 0}) : Int do 0 end
+
+fn report(samples : {List(Int) | len(_) == 0}) : Int do
+  median(samples)
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>refinement violation: argument `xs` of `median` does not satisfy precondition
+`len(_) &gt; 0` (e.g. samples = [])
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">samples = []</code> is the offending value itself. March used to print
+<code class="language-plaintext highlighter-rouge">len(samples) = 0</code> — a true statement <em>about</em> the value that you then had to work
+backwards from.</p>
+
+<h3 id="where-they-show-up">Where they show up</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Site</th>
+      <th>What the diagnostic adds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Return contract</td>
+      <td><code class="language-plaintext highlighter-rouge">but bump_progress(100) returns 101.</code></td>
+    </tr>
+    <tr>
+      <td>Call-site precondition</td>
+      <td><code class="language-plaintext highlighter-rouge">(e.g. samples = [])</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> division</td>
+      <td><code class="language-plaintext highlighter-rouge">(e.g. count = 0)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Those are the two places March emits refinement diagnostics: the definition (return
+contracts over <code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">Float</code> and records) and the call site (preconditions
+of any checkable type, lists and strings included). A return contract over a
+collection goes down a different path that stays quiet either way, so a broken
+<code class="language-plaintext highlighter-rouge">{List(Int) | len(_) &gt; 0}</code> return gets caught where the value is <em>used</em> rather than
+where it’s built.</p>
+
+<blockquote>
+  <p><strong>One consequence worth knowing.</strong> A function whose return contract is broken for
+<em>some</em> input is now a compile error in every module, not just a <code class="language-plaintext highlighter-rouge">cap verified</code> one,
+whenever a counterexample confirms it: <code class="language-plaintext highlighter-rouge">fn f(n : Int) : {Int | _ &gt;= 0} do n end</code> no
+longer compiles. The checker hasn’t become less cautious — it demonstrated the bug
+by running it. Contracts that stay genuinely undecided are unaffected.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="path-sensitivity-guards-establish-facts">Path Sensitivity: Guards Establish Facts</h2>
+
+<p>A guard you write becomes a fact the solver can use for the rest of that branch. The
+then-branch learns the condition is true; the else-branch learns it’s false:</p>
+
+<pre><code class="language-march">fn get(xs : List(Int), i : Int) : Int do
+  if i &gt;= 0 &amp;&amp; i &lt; List.length(xs) do
+    at(xs, i)          -- ok: the guard proves the precondition here
+  else
+    0
+  end
+end
+</code></pre>
+
+<p>(<code class="language-plaintext highlighter-rouge">len</code>, used in earlier examples, is a special name usable only inside a <code class="language-plaintext highlighter-rouge">{...}</code>
+refinement predicate; you can’t call it as an ordinary function. In plain code, like
+the guard above, use <code class="language-plaintext highlighter-rouge">List.length</code> instead; the solver knows they mean the same thing.)</p>
+
+<blockquote>
+  <p><strong>Length guards count.</strong> A guard you’d write anyway (<code class="language-plaintext highlighter-rouge">if List.length(ys) &gt; 0</code>,
+or <code class="language-plaintext highlighter-rouge">if String.byte_size(s) &gt; 0</code>) establishes exactly the fact a <code class="language-plaintext highlighter-rouge">len</code>-bearing
+contract like <code class="language-plaintext highlighter-rouge">{List(Int) | len(_) &gt; 0}</code> asks for: the checker treats the qualified
+<code class="language-plaintext highlighter-rouge">List.length</code>, <code class="language-plaintext highlighter-rouge">String.byte_size</code>, and the <code class="language-plaintext highlighter-rouge">string_byte_length</code> builtin as spellings
+of the <code class="language-plaintext highlighter-rouge">len</code> measure (a bare <code class="language-plaintext highlighter-rouge">length</code>, <code class="language-plaintext highlighter-rouge">String.codepoint_count</code>, or <code class="language-plaintext highlighter-rouge">string_length</code>
+does <strong>not</strong> count). The same applies to a qualified spelling written <em>inside</em> the
+braces. The connection is narrow and occasionally withdrawn for a whole compilation
+unit; see <a href="#limitations">Limitations</a> for the summary and
+<a href="#the-solver-really-does-connect-listlength-to-len">the appendix</a> for the exact rules.</p>
+</blockquote>
+
+<p><code class="language-plaintext highlighter-rouge">match</code> arm guards (<code class="language-plaintext highlighter-rouge">when</code>) work the same way. An <code class="language-plaintext highlighter-rouge">assert(p)</code> acts as an
+<strong>assume</strong>: it injects <code class="language-plaintext highlighter-rouge">p</code> as a fact for the code that follows:</p>
+
+<pre><code class="language-march">fn g(i : Int) : Int do
+  assert(i &gt;= 0)
+  take_pos(i)          -- ok: the assert established i &gt;= 0
+end
+</code></pre>
+
+<p>Use <code class="language-plaintext highlighter-rouge">assert</code> as the escape hatch for facts the checker can’t derive on its own
+(it’s the place a hand-proved lemma lives).</p>
+
+<hr />
+
+<h2 id="contracts-compose-a-parameters-promise-applies-inside-its-body">Contracts Compose: A Parameter’s Promise Applies Inside Its Body</h2>
+
+<p>There are two different ways a fact gets established, and it’s worth keeping them
+apart in your head:</p>
+
+<ul>
+  <li>a <strong>guard</strong>: a runtime test you wrote, like <code class="language-plaintext highlighter-rouge">if List.length(ys) &gt; 0 do …</code>, which
+is what the section above is about; and</li>
+  <li>a <strong>declared contract</strong>: a refinement on a parameter’s <em>type</em>, which the caller
+already had to satisfy before the function could be entered.</li>
+</ul>
+
+<p>The second one is a promise you were given, so you shouldn’t have to check it again.
+And you don’t: a refined parameter’s own predicate is a fact inside the function’s
+body. Which means contracts <strong>compose</strong>: a function that requires something can pass
+its own parameter straight on to another function requiring the same thing, no guard
+anywhere:</p>
+
+<pre><code class="language-march">fn inner(xs : {List(Int) | len(_) &gt; 0}) : Int do 0 end
+fn outer(ys : {List(Int) | len(_) &gt; 0}) : Int do inner(ys) end
+fn main() : Int do outer([1]) end
+</code></pre>
+
+<p>Both calls are <em>proved</em>: <code class="language-plaintext highlighter-rouge">--refine-report</code> reports <code class="language-plaintext highlighter-rouge">2 proved, 0 violated, 0 trusted, 0 skipped</code>.
+A contract can be threaded through as many hops as you like without re-guarding a list
+you’d already promised was non-empty. That’s what makes the standard library’s contracts
+worth having:</p>
+
+<pre><code class="language-march">mod Y do
+  cap verified
+  fn head_of(xs : {List(Int) | len(_) &gt; 0}) : Int do
+    List.head(xs)          -- proved from head_of's own contract
+  end
+  fn main() : Int do head_of([1, 2]) end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">List.head</code> wants a non-empty list; <code class="language-plaintext highlighter-rouge">head_of</code> already promised one; done. That
+compiles clean even under <code class="language-plaintext highlighter-rouge">cap verified</code>, which is the strict setting that turns
+every undischarged obligation into an error.</p>
+
+<p>This works for every refinement shape: <code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Float</code>, <code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">String</code>
+lengths, record fields, list <code class="language-plaintext highlighter-rouge">len</code>, your own <code class="language-plaintext highlighter-rouge">@[measure]</code> over a tree, and a
+<strong>constructor tag</strong> (<code class="language-plaintext highlighter-rouge">{Option(Int) | is_Some(_)}</code>) all compose. The tag shape
+composes only for the constructor you actually promised: promising
+<code class="language-plaintext highlighter-rouge">is_None(_)</code> does not discharge a callee wanting <code class="language-plaintext highlighter-rouge">is_Some(_)</code>. See
+<a href="#limitations">Limitations</a>.</p>
+
+<p>Two things it intentionally won’t do for you. First, a <strong>weaker</strong> promise can’t
+launder a stronger requirement. Declare <code class="language-plaintext highlighter-rouge">outer(ys : {List(Int) | len(_) &gt;= 0})</code>
+(which is true of every list and therefore states no fact) and the inner call goes back
+to being <em>skipped</em>: not proved, and not reported either, because no value here is
+definitely wrong. Second, <strong>rebinding the name drops the fact</strong>, since the promise
+belongs to the value, not the spelling:</p>
+
+<pre><code class="language-march">fn outer(ys : {List(Int) | len(_) &gt; 0}) : Int do
+  let ys = List.tail(ys)   -- this call is fine: proved from ys's contract
+  inner(ys)                -- skipped: the new ys promises nothing
+end
+</code></pre>
+
+<p>A <code class="language-plaintext highlighter-rouge">match</code> arm that binds the same name (<code class="language-plaintext highlighter-rouge">Cons(_, ys) -&gt; inner(ys)</code>) behaves the same.
+Both leave the call quiet rather than flagged; the checker never guesses.</p>
+
+<p>One related gap, which predates all of this and is easy to trip over: a fact does
+<strong>not</strong> travel through a local <code class="language-plaintext highlighter-rouge">let</code>, for any type at all. <code class="language-plaintext highlighter-rouge">let u = 5</code> followed by
+<code class="language-plaintext highlighter-rouge">take_pos(u)</code> against <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> is skipped, even though <code class="language-plaintext highlighter-rouge">5</code> obviously satisfies
+it. Pass the value directly, or state the fact with <code class="language-plaintext highlighter-rouge">assert</code>.</p>
+
+<h3 id="an-annotation-on-a-let-is-checked-not-assumed">An annotation on a <code class="language-plaintext highlighter-rouge">let</code> is checked, not assumed</h3>
+
+<p>You <em>can</em> write a refinement on a local binding, and it brings a fact forward, but
+it has to earn it first:</p>
+
+<pre><code class="language-march">fn outer() : Int do
+  let ys : {List(Int) | len(_) &gt; 0} = [1]
+  inner(ys)                                  -- proved: the annotation held
+end
+</code></pre>
+
+<p>Two things are checked there, not one: the annotation against <code class="language-plaintext highlighter-rouge">[1]</code>, and then
+<code class="language-plaintext highlighter-rouge">inner</code>’s precondition against the fact the annotation established. Write something
+false and you get told:</p>
+
+<pre><code class="language-march">let ys : {List(Int) | len(_) &gt; 0} = []
+-- refinement violation: bound expression does not satisfy type annotation `len(_) &gt; 0`
+</code></pre>
+
+<p>The annotation is checked, not believed on sight: it earns its fact only when the bound
+expression actually satisfies it.</p>
+
+<p>The usual stance still applies at the other end: an annotation the checker can
+neither prove nor refute is <strong>skipped</strong>, never reported. But it then grants no fact
+either, so it can’t invisibly prop up a later call:</p>
+
+<pre><code class="language-march">fn go(zs : List(Int)) : Int do
+  let ys : {List(Int) | len(_) &gt; 0} = zs    -- skipped: nothing known about zs
+  inner(ys)                                 -- also skipped, not proved
+end
+</code></pre>
+
+<p>All three spellings of the value work the same way: <code class="language-plaintext highlighter-rouge">_</code>, a declared binder
+(<code class="language-plaintext highlighter-rouge">{v : List(Int) | len(v) &gt; 0}</code>), or the bound name itself (<code class="language-plaintext highlighter-rouge">len(ys) &gt; 0</code>).</p>
+
+<hr />
+
+<h2 id="postconditions">Postconditions</h2>
+
+<p>A refined return type is checked on <strong>every return path</strong> of the function,
+under the path/scope reaching it:</p>
+
+<pre><code class="language-march">fn clamp_low(n : Int) : {Int | _ &gt;= 0} do
+  if n &lt; 0 do 0 else n end        -- both branches satisfy _ &gt;= 0  ✓
+end
+
+fn bad(n : Int) : {Int | _ &gt;= 0} do
+  if n &lt; 0 do n else 0 end        -- error: the n &lt; 0 branch returns a negative
+end
+</code></pre>
+
+<p>A postcondition is checked the same way a precondition is: a <strong>compile
+error</strong> when it can never hold, silent <strong>proof</strong> when it always does, and a
+silent <strong>skip</strong> when the checker can’t decide either way. It also counts
+toward <a href="#seeing-what-got-checked---refine-report"><code class="language-plaintext highlighter-rouge">--refine-report</code></a> (tagged
+<code class="language-plaintext highlighter-rouge">postcondition</code> rather than <code class="language-plaintext highlighter-rouge">precondition</code>, in the report’s <code class="language-plaintext highlighter-rouge">by kind</code> line)
+and, inside a <code class="language-plaintext highlighter-rouge">cap verified</code> module, an undischarged postcondition is a
+compile error exactly like an undischarged precondition:</p>
+
+<pre><code class="language-march">mod Checked do
+  cap verified
+
+  fn mk(z : Int) : {Int | _ &gt; 0} do
+    z                              -- error under cap verified: unproven
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">@[trusted]</code> rescues a postcondition the same way it rescues a precondition;
+see <a href="#cap-verified-making-silence-an-error"><code class="language-plaintext highlighter-rouge">cap verified</code></a> below.</p>
+
+<p><strong>What doesn’t carry through:</strong> proving a <em>plain</em> postcondition (as above) is
+different from proving a <strong>relational</strong> one that relates a measure across an
+operation (<code class="language-plaintext highlighter-rouge">size(insert(t, x)) == size(t) + 1</code>), which needs the checker to
+supply an induction hypothesis at each structurally-recursive call. That
+narrower, more powerful case is covered in <a href="#limitations">Limitations</a>, under
+“Relational postconditions work, within structural recursion.”</p>
+
+<hr />
+
+<h2 id="measures-refining-over-data-structures">Measures: Refining over Data Structures</h2>
+
+<p>Every predicate so far has been about a single plain number, like <code class="language-plaintext highlighter-rouge">i &gt;= 0</code>. But often
+the bound you actually care about depends on the <em>shape</em> of a data structure: “the
+index must be less than the list’s length,” say. A <strong>measure</strong> is how you bring that
+into a predicate: it’s an ordinary-looking function from a value to an <code class="language-plaintext highlighter-rouge">Int</code> (or
+<code class="language-plaintext highlighter-rouge">Bool</code>), except the compiler is allowed to reason about it symbolically, not just run
+it. The built-in <code class="language-plaintext highlighter-rouge">len</code> measures a list this way:</p>
+
+<pre><code class="language-march">fn at(xs : List(Int), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; len(xs)}) : Int do ... end
+</code></pre>
+
+<p>You can define your own with the <code class="language-plaintext highlighter-rouge">@[measure]</code> attribute, for example the size
+of a tree:</p>
+
+<pre><code class="language-march">type Tree(a) = Leaf | Node(Tree(a), a, Tree(a))
+
+@[measure]
+fn size(t : Tree(a)) : Int do
+  match t do
+    Leaf          -&gt; 0
+    Node(l, x, r) -&gt; 1 + size(l) + size(r)
+  end
+end
+
+fn get(t : Tree(a), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; size(t)}) : a do ... end
+</code></pre>
+
+<p>Once a function is marked <code class="language-plaintext highlighter-rouge">@[measure]</code>, the solver treats its own definition as a set of
+rules it’s allowed to use, so for a value with a shape it can see (a literal list, an
+explicit <code class="language-plaintext highlighter-rouge">Node</code>/<code class="language-plaintext highlighter-rouge">Leaf</code> tree), it can effectively “run” the measure symbolically:
+from the equations above it works out <code class="language-plaintext highlighter-rouge">size(Node(Leaf, x, Leaf)) = 1</code>, so an
+out-of-bounds index into a literal tree is caught, and <code class="language-plaintext highlighter-rouge">size(t) &gt;= 0</code> is known for any
+<code class="language-plaintext highlighter-rouge">t</code>. Measures may call <strong>other measures</strong> and be <strong>mutually recursive</strong> (e.g. a
+<code class="language-plaintext highlighter-rouge">Tree</code>/<code class="language-plaintext highlighter-rouge">Forest</code> pair), and the built-in <code class="language-plaintext highlighter-rouge">List</code> is modelled too, so a user
+<code class="language-plaintext highlighter-rouge">length</code> measure over <code class="language-plaintext highlighter-rouge">List(a)</code> reasons the same way as <code class="language-plaintext highlighter-rouge">size</code>.</p>
+
+<h3 id="requiring-a-non-empty-collection">Requiring a non-empty collection</h3>
+
+<p>In the examples above the measure describes a <em>different</em> parameter: <code class="language-plaintext highlighter-rouge">len(xs)</code>
+bounds the index <code class="language-plaintext highlighter-rouge">i</code>. A measure can just as well describe the refined value
+<strong>itself</strong>, which is how you say “this list must not be empty”:</p>
+
+<pre><code class="language-march">fn head(xs : {List(a) | len(_) &gt; 0}) : a do ... end
+</code></pre>
+
+<p>Inside the predicate you can name the refined value three ways, and they all mean
+the same thing and are checked identically: the anonymous <code class="language-plaintext highlighter-rouge">_</code>, your own binder,
+or the parameter’s name:</p>
+
+<pre><code class="language-march">fn head(xs : {List(a)     | len(_)  &gt; 0}) : a do ... end
+fn head(xs : {v : List(a) | len(v)  &gt; 0}) : a do ... end
+fn head(xs : {List(a)     | len(xs) &gt; 0}) : a do ... end
+</code></pre>
+
+<p>Pass a list the compiler can see is empty and you get an error; pass one it can
+see is non-empty and it reports no issue; pass one it can’t see into and it stays
+quiet rather than guessing:</p>
+
+<pre><code class="language-march">head([])            -- error: `len(_) &gt; 0` can never hold here
+head([1, 2])        -- fine
+fn f(ys : List(Int)) : Int do head(ys) end   -- skipped: length unknown
+</code></pre>
+
+<p>Thirteen standard-library functions that panic on an empty argument now carry
+this contract (<code class="language-plaintext highlighter-rouge">List.head</code>, <code class="language-plaintext highlighter-rouge">tail</code>, <code class="language-plaintext highlighter-rouge">last</code>, <code class="language-plaintext highlighter-rouge">minimum_int</code>, <code class="language-plaintext highlighter-rouge">maximum_int</code>, the
+prelude’s <code class="language-plaintext highlighter-rouge">head</code>/<code class="language-plaintext highlighter-rouge">tail</code>, <code class="language-plaintext highlighter-rouge">Stats.mean</code>/<code class="language-plaintext highlighter-rouge">min_val</code>/<code class="language-plaintext highlighter-rouge">max_val</code>, <code class="language-plaintext highlighter-rouge">Gen.element</code>/<code class="language-plaintext highlighter-rouge">one_of</code>,
+and <code class="language-plaintext highlighter-rouge">Random.choice</code>), so <code class="language-plaintext highlighter-rouge">List.head([])</code> is a compile error rather than a crash.
+Each contract is taken from that function’s own panic message, so it never
+demands more than the code already checked, and every <code class="language-plaintext highlighter-rouge">panic</code> stays in place to
+catch the cases the compiler skips.</p>
+
+<p><code class="language-plaintext highlighter-rouge">List.nth</code> is the fourteenth, and the only one with a contract that talks about a
+<em>different</em> parameter rather than the refined value itself:</p>
+
+<pre><code class="language-march">fn nth(xs : List(a), n : {Int | _ &gt;= 0 &amp;&amp; _ &lt; len(xs)}) : a do ... end
+</code></pre>
+
+<p>So <code class="language-plaintext highlighter-rouge">List.nth([1, 2, 3], 7)</code> and <code class="language-plaintext highlighter-rouge">List.nth([1, 2, 3], -1)</code> are compile errors
+now. An index the compiler can’t pin down (by far the common case) stays
+silent, just as <code class="language-plaintext highlighter-rouge">head(ys)</code> does for a list it can’t see into. Before this
+shipped the whole standard library and four real projects (<code class="language-plaintext highlighter-rouge">forgepm</code>,
+<code class="language-plaintext highlighter-rouge">bastion</code>, <code class="language-plaintext highlighter-rouge">conduit</code>, <code class="language-plaintext highlighter-rouge">depot</code>) were swept for it: zero calls became errors.
+Under <code class="language-plaintext highlighter-rouge">cap verified</code>, though, that same unbindable index is a hard error
+instead of a silent skip: that mode’s whole promise is that every obligation
+gets discharged, so “can’t tell” is no longer good enough.</p>
+
+<p>An ordinary <code class="language-plaintext highlighter-rouge">List.length(xs) &gt; 0</code> guard <strong>does</strong> satisfy the requirement, so these
+contracts bite on a list you checked at runtime and not just on literals; see
+<a href="#the-solver-really-does-connect-listlength-to-len">the solver really does connect <code class="language-plaintext highlighter-rouge">List.length</code> to
+<code class="language-plaintext highlighter-rouge">len</code></a> for exactly when that
+connection applies, and the (narrow) circumstances in which it’s dropped.</p>
+
+<p>And you don’t need a guard at all when the <em>enclosing</em> function already declares the
+same contract: that’s a separate mechanism, and it’s what
+<a href="#contracts-compose-a-parameters-promise-applies-inside-its-body">Contracts Compose</a>
+is about.</p>
+
+<p>Your own measures work in this position too, not just the built-in <code class="language-plaintext highlighter-rouge">len</code>:</p>
+
+<pre><code class="language-march">fn inner(t : {Tree(Int) | size(_) &gt; 0}) : Int do 0 end
+
+inner(Leaf)                  -- error: size(Leaf) is 0
+inner(Node(Leaf, 5, Leaf))   -- fine: size is 1
+</code></pre>
+
+<p>Both directions are checked: the checker reasons about the actual argument, so
+<code class="language-plaintext highlighter-rouge">inner(Leaf)</code> is rejected and <code class="language-plaintext highlighter-rouge">inner(Node(Leaf, 5, Leaf))</code> passes.</p>
+
+<h3 id="constant-functions-as-bounds">Constant functions as bounds</h3>
+
+<p>A bound does not have to be a literal. A <strong>zero-argument function whose body is
+a compile-time constant</strong> may be called inside a predicate, and it is checked
+exactly as if its value had been written in place:</p>
+
+<pre><code class="language-march">fn size_x() : Int do 128 end
+fn size_y() : Int do 2 * size_x() end
+
+fn index(x : {Int | 0 &lt;= _ &amp;&amp; _ &lt; size_x()},
+         y : {Int | 0 &lt;= _ &amp;&amp; _ &lt; size_y()}) : Int do x + size_x() * y end
+
+index(5, 255)     -- proved
+index(128, 0)     -- rejected: 128 &lt; size_x() is false
+</code></pre>
+
+<p>This is what lets a program name a dimension once (<code class="language-plaintext highlighter-rouge">World.size()</code>) and keep
+static bounds checking on everything indexed by it, instead of freezing the
+literal into every refinement and every guard. A qualified spelling
+(<code class="language-plaintext highlighter-rouge">_ &lt; 16 * World.size()</code>) works the same way.</p>
+
+<p>“Constant” means the body folds without running anything: <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>
+literals, <code class="language-plaintext highlighter-rouge">+ - *</code> and <code class="language-plaintext highlighter-rouge">negate</code>, <code class="language-plaintext highlighter-rouge">&amp;&amp; || not</code>, and calls to other constant
+functions. <code class="language-plaintext highlighter-rouge">/</code> and <code class="language-plaintext highlighter-rouge">%</code> are deliberately excluded (a fold that disagreed with
+the runtime’s truncation would assert a false fact). A zero-argument function
+whose body does not fold, say one that calls a function with parameters,
+draws a warning at the predicate naming the reason, and the refinement is not
+checked. No annotation is involved; in particular <code class="language-plaintext highlighter-rouge">@[measure]</code> is <strong>not</strong> the
+remedy: a measure is a function of the value it measures, and annotating a
+constant with it is a compile error (see the gate below).</p>
+
+<p>Folding applies wherever the checker reflects an expression, so a call
+<code class="language-plaintext highlighter-rouge">takepos(neg_one())</code> with <code class="language-plaintext highlighter-rouge">fn neg_one() : Int do 0 - 1 end</code> is a definite
+violation rather than an unverified one. If a function binds a local of the
+same name (<code class="language-plaintext highlighter-rouge">let size_x = fn -&gt; 7</code>), folding is suspended inside that function
+and the call is treated as opaque.</p>
+
+<h3 id="the-measure-soundness-gate">The measure soundness gate</h3>
+
+<p>The solver trusts a <code class="language-plaintext highlighter-rouge">@[measure]</code> completely: it treats the function’s body as a fact
+about the world. That means a badly-behaved measure (one that never finishes, divides
+by zero, or skips a case) could let the solver “prove” something false. To prevent that,
+the compiler requires every measure to be verifiably well-behaved before it’s allowed to
+be used at all: a <strong>hard compile error</strong> if it isn’t. A <code class="language-plaintext highlighter-rouge">@[measure]</code> is rejected if it:</p>
+
+<ul>
+  <li>has an <strong>effect</strong> (<code class="language-plaintext highlighter-rouge">spawn</code>, <code class="language-plaintext highlighter-rouge">send</code>, <code class="language-plaintext highlighter-rouge">dbg</code>, <code class="language-plaintext highlighter-rouge">assert</code>); it must be pure,</li>
+  <li>can <strong>diverge or abort</strong> (<code class="language-plaintext highlighter-rouge">panic</code>, <code class="language-plaintext highlighter-rouge">todo</code>, <code class="language-plaintext highlighter-rouge">exit</code>); it must always finish,</li>
+  <li>is <strong>non-total</strong> (a non-exhaustive <code class="language-plaintext highlighter-rouge">match</code> on its parameter, or a <code class="language-plaintext highlighter-rouge">/</code> / <code class="language-plaintext highlighter-rouge">%</code>
+that could divide by zero); it must handle every case,</li>
+  <li>is <strong>not recursive over the structure</strong> (a recursive call with an argument that isn’t a
+component of the matched parameter); each call must work on a strictly smaller piece
+of the input, so it’s guaranteed to terminate.</li>
+  <li>does <strong>not take exactly one parameter</strong>, the value it measures. A predicate can
+only apply a measure to one argument, so a zero-argument or multi-parameter
+<code class="language-plaintext highlighter-rouge">@[measure]</code> could never be translated; the annotation would only silence the
+vocabulary warning while every call site went unverified. A zero-argument
+constant needs no annotation at all (see <a href="#constant-functions-as-bounds">Constant functions as
+bounds</a>).</li>
+</ul>
+
+<p>A measure that is sound but outside what the encoding can model (see
+limitations, below) isn’t an error: it simply falls back to weaker, symbolic
+reasoning. “Weaker” can mean <em>no reasoning at all</em>: a measure with a value that is a
+scalar constructor field discharges neither a predicate nor its negation. See
+<a href="#limitations">Limitations</a>; that case is not always warned about.</p>
+
+<hr />
+
+<h2 id="bool-and-float-refinements">Bool and Float Refinements</h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">Bool</code> parameter or return takes a predicate over the ordinary boolean
+operators (<code class="language-plaintext highlighter-rouge">==</code>, <code class="language-plaintext highlighter-rouge">!=</code>, <code class="language-plaintext highlighter-rouge">&amp;&amp;</code>, <code class="language-plaintext highlighter-rouge">||</code>, <code class="language-plaintext highlighter-rouge">not</code>) against <code class="language-plaintext highlighter-rouge">true</code> and <code class="language-plaintext highlighter-rouge">false</code>:</p>
+
+<pre><code class="language-march">fn commit(confirmed : {Bool | _ == true}) : Int do ... end
+
+commit(false)   -- rejected: `_ == true` can never hold at `false`
+commit(true)    -- fine
+</code></pre>
+
+<p>Write the <strong>operator form</strong>: <code class="language-plaintext highlighter-rouge">{Bool | not _}</code> does not parse, so use
+<code class="language-plaintext highlighter-rouge">{Bool | _ == false}</code>. An unknown <code class="language-plaintext highlighter-rouge">Bool</code> is skipped, and a guard works as you’d
+expect: <code class="language-plaintext highlighter-rouge">if k do commit(k) else 0 end</code> passes.</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">Float</code> parameter or return takes a <strong>comparison</strong> (<code class="language-plaintext highlighter-rouge">&gt;=</code>, <code class="language-plaintext highlighter-rouge">&gt;</code>, <code class="language-plaintext highlighter-rouge">&lt;=</code>, <code class="language-plaintext highlighter-rouge">&lt;</code>,
+<code class="language-plaintext highlighter-rouge">==</code>, <code class="language-plaintext highlighter-rouge">!=</code>) against float literals or another float value:</p>
+
+<pre><code class="language-march">fn sqrtish(x : {Float | _ &gt;= 0.0}) : Float do ... end
+fn ratio(n : Float, d : {Float | _ != 0.0}) : Float do n /. d end
+
+sqrtish(0.0 -. 1.0)   -- rejected
+sqrtish(4.0)          -- fine
+ratio(1.0, 0.0)       -- rejected: a zero divisor
+</code></pre>
+
+<h3 id="why-floats-are-not-modelled-as-reals">Why floats are not modelled as reals</h3>
+
+<p>Float predicates go to Z3’s <strong>bit-precise IEEE-754 FloatingPoint</strong> theory:
+<code class="language-plaintext highlighter-rouge">Float64</code>, <code class="language-plaintext highlighter-rouge">fp.geq</code> / <code class="language-plaintext highlighter-rouge">fp.gt</code> / <code class="language-plaintext highlighter-rouge">fp.leq</code> / <code class="language-plaintext highlighter-rouge">fp.lt</code>, and <code class="language-plaintext highlighter-rouge">fp.eq</code> for equality.
+Modelling floats as mathematical <strong>reals</strong> would break the no-false-positives
+promise. Consider <code class="language-plaintext highlighter-rouge">not (x &gt;= 0.0) &amp;&amp; not (x &lt;= 0.0)</code>. Over reals, trichotomy
+makes that <strong>impossible</strong>; and since the checker objects exactly when a
+predicate can <em>never</em> hold, it would flag this contract on every argument. Over
+floats it is perfectly possible, witnessed by <code class="language-plaintext highlighter-rouge">NaN</code>, which compares false
+against everything; so the checker correctly stays silent.</p>
+
+<p>Equality is <code class="language-plaintext highlighter-rouge">fp.eq</code> (IEEE equality), not bitwise identity. Under bitwise
+identity <code class="language-plaintext highlighter-rouge">-0.0</code> would differ from <code class="language-plaintext highlighter-rouge">0.0</code> and <code class="language-plaintext highlighter-rouge">{Float | _ != 0.0}</code> would accept a
+negative zero, just as bad a divisor as a positive one. Under <code class="language-plaintext highlighter-rouge">fp.eq</code>,
+<code class="language-plaintext highlighter-rouge">-0.0 == 0.0</code> is true (so a negative zero <strong>is</strong> rejected) and <code class="language-plaintext highlighter-rouge">NaN</code> equals
+no value, not even itself.</p>
+
+<p>Float <strong>arithmetic inside a predicate</strong> (<code class="language-plaintext highlighter-rouge">{Float | _ +. 1.0 &gt; 0.0}</code>) is out of
+scope: modelling it needs rounding-mode reasoning, so the whole predicate is
+skipped rather than approximated. Arithmetic over float <em>literals</em> is different:
+<code class="language-plaintext highlighter-rouge">0.0 -. 1.0</code> is folded to a constant first and is fully checked, which is how a
+negative literal (which March has no direct spelling for) still works.</p>
+
+<hr />
+
+<h2 id="constructor-tags-refining-over-adt-variants">Constructor Tags: Refining over ADT Variants</h2>
+
+<p>Refinements aren’t limited to numbers and sizes. You can also require that a
+value is a <em>particular variant</em> of a union type. Every constructor (in your own
+types, and in the built-in <code class="language-plaintext highlighter-rouge">Option</code>, <code class="language-plaintext highlighter-rouge">Result</code> and <code class="language-plaintext highlighter-rouge">List</code>) implicitly comes with
+an <code class="language-plaintext highlighter-rouge">is_&lt;Ctor&gt;</code> <strong>tester</strong> you can use inside a predicate. You don’t declare
+these; writing <code class="language-plaintext highlighter-rouge">type Shape = Circle(Int) | Square(Int)</code> gives you <code class="language-plaintext highlighter-rouge">is_Circle</code>
+and <code class="language-plaintext highlighter-rouge">is_Square</code> for free.</p>
+
+<p>That lets a function say “I need the populated case” in its own signature:</p>
+
+<pre><code class="language-march">fn unwrap(o : {Option(Int) | is_Some(_)}) : Int do ... end
+
+unwrap(Some(1))   -- fine
+unwrap(None)      -- error: `None` can never satisfy `is_Some(_)`
+</code></pre>
+
+<p>This is what backs the standard library’s <code class="language-plaintext highlighter-rouge">Option.unwrap</code>/<code class="language-plaintext highlighter-rouge">expect</code> and
+<code class="language-plaintext highlighter-rouge">Result.unwrap</code>/<code class="language-plaintext highlighter-rouge">unwrap_err</code>/<code class="language-plaintext highlighter-rouge">expect</code>, so <code class="language-plaintext highlighter-rouge">Option.unwrap(None)</code> and
+<code class="language-plaintext highlighter-rouge">Result.unwrap(Err("boom"))</code> are now compile errors rather than runtime panics.</p>
+
+<p>The tester name is <strong>exact-case</strong>. <code class="language-plaintext highlighter-rouge">is_Some</code> is the tester for the constructor
+<code class="language-plaintext highlighter-rouge">Some</code>; <code class="language-plaintext highlighter-rouge">is_some</code> is <em>not</em> a tester: it’s the lowercase stdlib helper
+<code class="language-plaintext highlighter-rouge">Option.is_some</code>. Get the case wrong and you don’t silently get a different
+meaning, you get a warning that the refinement isn’t being checked:</p>
+
+<blockquote>
+  <p><code class="language-plaintext highlighter-rouge">is_some</code> is not a measure or known predicate, so this refinement is not
+checked. Annotate the function <code class="language-plaintext highlighter-rouge">@[measure]</code>, or use a supported predicate.</p>
+</blockquote>
+
+<h3 id="facts-from-a-match">Facts from a <code class="language-plaintext highlighter-rouge">match</code></h3>
+
+<p>A constructor literal at the call site is the easy case. The more useful one is
+a <code class="language-plaintext highlighter-rouge">match</code>: entering an arm tells the checker what the scrutinee’s tag is for
+everything inside that arm.</p>
+
+<pre><code class="language-march">fn f(x : Option(Int)) : Int do
+  match x do
+    None    -&gt; unwrap(x)   -- error: inside this arm, `x` is definitely `None`
+    Some(v) -&gt; unwrap(x)   -- fine: inside this arm, `x` is definitely `Some`
+  end
+end
+</code></pre>
+
+<p>This narrowing is intentionally conservative. Where it stops, the checker goes
+quiet rather than guessing, so these are all <em>silence</em>, never false alarms:</p>
+
+<ul>
+  <li><strong>The scrutinee has to be a plain variable.</strong> <code class="language-plaintext highlighter-rouge">match mk() do …</code> matches an
+expression, and there’s no stable name to attach a fact to, so no code inside
+the arms is narrowed. Bind it with a <code class="language-plaintext highlighter-rouge">let</code> first if you want the fact.</li>
+  <li><strong>A pattern that rebinds the name ends it.</strong> Matching <code class="language-plaintext highlighter-rouge">y</code> with <code class="language-plaintext highlighter-rouge">Some(x) -&gt;</code>
+gives you no fact about <code class="language-plaintext highlighter-rouge">x</code>: that <code class="language-plaintext highlighter-rouge">x</code> is a fresh name for the payload, not
+for the scrutinee.</li>
+  <li><strong>An <code class="language-plaintext highlighter-rouge">as</code> pattern isn’t narrowed.</strong> <code class="language-plaintext highlighter-rouge">None as z -&gt;</code> binds the whole scrutinee
+under a second name, but the arm’s head is an <code class="language-plaintext highlighter-rouge">as</code> pattern rather than a bare
+constructor pattern, so no tag fact is recorded: not for <code class="language-plaintext highlighter-rouge">z</code>, and not for the
+scrutinee. Write <code class="language-plaintext highlighter-rouge">None -&gt;</code> if you want the narrowing.</li>
+  <li><strong>An ambiguous constructor name is skipped.</strong> If two types in scope both
+declare a constructor <code class="language-plaintext highlighter-rouge">Row</code>, then <code class="language-plaintext highlighter-rouge">is_Row</code> doesn’t identify a particular type
+and isn’t checked.</li>
+  <li>
+    <p><strong>Rebinding the name discards the fact.</strong> A narrowing is recorded against a
+<em>name</em>, so anything that rebinds that name inside the arm (a <code class="language-plaintext highlighter-rouge">let</code>, a <code class="language-plaintext highlighter-rouge">let?</code>,
+a lambda parameter, an inner <code class="language-plaintext highlighter-rouge">match</code> binder) drops it:</p>
+
+    <pre><code class="language-march">match x do
+  None -&gt;
+    let x = Some(1)
+    unwrap(x)     -- fine: this `x` is a different value
+  Some(v) -&gt; v
+end
+</code></pre>
+
+    <p>This is the same rule that governs facts established by an <code class="language-plaintext highlighter-rouge">if</code> guard, and
+it’s what keeps a fact about an outer value from being wrongly attributed to
+an inner one.</p>
+  </li>
+</ul>
+
+<p>As everywhere else, the definite-failure stance applies: an <code class="language-plaintext highlighter-rouge">Option</code> with a tag
+the checker can’t determine is not an error.</p>
+
+<p>Later arms also learn what the earlier ones ruled out. Reaching an arm means
+every arm above it failed to match, so for each of those with a failure
+decided purely by the tag, the scrutinee is known <em>not</em> to carry it:</p>
+
+<pre><code class="language-march">fn mean_safe(xs : List(Float)) : Result(Float, String) do
+  match xs do
+  Nil -&gt; Err("empty")
+  _   -&gt; Ok(mean(xs))   -- `mean` needs len &gt; 0; the `_` arm has it
+  end
+end
+</code></pre>
+
+<p>For a <strong>list</strong>, a tag test is a statement about length (<code class="language-plaintext highlighter-rouge">is_Nil(xs)</code> means
+<code class="language-plaintext highlighter-rouge">len(xs) = 0</code> and <code class="language-plaintext highlighter-rouge">is_Cons(xs)</code> means <code class="language-plaintext highlighter-rouge">len(xs) &gt; 0</code>), so the exclusion above
+discharges a <code class="language-plaintext highlighter-rouge">len</code>-bearing precondition directly. This is what makes the
+safe-wrapper idiom (match the empty case, return <code class="language-plaintext highlighter-rouge">Err</code>/<code class="language-plaintext highlighter-rouge">None</code>, do the real work
+in the other arm) check out. The same idea generalizes to a user <code class="language-plaintext highlighter-rouge">@[measure]</code>:
+a base-case arm with a body that is a literal gets an axiom linking its constructor’s
+tester directly to the measure’s value, so the exclusion connects there too.</p>
+
+<p>An earlier arm licenses <strong>no fact</strong> if it includes a guard or a refutable
+sub-pattern, because either can fail with the tag still matching:
+<code class="language-plaintext highlighter-rouge">Cons(0, _)</code> does not match <code class="language-plaintext highlighter-rouge">Cons(1, [])</code>, which is nonetheless a <code class="language-plaintext highlighter-rouge">Cons</code>, and
+<code class="language-plaintext highlighter-rouge">Nil when flag</code> fails whenever <code class="language-plaintext highlighter-rouge">flag</code> is false. So</p>
+
+<pre><code class="language-march">match xs do
+Nil -&gt; Err(…)
+Cons(_, Nil) -&gt; Err("need at least 2")
+_ -&gt; Ok(std_dev(xs))     -- knows only len &gt; 0, NOT len &gt; 1
+end
+</code></pre>
+
+<p>still abstains on a <code class="language-plaintext highlighter-rouge">len &gt; 1</code> requirement, which is the accurate answer.</p>
+
+<hr />
+
+<h2 id="seeing-what-got-checked---refine-report">Seeing What Got Checked: <code class="language-plaintext highlighter-rouge">--refine-report</code></h2>
+
+<p>Because March stays quiet about anything it can’t decide, silence has two very
+different meanings: “I proved this” and “I couldn’t tell, so I kept quiet.” From the
+outside they look identical, which is exactly how a <code class="language-plaintext highlighter-rouge">{List(a) | len(_) &gt; 0}</code> contract
+once shipped with zero enforcement while every test stayed green.</p>
+
+<p><code class="language-plaintext highlighter-rouge">--refine-report</code> turns the checked fraction into a number you can look at:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check --refine-report stdlib/list.march
+refinement obligations (user code): 1 proved, 0 violated, 0 trusted, 5 skipped
+  skipped (partial-conjunct): 1
+  skipped (unconstrained-subject): 4
+  by kind: 6 precondition, 0 postcondition, 0 division
+refinement obligations (user + stdlib): 17 proved, 0 violated, 0 trusted, 33 skipped
+  skipped (partial-conjunct): 1
+  skipped (solver-undecided): 1
+  skipped (unconstrained-subject): 31
+  by kind: 50 precondition, 0 postcondition, 0 division
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">--refine-report</code> records a <a href="#promoting-a-skip-a-demonstrated-precondition-failure">promoted call-site failure</a>
+under <code class="language-plaintext highlighter-rouge">violated</code>, the same bucket used for a contract the solver proved can
+never hold. A nonzero <code class="language-plaintext highlighter-rouge">violated</code> count on a module with no <code class="language-plaintext highlighter-rouge">cap verified</code>
+annotation is therefore not necessarily a bad annotation; it can be a
+demonstrated call-site failure the checker found on its own. The report does
+not currently distinguish the two shapes.</p>
+
+<p>One wrinkle to know before you run it: clear <code class="language-plaintext highlighter-rouge">.march/cas/artifacts-v2</code> first. A
+<code class="language-plaintext highlighter-rouge">--check</code> with sources already in the build cache exits straight away, before
+anything is parsed, so the report never runs and you get <strong>no output at all</strong>, while
+still exiting 0. That looks exactly like “no obligations to report”, which is the very
+confusion this flag exists to clear up. (<code class="language-plaintext highlighter-rouge">.march/cas/vc</code> is a different cache, holding
+solver verdicts; clearing that one makes z3 re-decide, but doesn’t change whether the
+report prints.)</p>
+
+<p>You get two counts because, behind the scenes, the compiler prepends the whole standard library to
+every compilation. <strong>User code</strong> counts only the call sites in the file you named;
+that’s the one to watch while writing a module. <strong>User + stdlib</strong> counts everything
+raised in the run, which makes a good whole-program coverage number.</p>
+
+<p>March’s own CI ratchets on both directions: an <strong>upper limit</strong> on skips (more skips means
+less is being checked) and a <strong>floor</strong> on proofs. The floor matters more than it
+sounds: an upper limit on its own is satisfied perfectly by a checker that raises no
+obligations at all, and the floor is read from a small fixture with one obligation,
+<em>proved</em> by a <code class="language-plaintext highlighter-rouge">List.length</code> guard, so it collapses to zero the instant the measure
+alias stops working. This is the failure mode the report exists to expose: a skip and a
+proof both exit 0, and only the count can tell them apart.</p>
+
+<p>Every skip states <em>why</em>, one of nine reasons: the predicate’s own
+sub-expression named in the message has no SMT translation
+(<code class="language-plaintext highlighter-rouge">unreflectable-predicate</code>), the argument named in the message could not be
+translated (<code class="language-plaintext highlighter-rouge">unreflectable-subject</code>), a symbol would have needed two
+different sorts (<code class="language-plaintext highlighter-rouge">sort-conflict</code>), the float wellsortedness gate rejected it
+(<code class="language-plaintext highlighter-rouge">float-sort-gate</code>), a measure alias the guard relied on had been withdrawn
+(<code class="language-plaintext highlighter-rouge">alias-withdrawn</code>; see below), no fact the checker derived constrains the
+argument the predicate talks about (<code class="language-plaintext highlighter-rouge">unconstrained-subject</code>), the predicate is
+a top-level <code class="language-plaintext highlighter-rouge">&amp;&amp;</code> and only some of its conjuncts were proved
+(<code class="language-plaintext highlighter-rouge">partial-conjunct</code>; the message names which held and which did not), the goal
+names a function the checker has no meaning for (<code class="language-plaintext highlighter-rouge">opaque-application</code>), or the
+solver simply didn’t decide either way (<code class="language-plaintext highlighter-rouge">solver-undecided</code>).</p>
+
+<p><code class="language-plaintext highlighter-rouge">unconstrained-subject</code>, <code class="language-plaintext highlighter-rouge">partial-conjunct</code>, and <code class="language-plaintext highlighter-rouge">opaque-application</code> are all
+more specific answers to the same question <code class="language-plaintext highlighter-rouge">solver-undecided</code> asks: they fire
+only where the VC was built and the solver ran, and each names a narrower
+reason the proof didn’t go through.</p>
+
+<p>These three diagnosed reasons, plus <code class="language-plaintext highlighter-rouge">unreflectable-predicate</code> and
+<code class="language-plaintext highlighter-rouge">unreflectable-subject</code>, print at <em>every</em> call site that has one, not once
+per module: both of those two now name the specific sub-expression or
+argument that failed, so repeating the message at every site is a distinct
+fact each time. Three of the residual reasons (<code class="language-plaintext highlighter-rouge">solver-undecided</code>,
+<code class="language-plaintext highlighter-rouge">sort-conflict</code>, and <code class="language-plaintext highlighter-rouge">float-sort-gate</code>) keep the older behavior: one hint per
+module, because their message says the same thing regardless of which call
+triggered it. A diagnosed reason does not: “nothing constrains <code class="language-plaintext highlighter-rouge">n</code>” and
+“<code class="language-plaintext highlighter-rouge">_ &gt;= 0</code> held here, <code class="language-plaintext highlighter-rouge">_ &lt; len(xs)</code> did not” are different facts about
+different calls, so printing only the first one found would hide the rest.</p>
+
+<p><code class="language-plaintext highlighter-rouge">alias-withdrawn</code> follows neither rule: outside <code class="language-plaintext highlighter-rouge">cap verified</code> it prints no
+hint at all, not even once per module. It is still counted in
+<code class="language-plaintext highlighter-rouge">--refine-report</code>, and under <code class="language-plaintext highlighter-rouge">cap verified</code> it becomes its own error; see
+<a href="#when-the-guard-is-right-and-the-error-still-fires">below</a>.</p>
+
+<p><strong>Which one gets blamed.</strong> A call’s argument (the “subject”) is reflected
+first; if that reflection fails, the whole call is filed as
+<code class="language-plaintext highlighter-rouge">unreflectable-subject</code> naming the argument, and the predicate is never even
+reached. Only when the subject reflects fine does a further failure get
+filed as <code class="language-plaintext highlighter-rouge">unreflectable-predicate</code>, naming the innermost sub-expression of
+the predicate that had no translation. The same rule applies to a
+postcondition: the function’s own return expression is the subject there,
+so a return expression that fails to reflect is <code class="language-plaintext highlighter-rouge">unreflectable-subject</code>, not
+<code class="language-plaintext highlighter-rouge">unreflectable-predicate</code>, even when the postcondition itself is fine. One
+gap: a predicate that never reaches the bare subject at all (only a measure
+over it, or an opaque call over it) still blames the predicate when the
+predicate is itself unreflectable, even though the subject may also be
+opaque. A sibling parameter’s actual (an argument the predicate mentions by
+name, not the refined parameter’s own subject) is not covered by this rule
+yet and still blames the predicate.</p>
+
+<p>Two generated examples, one per reason. <code class="language-plaintext highlighter-rouge">unreflectable-subject</code>, from the
+compiler’s own test corpus (<code class="language-plaintext highlighter-rouge">test/native/simd_lane_panic.march</code>, a
+<code class="language-plaintext highlighter-rouge">Simd.extract_i32x4</code> call whose lane index comes from an unrefined helper):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check test/native/simd_lane_panic.march
+
+-- HINT -- test/native/simd_lane_panic.march
+
+precondition `0 &lt;= _ &amp;&amp; _ &lt; 4` on `Simd.extract_i32x4` was NOT verified here.
+the argument `lane(1)` could not be translated to SMT, so no goal was built
+
+25 |     println(Simd.extract_i32x4(v, lane(1)))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">unreflectable-predicate</code>, for a predicate built on an ordinary function
+rather than a measure:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mod UpDoc do
+  needs IO.Console
+
+  pfn is_prime(n : Int) : Bool do n == 2 || n == 3 || n == 5 || n == 7 end
+
+  fn f(n : {Int | is_prime(_)}) : Int do n end
+
+  fn main(_cap_console : Cap(IO.Console)) : () do
+    println(f(7))
+  end
+end
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check up_doc.march
+
+-- WARNING -- up_doc.march
+
+`is_prime` is not a measure or known predicate, so this refinement is not checked. Annotate the function `@[measure]`, or use a supported predicate.
+
+6 |   fn f(n : {Int | is_prime(_)}) : Int do n end
+                      ^^^^^^^^^^^
+
+
+
+-- HINT -- up_doc.march
+
+precondition `is_prime(_)` on `f` was NOT verified here.
+the predicate's `is_prime(_)` has no SMT translation
+
+9 |     println(f(7))
+                ^^^^
+</code></pre></div></div>
+
+<p>The counts include both <strong>preconditions checked at call sites</strong> and
+<strong>postconditions</strong>: a function’s own return value checked against its declared
+return type. Each obligation is tagged with its kind, shown as a <code class="language-plaintext highlighter-rouge">by kind</code>
+breakdown line under each slice; a proved postcondition counts toward the same
+“proved” headline as a proved precondition, and <a href="#cap-verified--making-silence-an-error"><code class="language-plaintext highlighter-rouge">cap verified</code></a>
+(below) escalates an undischarged one of either kind.</p>
+
+<hr />
+
+<h2 id="coverage-audit-does-the-checker-even-look-at-this-refinement">Coverage Audit: Does the Checker Even Look at This Refinement?</h2>
+
+<p><code class="language-plaintext highlighter-rouge">--refine-report</code> counts obligations, but an obligation only exists once
+<em>something</em> files it. It says nothing about a declared refinement that never
+reaches a goal-building call site at all, because the checker has no code
+path that ever looks at that position in the first place. <code class="language-plaintext highlighter-rouge">--refine-audit</code>
+answers that narrower, prior question: for every <code class="language-plaintext highlighter-rouge">{Base | pred}</code> written
+anywhere in the module, does any extractor in the checker ever consult it?</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check --refine-audit stdlib/list.march
+coverage audit (user code): 7 enforced, 0 inert (warned), 0 unenforced
+coverage audit (user + stdlib): 63 enforced, 0 inert (warned), 0 unenforced
+</code></pre></div></div>
+
+<p>Every declared refinement is sorted into exactly one of three buckets:</p>
+
+<ul>
+  <li><strong>Enforced</strong>: the checker’s own extractor for this position accepts the
+declared type, so a call site (or the function’s own body, for a
+postcondition) gets an obligation filed against it. A parameter that is
+never called from anywhere still counts as Enforced: enforcement is a
+property of the checker’s own scope-registration for that parameter’s
+position, not of whether a caller exists yet. See below for why this is the
+right reading, not a loophole.</li>
+  <li><strong>Inert (warned)</strong>: a <code class="language-plaintext highlighter-rouge">sig</code> entry, an <code class="language-plaintext highlighter-rouge">extern</code> signature, or an
+<code class="language-plaintext highlighter-rouge">interface</code> method whose refinement the compiler already flags with its
+own warning (<code class="language-plaintext highlighter-rouge">warn_sig_fn_refinement</code> and friends). The compiler tells you
+about these today; the audit just confirms the warning still fires.</li>
+  <li><strong>Unenforced</strong>: declared, silent, and nothing tells you. No extractor in
+the checker ever looks at this position, so a value that violates the
+written predicate is accepted without complaint.</li>
+</ul>
+
+<p>A line for each <code class="language-plaintext highlighter-rouge">Unenforced</code> site is printed, one per position, naming the
+file, line, column, the enclosing declaration, the predicate, and <em>why</em>
+nothing checks it. For:</p>
+
+<pre><code class="language-march">mod PINAUDIT1 do
+  type Box = { v : {Int | v &gt; 0} }
+
+  fn f(n : {Int | n &gt; 0}) : {Int | _ &gt; 0} do
+    n
+  end
+
+  fn main() : Int do
+    f(1)
+  end
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check --refine-audit t.march
+coverage audit: t.march:2:26: field `Box.v`: v &gt; 0: a record (or actor-state) field's declared type is never re-examined once a value is constructed; the checker has no extractor for a stored field, only for a parameter, a return, or a let-binding
+coverage audit (user code): 2 enforced, 0 inert (warned), 1 unenforced
+coverage audit (user + stdlib): 65 enforced, 0 inert (warned), 1 unenforced
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">f</code>’s parameter and return are both Enforced; only <code class="language-plaintext highlighter-rouge">Box.v</code>’s field refinement
+is Unenforced. The <code class="language-plaintext highlighter-rouge">user + stdlib</code> total (65) is the whole run’s site count:
+this file’s 2 sites plus the 63 the shipped stdlib always contributes.</p>
+
+<h3 id="why-an-uncalled-parameter-still-counts-as-enforced">Why an uncalled parameter still counts as Enforced</h3>
+
+<p>This is the design’s central subtlety, and it is easy to get backwards. A
+parameter refinement is not enforced by there being callers; it is enforced
+by the checker’s scope machinery accepting the declared type at all,
+<code class="language-plaintext highlighter-rouge">refined_param_ty</code> running over <code class="language-plaintext highlighter-rouge">fn f(n : {Int | n &gt; 0}) : Int do ... end</code>
+registers <code class="language-plaintext highlighter-rouge">n &gt; 0</code> as a fact inside <code class="language-plaintext highlighter-rouge">f</code>’s own body and would raise an
+obligation at <em>any</em> call site, present or future. Whether such a call site
+exists yet is orthogonal: adding one tomorrow gets checked automatically,
+because the position itself is wired into the checker. That is exactly the
+same reading <code class="language-plaintext highlighter-rouge">--refine-report</code>’s obligation count already uses (an unproven
+obligation and a not-yet-filed obligation are different questions), and the
+audit stays consistent with it rather than inventing a second, incompatible
+notion of “checked.”</p>
+
+<p>Contrast that with a lambda’s own parameter (<code class="language-plaintext highlighter-rouge">fn (n : {Int | n &gt; 0}) -&gt; n</code>):
+no scope machinery ever runs over an <code class="language-plaintext highlighter-rouge">ELam</code>’s parameters at all, so <em>no</em>
+call through that lambda, ever, is obliged by it. That is genuinely
+Unenforced, not just uncalled.</p>
+
+<h3 id="where-the-current-baseline-stands">Where the current baseline stands</h3>
+
+<p>A sweep of the corpus the refinement oracle already walks
+(<code class="language-plaintext highlighter-rouge">test/native/*.march</code> and <code class="language-plaintext highlighter-rouge">stdlib/*.march</code>, ~300 files) finds 63 declared
+refinements, every one Enforced: zero Unenforced, zero Inert. That baseline
+is committed at <code class="language-plaintext highlighter-rouge">test/refine_audit/corpus.baseline</code>, ratcheted in CI, and
+regenerated the same way the TIR golden snapshots are
+(<code class="language-plaintext highlighter-rouge">UPDATE_SNAPSHOTS=1 ./_build/default/test/test_refinecheck.exe -e</code>). It
+being empty is a true fact about today’s corpus, not evidence the audit does
+nothing: <code class="language-plaintext highlighter-rouge">test/refine_audit/holes/</code> is a second, deliberately non-empty
+fixture set built from known holes (a lambda’s own parameter, a block-level
+<code class="language-plaintext highlighter-rouge">fn</code>’s parameter and return, a non-adoptable <code class="language-plaintext highlighter-rouge">impl</code> method’s parameter, an
+actor’s state field and handler parameter, a nested field refinement, and a
+<code class="language-plaintext highlighter-rouge">{String | ...}</code> return), pinned at <code class="language-plaintext highlighter-rouge">test/refine_audit/holes.baseline</code>. If
+that second baseline ever reported zero Unenforced sites, the audit itself
+would be broken, not the corpus; the test that diffs it fails loudly with
+exactly that message rather than passing vacuously.</p>
+
+<p>The positions currently known to be Unenforced, none of which the corpus
+above happens to exercise:</p>
+
+<ul>
+  <li>A lambda’s own parameter (<code class="language-plaintext highlighter-rouge">fn (n : {Int | n &gt; 0}) -&gt; ...</code>).</li>
+  <li>A block-level <code class="language-plaintext highlighter-rouge">fn</code>’s own parameter and return type. <code class="language-plaintext highlighter-rouge">check_fn_post_verdict</code>
+and <code class="language-plaintext highlighter-rouge">scope_add_param</code> are only reached through <code class="language-plaintext highlighter-rouge">A.DFn</code> / <code class="language-plaintext highlighter-rouge">A.DImpl</code>, never
+through a local <code class="language-plaintext highlighter-rouge">A.ELetFn</code>.</li>
+  <li>An <code class="language-plaintext highlighter-rouge">impl</code> method’s parameter, when the method’s bare name is not adoptable
+(more than one <code class="language-plaintext highlighter-rouge">impl</code> defines it, or a top-level <code class="language-plaintext highlighter-rouge">fn</code> shares the name):
+<code class="language-plaintext highlighter-rouge">visit_decl</code> strips the refinement from the body in that case, and no
+caller is ever obliged. The audit reports every <code class="language-plaintext highlighter-rouge">impl</code> method parameter as
+Unenforced regardless of adoptability, since a single site cannot make that
+module-level judgement; when the method <em>is</em> actually adoptable the checker
+does enforce it, and this over-approximation is a documented conservatism,
+not a bug of its own.</li>
+  <li>An actor’s state field, and a handler’s own parameter. No extractor exists
+for either.</li>
+  <li>A record field or a variant constructor argument, once a value is
+constructed.</li>
+  <li>A refinement nested below the outermost position of a declared type (inside
+a type argument, an arrow side, a tuple element, or a second layer of a
+stacked refinement).</li>
+  <li>A <code class="language-plaintext highlighter-rouge">{String | ...}</code> return type: <code class="language-plaintext highlighter-rouge">return_refine_ext</code> only recognizes Int,
+Bool, Float, and record bases.</li>
+  <li>A parameter refinement that desugar drops or relocates before the audit
+ever sees it: a multi-head function’s clause merge, or a default-argument
+function’s mangled arity variant. See the next section.</li>
+</ul>
+
+<p>See <code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-lambda-param-refinement-unchecked.md</code>,
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-block-fn-refinement-unchecked.md</code>,
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-impl-method-param-refinement-unchecked.md</code>,
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-actor-state-and-handler-refinement-unchecked.md</code>,
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-01-nested-refinement-enforcement.md</code>,
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-string-return-refinement-unchecked.md</code>, and
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-desugar-dropped-refinement-unchecked.md</code> for
+reproducers and root causes.</p>
+
+<h3 id="why-the-audit-needs-the-pre-desugar-ast-too">Why the audit needs the pre-desugar AST too</h3>
+
+<p>A whole-plan review found two shapes where reading only the POST-desugar
+declaration list is not enough, and both are corrected as of this section:</p>
+
+<ul>
+  <li>A multi-head function (two or more <code class="language-plaintext highlighter-rouge">fn</code> clauses for the same name) is
+merged by desugar into a single clause whose parameters are rebuilt with
+no declared type at all. A refined parameter on one of the original
+clauses vanishes before the audit ever runs: not <code class="language-plaintext highlighter-rouge">Unenforced</code>, simply
+absent, which is worse than a false negative because nothing at all
+reports it.</li>
+  <li>A default-argument function survives desugar only under mangled
+arity-variant names (<code class="language-plaintext highlighter-rouge">f$2</code>, <code class="language-plaintext highlighter-rouge">f$1</code>, …); no declaration named <code class="language-plaintext highlighter-rouge">f</code> remains.
+A refined parameter that lands on the survivor used to report <code class="language-plaintext highlighter-rouge">Enforced</code>,
+because the checker’s own extractor genuinely does accept it there, but
+a plain call written <code class="language-plaintext highlighter-rouge">f(...)</code> can never resolve to that mangled name, so
+nothing a user writes ever reaches the check.</li>
+</ul>
+
+<p>Both are now caught by comparing the declaration list from BEFORE desugar
+ran against the one from after: a declared refinement present before and
+absent after (matched by its enclosing declaration’s name and its
+predicate’s exact text) is reported <code class="language-plaintext highlighter-rouge">Unenforced</code>, regardless of what a
+post-desugar site at a similar-looking position might say. A <code class="language-plaintext highlighter-rouge">Return</code> site
+is matched by predicate text alone, not by name: a postcondition is
+checked against a function’s own body regardless of what the declaration
+is named, so <code class="language-plaintext highlighter-rouge">expand_defaults_decl</code>’s renamed full-arity variant is still
+correctly <code class="language-plaintext highlighter-rouge">Enforced</code> for its return type even though its parameter is not.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check --refine-audit --refine-report t6e.march
+coverage audit: t6e.march:3:27: param `f` #1: b &gt; 0: this refinement was declared here, but no occurrence with the same enclosing name and predicate text survives desugaring: either the declared type was discarded entirely (a multi-head function's clause merge drops every parameter type before the checker ever sees it) or it now lives only under a mangled name a plain call cannot resolve to (a default-argument function's arity variant, e.g. `f$2`). See specs/todos/2026-09-03-desugar-dropped-refinement-unchecked.md.
+coverage audit (user code): 1 enforced, 0 inert (warned), 1 unenforced
+</code></pre></div></div>
+
+<p>(<code class="language-plaintext highlighter-rouge">t6e.march</code> is <code class="language-plaintext highlighter-rouge">fn f(a : Int, b : {Int | b &gt; 0} \\ 1) : Int do a + b end</code>,
+called as <code class="language-plaintext highlighter-rouge">f(1, 0)</code>.) <code class="language-plaintext highlighter-rouge">test/refine_audit/holes/default_param.march</code> and
+<code class="language-plaintext highlighter-rouge">multi_head.march</code> pin both shapes; <code class="language-plaintext highlighter-rouge">test/refine_audit/holes/type_arg.march</code>,
+<code class="language-plaintext highlighter-rouge">arrow_domain.march</code>, and <code class="language-plaintext highlighter-rouge">linear_wrapper.march</code> pin the three remaining
+nested positions this section’s list already named but the holes set had
+not yet covered.</p>
+
+<p>This comparison covers only the entry file and its resolved imports, not
+the shipped stdlib: a sweep already established the stdlib contains
+neither shape today.</p>
+
+<hr />
+
+<h2 id="promoting-a-skip-a-demonstrated-precondition-failure">Promoting a Skip: a Demonstrated Precondition Failure</h2>
+
+<p>Most skips stay silent because the checker genuinely can’t decide either way.
+A narrow slice is different: the checker can <em>prove</em> the skip is a real bug.
+When an argument reaches a refined parameter and the obligation is skipped,
+the checker runs the <em>enclosing</em> function on the solver’s own model, watches
+for a real <code class="language-plaintext highlighter-rouge">panic</code>, and then checks whether fixing just that one argument
+makes the function return instead of panicking. When both hold, the skip is
+promoted from silence to a warning (an error under <code class="language-plaintext highlighter-rouge">cap verified</code>).</p>
+
+<pre><code class="language-march">mod Stats do
+  fn percentile(xs : {List(Float) | len(_) &gt; 0}, p : {Float | _ &gt;= 0.0 &amp;&amp; _ &lt;= 100.0}) : Float do
+    match xs do
+    Nil -&gt; panic("Stats.percentile: empty list")
+    _   -&gt; percentile_sorted(sort_floats(xs), p)
+    end
+  end
+
+  fn median(xs : List(Float)) : Float do
+    percentile(xs, 50.0)
+  end
+end
+</code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`median` propagates a requirement it doesn't declare.
+
+`percentile` requires  len(_) &gt; 0
+but median([]) panics — "Stats.percentile: empty list"
+
+help: declare what `median` actually needs —
+        fn median(xs : {List(Float) | len(_) &gt; 0}) : Float
+`forge fix` can apply this.
+</code></pre></div></div>
+
+<p><strong>Read the claim precisely.</strong> It says <code class="language-plaintext highlighter-rouge">median</code> panics on some input (<code class="language-plaintext highlighter-rouge">[]</code>); it
+does not say <code class="language-plaintext highlighter-rouge">percentile</code> panicked wrongly. <code class="language-plaintext highlighter-rouge">percentile</code>’s own contract,
+<code class="language-plaintext highlighter-rouge">len(_) &gt; 0</code>, is exactly what rules <code class="language-plaintext highlighter-rouge">[]</code> out. The bug is that <code class="language-plaintext highlighter-rouge">median</code> never
+forwards that requirement to its own caller.</p>
+
+<p>Outside <code class="language-plaintext highlighter-rouge">cap verified</code> this is a warning; inside it, the identical message is
+a compile error. The <code class="language-plaintext highlighter-rouge">help:</code> block names the precondition to add and
+<code class="language-plaintext highlighter-rouge">forge fix</code> can rewrite the signature for you, but not every promotion earns
+one: when the callee has more than one unforwarded precondition and no single
+parameter fix is unambiguously correct, the promotion still fires with no
+<code class="language-plaintext highlighter-rouge">help:</code> block. <code class="language-plaintext highlighter-rouge">Stats.quantile_default</code> in <code class="language-plaintext highlighter-rouge">stdlib/stats.march</code> is this
+shape (its callee needs both a non-empty list and a <code class="language-plaintext highlighter-rouge">q</code> in <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>), and
+reports with no fix offered.</p>
+
+<p>Promotion is not attempted at spans inside the standard library when the
+stdlib is merely imported: those diagnostics never reach the printed stream,
+so promoting them would spend real work on a count nobody sees. Compiling a
+stdlib file directly as the entry file is different: its own spans are user
+spans there, and it reports its own promotions like any other module.</p>
+
+<hr />
+
+<h2 id="cap-verified-making-silence-an-error"><code class="language-plaintext highlighter-rouge">cap verified</code>: Making Silence an Error</h2>
+
+<p>Everything above is built around never crying wolf: if March can’t prove something is
+<em>definitely</em> wrong, it keeps quiet. That’s the right default, but it means a contract
+can be technically legal and practically inert.</p>
+
+<p>If you want the opposite deal for a particular module (“I want these contracts to be
+a guarantee, and I want to be told when they aren’t”), declare <code class="language-plaintext highlighter-rouge">cap verified</code>. Inside
+that module, an obligation the checker can’t discharge — a precondition at a call
+site, or a return refinement at a definition — becomes a compile error:</p>
+
+<pre><code class="language-march">mod Checked do
+  cap verified
+
+  fn head_of(xs : {List(Int) | len(_) &gt; 0}) : Int do
+    match xs do
+    Cons(h, _) -&gt; h
+    Nil        -&gt; 0
+    end
+  end
+
+  fn ok(ys : List(Int)) : Int do
+    if List.length(ys) &gt; 0 do head_of(ys) else 0 end   -- proved, so no error
+  end
+end
+</code></pre>
+
+<p>Take the guard away entirely and the same call fails the build, telling you
+which precondition, on which function, and why it couldn’t be discharged. With
+nothing left constraining <code class="language-plaintext highlighter-rouge">ys</code>, the reason is <code class="language-plaintext highlighter-rouge">unconstrained-subject</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`cap verified` module: cannot verify precondition `len(_) &gt; 0` on `head_of`
+(unconstrained-subject: no fact the checker derived constrains `ys`)
+note: guard the call or strengthen what is known here, rewrite the predicate
+into the fragment the checker supports, or remove `cap verified` from this
+module — it asks for every obligation to be discharged
+</code></pre></div></div>
+
+<p>Weaken the guard instead of dropping it (<code class="language-plaintext highlighter-rouge">if List.length(ys) &gt;= 0 do
+head_of(ys) else 0 end</code> is always true, so it proves nothing) and a fact stays
+in scope, which falls back to the residual <code class="language-plaintext highlighter-rouge">solver-undecided</code> reason, with the
+same note:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`cap verified` module: cannot verify precondition `len(_) &gt; 0` on `head_of`
+(solver-undecided: the solver proved neither the predicate nor its negation)
+note: guard the call or strengthen what is known here, rewrite the predicate
+into the fragment the checker supports, or remove `cap verified` from this
+module — it asks for every obligation to be discharged
+</code></pre></div></div>
+
+<p>If <code class="language-plaintext highlighter-rouge">head_of</code>’s <code class="language-plaintext highlighter-rouge">Nil</code> arm panics instead of returning <code class="language-plaintext highlighter-rouge">0</code>, dropping the guard
+produces a different message altogether: the checker can execute <code class="language-plaintext highlighter-rouge">head_of</code> and
+observe the panic, so the skip is <em>promoted</em> instead of reported as
+<code class="language-plaintext highlighter-rouge">unconstrained-subject</code>. See
+<a href="#promoting-a-skip-a-demonstrated-precondition-failure">Promoting a Skip</a>
+above.</p>
+
+<h3 id="when-the-guard-is-right-and-the-error-still-fires">When the guard is right and the error still fires</h3>
+
+<p>The length aliases (<code class="language-plaintext highlighter-rouge">List.length</code>, <code class="language-plaintext highlighter-rouge">String.byte_size</code>, <code class="language-plaintext highlighter-rouge">string_byte_length</code>) are
+withdrawn for the <strong>whole compilation unit</strong> as soon as anything in it binds that
+name: the check is syntactic and doesn’t ask whether the competing binding could
+actually win where you called it. Normally the only cost is a proof. Inside
+<code class="language-plaintext highlighter-rouge">cap verified</code> it costs you a build, so the message reports it rather than blaming the
+solver:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`cap verified` module: cannot verify precondition `len(_) &gt; 0` on `head`
+(alias-withdrawn: the guard uses `List.length`, but this compilation unit also
+BINDS that name, so the checker withdrew its built-in measure meaning and the
+guard proved nothing)
+note: at least one binding of `List.length` in this compilation unit
+(ver3.march:5) withdrew the alias for the WHOLE unit, including this call — …
+</code></pre></div></div>
+
+<p>The culprit can be somewhere you’d never suspect: a nested <code class="language-plaintext highlighter-rouge">mod Internal do mod List
+do fn length …</code> that nothing can even call as <code class="language-plaintext highlighter-rouge">List.length</code>, an unrelated function’s
+<code class="language-plaintext highlighter-rouge">let string_byte_length = n + 1</code>, or a definition inside a <code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code> dependency
+you never opened. The span in the note is where to look: it names <em>at least one</em> such
+binding, and the alias only comes back when every one of them is gone. Rename them, or
+state the fact you need as a refinement instead of a runtime guard.</p>
+
+<p>You’ll only see this reason when the withdrawal is plausibly what stopped the proof:
+the predicate has to use the affected measure, and this call’s own argument has to be
+guarded by the withdrawn spelling, positively, on the matching kind of value. A guard
+on a <em>different</em> list, a <code class="language-plaintext highlighter-rouge">List.length</code> guard in front of a <em>string</em> contract, and a
+guard on the <code class="language-plaintext highlighter-rouge">else</code> side (which disproves the predicate rather than failing to prove
+it) all keep the plain <code class="language-plaintext highlighter-rouge">solver-undecided</code> message, because in each of those the
+binding you’d be sent to rename is not the reason anything failed. An unguarded call
+is not blamed on the withdrawal either, but it does not fall back to
+<code class="language-plaintext highlighter-rouge">solver-undecided</code>: with no guard at all, nothing constrains the argument, and that’s
+its own reason (<code class="language-plaintext highlighter-rouge">unconstrained-subject</code>, below).</p>
+
+<p>The price of that caution is coverage: a guard laundered through a local
+(<code class="language-plaintext highlighter-rouge">let n = List.length(ys)</code> and then <code class="language-plaintext highlighter-rouge">if n &gt; 0</code>), applied to something other than a
+plain variable, or established up in a caller falls back to the general message even
+when a withdrawal really was the cause. The reason exists to explain one specific
+confusion, not to claim every skip.</p>
+
+<p><strong>Know the edges before you reach for it.</strong> It’s strictly opt-in and scoped to the
+module that writes it: a <code class="language-plaintext highlighter-rouge">cap verified</code> module calling an ordinary one doesn’t make
+the callee strict, and nested modules don’t inherit it (they can’t: the standard
+library arrives as sibling modules, and inheriting would turn all of it strict at
+once).</p>
+
+<p>It reaches every declaration form in the module it’s written in: a call inside an
+<code class="language-plaintext highlighter-rouge">impl</code> method, an <code class="language-plaintext highlighter-rouge">interface</code> default body, a top-level <code class="language-plaintext highlighter-rouge">let</code>, an actor handler or a
+<code class="language-plaintext highlighter-rouge">test</code> all raise obligations that get escalated. Both this walk and <code class="language-plaintext highlighter-rouge">cap no_panic</code>’s are
+exhaustive over the declaration forms, so a future one is a compile error in the compiler
+rather than a new silent hole.</p>
+
+<p>It also covers <strong>postconditions</strong>: an undischarged return refinement is a
+compile error under <code class="language-plaintext highlighter-rouge">cap verified</code> too, exactly as a precondition is; see
+<a href="#postconditions">Postconditions</a> above for the example.</p>
+
+<p>One real limitation, and one escape hatch, worth knowing before you rely on it:</p>
+
+<ul>
+  <li>
+    <p><strong>A refinement in an <code class="language-plaintext highlighter-rouge">interface</code>’s own method signature isn’t enforced,
+and the compiler tells you so.</strong> Write <code class="language-plaintext highlighter-rouge">fn run : a -&gt; {Int | _ &gt; 0} -&gt; Int</code>
+in the interface and no call site is obliged by it. No body assumes it
+either, so it’s a missing check rather than an unsound one. Writing a
+refinement there produces a warning:</p>
+
+    <blockquote>
+      <p>the interface signature of <code class="language-plaintext highlighter-rouge">run</code> carries a refinement, which enforces
+nothing: an interface method signature is never read by the refinement
+checker, so no call site is obliged by this predicate and no body may
+assume it. Write the refinement on the corresponding <code class="language-plaintext highlighter-rouge">impl</code> method’s own
+signature instead — a refinement on its return type is always checked,
+and one on a parameter is enforced when the method name is unambiguous
+(exactly one <code class="language-plaintext highlighter-rouge">impl</code> defines it and no top-level <code class="language-plaintext highlighter-rouge">fn</code> shares the name).</p>
+    </blockquote>
+
+    <p><strong>Inside a <code class="language-plaintext highlighter-rouge">cap verified</code> module this is an error, not a warning.</strong>
+<code class="language-plaintext highlighter-rouge">cap verified</code>’s escalation otherwise fires only on undischarged obligations
+in the ledger, and an inert interface signature raises none, but the
+capability’s whole promise is “if it compiles, it is proved,” and this is
+exactly the shape of silent-no-op contract it exists to catch, the same
+reasoning that already made the <code class="language-plaintext highlighter-rouge">sig</code>/<code class="language-plaintext highlighter-rouge">extern</code> case below a warning
+everywhere. Outside <code class="language-plaintext highlighter-rouge">cap verified</code> the message above is unchanged and still
+only a warning.</p>
+
+    <p>The same silent-no-op shape exists for a <code class="language-plaintext highlighter-rouge">sig</code> ascription and an <code class="language-plaintext highlighter-rouge">extern</code>
+declaration, and both warn too: <code class="language-plaintext highlighter-rouge">sig Store do fn put :
+Int -&gt; {Int | _ &gt; 0} end</code> compiles clean while enforcing no contract, because
+a <code class="language-plaintext highlighter-rouge">sig</code> is an ascription on what a module exports, not a body a call could
+be checked against; write the refinement on the module’s own <code class="language-plaintext highlighter-rouge">fn</code>
+instead. An <code class="language-plaintext highlighter-rouge">extern</code> refinement is the more fundamental case: the callee
+isn’t March code, so there’s no body to check a return value against, and
+no amount of rewiring makes it enforceable in principle. The fix there
+is a thin March wrapper around the extern call that checks the foreign
+result itself.</p>
+
+    <p>Enforcement on the <code class="language-plaintext highlighter-rouge">impl</code> method’s parameter, when you use that spelling,
+is conditional. An <code class="language-plaintext highlighter-rouge">impl</code> method’s parameter refinement obliges callers only
+when the method’s name unambiguously denotes it: no <code class="language-plaintext highlighter-rouge">fn</code> in the same module
+owns the name, and only one <code class="language-plaintext highlighter-rouge">impl</code> defines the method. A call is resolved
+here by <em>name</em> while it dispatches by <em>type</em>, and checking correct code
+against a predicate it never touches is the one failure this subsystem
+must never have. When the name is ambiguous the refinement binds
+<strong>no one</strong>: it’s stripped from the body too, so it can’t discharge
+anything either. Unenforced means unusable in both directions, never
+“assumed inside the body but demanded of no caller”, which would otherwise let
+<code class="language-plaintext highlighter-rouge">fn run(b, k : {Int | k != 0})</code> make <code class="language-plaintext highlighter-rouge">m / k</code> provable under <code class="language-plaintext highlighter-rouge">cap no_panic</code>
+while <code class="language-plaintext highlighter-rouge">run(Box(4), 0)</code> compiled and then divided by zero.</p>
+  </li>
+  <li>
+    <p><strong><code class="language-plaintext highlighter-rouge">@[trusted]</code> is a per-function escape hatch.</strong> Annotate a
+single function <code class="language-plaintext highlighter-rouge">@[trusted]</code> and any obligation inside it that the checker
+could not otherwise discharge is accepted as an assertion instead of an
+error, recorded as its own <code class="language-plaintext highlighter-rouge">Trusted</code> verdict in <code class="language-plaintext highlighter-rouge">--refine-report</code>, never
+folded into <code class="language-plaintext highlighter-rouge">proved</code>. It never suppresses a definite violation (a predicate
+the solver proved can never hold is a bug in the annotation, not something to
+wave through), and it is scoped to the one function that has it: a
+sibling function in the same <code class="language-plaintext highlighter-rouge">cap verified</code> module is unaffected. Putting
+<code class="language-plaintext highlighter-rouge">@[trusted]</code> on a function outside <code class="language-plaintext highlighter-rouge">cap verified</code> warns, since it would
+otherwise have no effect and give no sign.</p>
+  </li>
+</ul>
+
+<p>That makes <code class="language-plaintext highlighter-rouge">cap verified</code> viable for a whole module even when one call site
+truly cannot be proved, without switching off verification for everything
+else in it.</p>
+
+<hr />
+
+<h2 id="cap-no_panic--divisions-that-cant-panic"><code class="language-plaintext highlighter-rouge">cap no_panic</code>: Divisions That Can’t Panic</h2>
+
+<p><code class="language-plaintext highlighter-rouge">cap verified</code>’s sibling takes the same “silence is not good enough” stance and points
+it at one specific runtime panic: integer division by zero. Declare <code class="language-plaintext highlighter-rouge">cap no_panic</code> in a
+module and <strong>every</strong> <code class="language-plaintext highlighter-rouge">/</code> and <code class="language-plaintext highlighter-rouge">%</code> in it must have a divisor the checker can prove
+non-zero. Anything short of a proof is a compile error: that’s the whole promise, and
+it’s why this capability fails closed where the default refinement stance fails open.</p>
+
+<p>A divisor is discharged by a literal, by a path condition, or by a refinement on the
+parameter it came from. Both sides of a guard count:</p>
+
+<pre><code class="language-march">mod NonlinearDivisor do
+  needs IO.Console
+  cap no_panic
+
+  fn scale(d : {v : Int | v * v &gt; 0}) : Int do
+    10 / d
+  end
+
+  fn guarded(d : {v : Int | v * v &gt; 0}) : Int do
+    if d == 0 do 0 else 10 / d end
+  end
+
+  fn main() do
+    println(int_to_string(scale(2) + guarded(5)))
+  end
+end
+</code></pre>
+
+<p>Both of those are accepted. <code class="language-plaintext highlighter-rouge">v * v &gt; 0</code> is exactly <code class="language-plaintext highlighter-rouge">v != 0</code> over the integers, and the
+checker now passes such a predicate to the solver rather than declining to read it:
+rejecting a <em>complete</em> proof for being written unusually was a false positive on
+correct code. The stance itself hasn’t moved: a predicate that reflects but proves
+no fact (<code class="language-plaintext highlighter-rouge">v * v &gt;= 0</code>, true of every integer) is still an error, and so is one the
+solver can’t settle. And on the <code class="language-plaintext highlighter-rouge">else</code> side of <code class="language-plaintext highlighter-rouge">if d == 0</code> the fact in scope is
+<code class="language-plaintext highlighter-rouge">not (d == 0)</code>, which discharges the division on its own.</p>
+
+<p><strong>It covers the whole module.</strong> The division walk descends into every declaration form,
+not just <code class="language-plaintext highlighter-rouge">fn</code> and nested <code class="language-plaintext highlighter-rouge">mod</code> bodies, so this program is a compile error rather than a
+runtime “division by zero”:</p>
+
+<pre><code class="language-march">mod ImplDiv do
+  needs IO.Console
+  cap no_panic
+
+  type Box = Box(Int)
+
+  interface Runner(a) do
+    fn run : a -&gt; Int
+  end
+
+  impl Runner(Box) do
+    fn run(b) do
+      match b do
+        Box(n) -&gt; 100 / n
+      end
+    end
+  end
+
+  fn main() do
+    println(int_to_string(run(Box(2))))
+  end
+end
+</code></pre>
+
+<p>It’s a compile error. Add the <code class="language-plaintext highlighter-rouge">if n != 0</code> guard and it’s accepted: the walk
+reads the body, it doesn’t just distrust it. Top-level <code class="language-plaintext highlighter-rouge">let</code>s, <code class="language-plaintext highlighter-rouge">interface</code> defaults,
+actor handlers, <code class="language-plaintext highlighter-rouge">app</code> hooks and <code class="language-plaintext highlighter-rouge">test</code> bodies are covered the same way.</p>
+
+<p><strong>A rebound name inherits no fact from the old one.</strong> Every fact the divisor check reads
+is keyed by a bare variable name (the path condition, the parameter’s refinement, a
+<code class="language-plaintext highlighter-rouge">let</code>’s value), so rebinding that name retires all of them. Each of these is caught
+rather than silently accepted:</p>
+
+<pre><code class="language-march">if d == 0 do 0 else (let d = 0; 10 / d) end     -- else side
+if d != 0 do (let d = 0; 10 / d) else 0 end     -- then side
+if d == 0 do 0 else ap(fn d -&gt; 10 / d) end      -- lambda parameter
+if d == 0 do 0 else match o do Some(d) -&gt; 10 / d ... end   -- match binder
+</code></pre>
+
+<p>(Compressed onto one line each for comparison; March has no <code class="language-plaintext highlighter-rouge">;</code>, so the <code class="language-plaintext highlighter-rouge">let</code> really
+sits on its own line inside the branch.)</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">let</code>, a local <code class="language-plaintext highlighter-rouge">fn</code>, a lambda parameter, a <code class="language-plaintext highlighter-rouge">let?</code> pattern or a <code class="language-plaintext highlighter-rouge">match</code> binder
+drops everything known about the outer variable of that name. Note which way this
+errs: in the ordinary refinement checker, losing a fact means silence, but here it
+means an <em>error</em>, so the retirement is intentionally over-eager. If you need the guard
+inside the rebinding scope, re-state it there. Correct code is unaffected:
+<code class="language-plaintext highlighter-rouge">let d = 5</code> followed by <code class="language-plaintext highlighter-rouge">10 / d</code> still passes, because the new binding replaces the old
+fact rather than just erasing it.</p>
+
+<p><strong>One imbalance to know:</strong> a refinement on an <code class="language-plaintext highlighter-rouge">impl</code> method’s parameter can discharge a
+division inside that method’s body only when callers are actually obliged to establish
+it; the two passes share one adoption rule so they can’t drift apart. See
+<a href="#cap-verified-making-silence-an-error">the <code class="language-plaintext highlighter-rouge">cap verified</code> edges</a> for when that
+adoption happens.</p>
+
+<hr />
+
+<h2 id="limitations">Limitations</h2>
+
+<p>No refinement system is complete; this one is intentionally a <em>pragmatic slice</em> of
+dependent typing. Know the edges:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">Float</code>, <code class="language-plaintext highlighter-rouge">String</code> (narrowly), records and ADT tags.</strong>
+Predicates over other types aren’t supported. <code class="language-plaintext highlighter-rouge">Float</code> predicates are
+<strong>comparisons only</strong>; float arithmetic inside one is skipped rather than
+guessed at, and a <code class="language-plaintext highlighter-rouge">Float</code> sitting inside a record or a constructor is opaque.
+See <a href="#bool-and-float-refinements">Bool and Float Refinements</a> and
+<a href="#constructor-tags-refining-over-adt-variants">Constructor Tags</a>.</li>
+  <li><strong>Tag narrowing stops at several ordinary shapes.</strong> A <code class="language-plaintext highlighter-rouge">match</code> on an
+expression rather than a variable, an <code class="language-plaintext highlighter-rouge">as</code> pattern, a pattern that rebinds the
+name, an ambiguous constructor name, and any rebinding of the name inside the
+arm all leave the call <em>unchecked</em> rather than reported. See
+<a href="#facts-from-a-match">Facts from a <code class="language-plaintext highlighter-rouge">match</code></a>.</li>
+  <li><strong>A tag refinement composes only for the constructor you promised.</strong> Passing a
+<code class="language-plaintext highlighter-rouge">{Option(Int) | is_Some(_)}</code> parameter on to a callee wanting the same thing is
+proved. A <em>different</em> tag is not assumed: with
+<code class="language-plaintext highlighter-rouge">outer(p : {Option(Int) | is_None(_)})</code>, a call needing <code class="language-plaintext highlighter-rouge">is_Some(_)</code> is
+skipped rather than reported, even though the two are exclusive. See <a href="#contracts-compose-a-parameters-promise-applies-inside-its-body">Contracts
+Compose</a>.</li>
+  <li><strong>A fact doesn’t survive a local <code class="language-plaintext highlighter-rouge">let</code>, for any type.</strong> <code class="language-plaintext highlighter-rouge">let u = 5</code> then
+<code class="language-plaintext highlighter-rouge">take_pos(u)</code> against <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> is skipped. Pass the value directly, or
+restate it with <code class="language-plaintext highlighter-rouge">assert</code>. (This is also why rebinding a refined parameter drops
+its promise.)</li>
+  <li><strong>Only preconditions compose automatically.</strong> A parameter’s promise reaches
+<em>calls</em> in the body; it does not flow into a refined <strong>return</strong> type the same
+way. A postcondition is still checked on every return path, counted by
+<code class="language-plaintext highlighter-rouge">--refine-report</code>, and escalated by <code class="language-plaintext highlighter-rouge">cap verified</code> (see
+<a href="#postconditions">Postconditions</a>), but composing a measure <em>through</em> one
+(proving a caller’s obligation from a callee’s return contract) is the
+narrower, structural-recursion-only case described a few bullets down.</li>
+  <li><strong>Incomplete (by the definite-failure stance).</strong> The checker catches values
+that are <em>definitely</em> wrong and stays silent otherwise. It will not prove
+every true property; quantified/measure facts in particular sometimes return
+“unknown” and are skipped. This never produces a false positive, but it does
+mean some real guarantees go unchecked.</li>
+  <li><strong>Higher-order: two shapes are checked, the rest are not.</strong> A call made
+through a parameter with a declared type that includes a refinement
+(<code class="language-plaintext highlighter-rouge">f : ({Int | _ &gt;= 0}) -&gt; Int</code>) is checked, and so is a call through a local
+alias of a named refined function (<code class="language-plaintext highlighter-rouge">let g = takepos</code> then <code class="language-plaintext highlighter-rouge">g(-3)</code>). NOT
+checked: a callback parameter with an unrefined declared type (so
+<code class="language-plaintext highlighter-rouge">apply(take_n, -3)</code> with <code class="language-plaintext highlighter-rouge">apply(f : Int -&gt; Int, x : Int)</code> still passes),
+inferring a higher-order function’s requirement from its body, dispatch
+through an <code class="language-plaintext highlighter-rouge">interface</code>/<code class="language-plaintext highlighter-rouge">impl</code>, and multi-argument callback types. To
+constrain a caller today, refine the higher-order function’s <em>own</em> parameter.</li>
+  <li><strong>Measures see structure, not elements.</strong> Element values inside a data
+structure are opaque to a measure (<code class="language-plaintext highlighter-rouge">size</code>/<code class="language-plaintext highlighter-rouge">len</code>/<code class="language-plaintext highlighter-rouge">depth</code> never inspect them).
+Measures are single-argument, recursive over structure, and return <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code>.</li>
+  <li><strong>Only <em>some</em> length spellings are connected to <code class="language-plaintext highlighter-rouge">len</code>.</strong> The qualified
+<code class="language-plaintext highlighter-rouge">List.length</code>, <code class="language-plaintext highlighter-rouge">String.byte_size</code>, and the <code class="language-plaintext highlighter-rouge">string_byte_length</code> builtin discharge a
+<code class="language-plaintext highlighter-rouge">len</code> obligation; a bare <code class="language-plaintext highlighter-rouge">length</code>, <code class="language-plaintext highlighter-rouge">String.codepoint_count</code>, and <code class="language-plaintext highlighter-rouge">string_length</code> do
+not, and a guard written with those leaves the call <em>skipped</em> rather than proved.
+The connection is also dropped for the whole <strong>compilation unit</strong> (every prepended
+stdlib module and every <code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code> dependency included) if a single binding
+anywhere in it could make the name denote something other than the standard library’s
+own function. See <a href="#the-solver-really-does-connect-listlength-to-len">the solver really does connect
+<code class="language-plaintext highlighter-rouge">List.length</code> to <code class="language-plaintext highlighter-rouge">len</code></a>.</li>
+  <li><strong>Relational postconditions work, within structural recursion.</strong> A predicate
+that relates a measure across an operation (<code class="language-plaintext highlighter-rouge">size(insert(t, x)) == size(t) + 1</code>)
+is proven by supplying the induction hypothesis at each recursive call with an
+argument that is a proper component of the matched parameter, then discharging each
+<code class="language-plaintext highlighter-rouge">match</code> arm against the measure’s recursion equations. A body that is a bare
+<strong>constructor application</strong> (<code class="language-plaintext highlighter-rouge">fn push(t, x) : {Tree | size(_) == size(t) + 1}
+do Node(t, x, Leaf) end</code>) is proven too, and needs no induction at all: there
+is no recursive call to hypothesise over, only one unfolding of the measure’s
+recursion equation. That shape also records its verdict in the obligation
+ledger, so <code class="language-plaintext highlighter-rouge">--refine-report</code> shows it as attempted rather than absent. Only a
+postcondition actually <em>proved</em> propagates, so an unprovable one stays legal
+but gives callers no fact. Still silent: mutual recursion, a recursive call
+inside a lambda or behind a nested <code class="language-plaintext highlighter-rouge">match</code>, and any non-structural recursion.</li>
+  <li>
+    <p><strong>A measure with a value that is a <em>scalar constructor field</em> never discharges
+anything.</strong> A measure that reads a field out of its constructor
+(<code class="language-plaintext highlighter-rouge">fn length(v) do match v do PVec(n, _, _, _) -&gt; n end end</code>, the natural way to
+write <code class="language-plaintext highlighter-rouge">length</code> for a container that stores its own count) is accepted, passes
+the soundness gate, and gets a correct axiom, and yet proves no goal in
+<em>either</em> direction. When the checker reflects a constructor at a call site, it
+replaces every field that is not itself a data type with a fresh unconstrained
+constant (<code class="language-plaintext highlighter-rouge">reflect_field</code>): sound for a measure recursive over structure, with a
+value depending only on tags and sub-measures, and fatal for one with a value that
+<em>is</em> the field. So <code class="language-plaintext highlighter-rouge">length(PVec(3, 0, TrieEmpty, Nil))</code> reaches the solver as
+an unknown <code class="language-plaintext highlighter-rouge">Int</code>, and an obviously in-range index is neither proved nor
+refuted: it is <code class="language-plaintext highlighter-rouge">solver-undecided</code> and silently accepted. This is why
+<code class="language-plaintext highlighter-rouge">Array.get</code>/<code class="language-plaintext highlighter-rouge">set</code>/<code class="language-plaintext highlighter-rouge">pop</code> carry no bounds contract today and stay on the
+<code class="language-plaintext highlighter-rouge">cap no_panic</code> ban list instead.</p>
+
+    <p>The compiler <strong>warns</strong> at the measure’s definition when it sees this, but the
+warning fires <strong>only on a bare field read</strong> (<code class="language-plaintext highlighter-rouge">-&gt; n</code>). A body that only
+<em>computes</em> with the erased field (<code class="language-plaintext highlighter-rouge">-&gt; n + 1</code>, <code class="language-plaintext highlighter-rouge">-&gt; n * 2</code>) is equally inert
+and draws <strong>no warning at all</strong>: the check is intentionally narrow, because a
+broader one flagged bodies like <code class="language-plaintext highlighter-rouge">-&gt; 0 * n</code> that mention the field without
+depending on it, and a false positive is the greater harm. <strong>Silence here does not mean
+your measure works.</strong> If a measure’s value depends on a scalar constructor
+field in any way, expect it to prove no goal.</p>
+  </li>
+  <li><strong>A measure over a built-in <code class="language-plaintext highlighter-rouge">List</code> with a non-scalar element does not
+axiomatise.</strong> <code class="language-plaintext highlighter-rouge">List(Int)</code> is fine; <code class="language-plaintext highlighter-rouge">List(SomeAdt)</code> collapses the element to an
+opaque sort and the measure is never usable. A user-defined list type with the
+same shape works. This is the first obstacle between this infrastructure and the
+stdlib’s HAMT-based <code class="language-plaintext highlighter-rouge">Map</code>.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Bool</code> predicates need an operator form.</strong> <code class="language-plaintext highlighter-rouge">{Bool | _ == true}</code> is checked;
+the bare-binder spelling <code class="language-plaintext highlighter-rouge">{Bool | not _}</code> is a parse error; write
+<code class="language-plaintext highlighter-rouge">{Bool | _ == false}</code>.</li>
+  <li><strong>No float special values.</strong> There is no <code class="language-plaintext highlighter-rouge">is_nan</code> / <code class="language-plaintext highlighter-rouge">is_finite</code> vocabulary, so
+a predicate cannot mention them (NaN is still modelled correctly <em>inside</em> the
+solver, which is what keeps correct code from being flagged).</li>
+  <li><strong>Performance: measures can be slow on a cold cache.</strong> Quantified + datatype
+reasoning is far more expensive per query than plain arithmetic. Verdicts are
+content-addressed and cached (warm rebuilds are fast), and the cost is
+isolated to call sites that actually mention a measure, but a cold build of
+measure-heavy code pays for it. See the flag below.</li>
+</ul>
+
+<hr />
+
+<h2 id="practical-rules">Practical Rules</h2>
+
+<ol>
+  <li><strong>Refine the contract, not the convenience.</strong> Add <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> where a
+non-positive value is a real bug (a chunk size, an unguarded divisor), not
+to every <code class="language-plaintext highlighter-rouge">Int</code>. Many March APIs already clamp defensively and have no real
+precondition.</li>
+  <li><strong>Guard, then call.</strong> A precondition you can’t satisfy with a literal is
+discharged by an <code class="language-plaintext highlighter-rouge">if</code>/<code class="language-plaintext highlighter-rouge">when</code> guard right before the call.</li>
+  <li><strong>Reach for <code class="language-plaintext highlighter-rouge">assert</code> as your lemma.</strong> When you <em>know</em> a fact the checker
+can’t derive, <code class="language-plaintext highlighter-rouge">assert(p)</code> makes it available, and documents the assumption.</li>
+  <li><strong>Annotate measures you’ll reason about.</strong> A <code class="language-plaintext highlighter-rouge">@[measure]</code> only earns its
+keep if a predicate mentions it; keep them total, exhaustive, and structural
+so they pass the gate.</li>
+</ol>
+
+<hr />
+
+<h2 id="appendix-the-listlengthlen-alias-in-full">Appendix: the <code class="language-plaintext highlighter-rouge">List.length</code>↔<code class="language-plaintext highlighter-rouge">len</code> alias, in full</h2>
+
+<p><em>Skip unless a length guard you expected to work isn’t discharging. Referenced from
+<a href="#path-sensitivity-guards-establish-facts">Path Sensitivity</a> and
+<a href="#limitations">Limitations</a>. This is the exact rule for when a length guard counts as
+the <code class="language-plaintext highlighter-rouge">len</code> measure.</em></p>
+
+<h3 id="the-solver-really-does-connect-listlength-to-len">The solver really does connect <code class="language-plaintext highlighter-rouge">List.length</code> to <code class="language-plaintext highlighter-rouge">len</code></h3>
+
+<p>The checker treats the qualified <code class="language-plaintext highlighter-rouge">List.length</code> as another name for the <code class="language-plaintext highlighter-rouge">len</code> measure, so
+a guard you’d write anyway (<code class="language-plaintext highlighter-rouge">if List.length(ys) &gt; 0</code>) establishes exactly the fact the
+contract <code class="language-plaintext highlighter-rouge">{List(Int) | len(_) &gt; 0}</code> is asking for:</p>
+
+<pre><code class="language-march">fn first_or(ys : List(Int), d : Int) : Int do
+  if List.length(ys) &gt; 0 do head(ys) else d end   -- proved
+end
+
+fn broken(ys : List(Int)) : Int do
+  if List.length(ys) == 0 do head(ys) else 0 end  -- compile error
+end
+</code></pre>
+
+<p>The second is a compile error because under <code class="language-plaintext highlighter-rouge">len(ys) == 0</code> the predicate <code class="language-plaintext highlighter-rouge">len(ys) &gt; 0</code>
+can <em>never</em> hold: a definite failure, which is the bar March requires before it reports
+anything.</p>
+
+<p>The connection is intentionally narrow, since attaching <code class="language-plaintext highlighter-rouge">len</code>’s meaning to the wrong
+function is how you’d get a false alarm on correct code. Only the <strong>qualified</strong>
+<code class="language-plaintext highlighter-rouge">List.length</code> counts (a bare <code class="language-plaintext highlighter-rouge">length</code> is left as-is), and only while it still resolves to
+the standard library’s own. If your program defines its own <code class="language-plaintext highlighter-rouge">List.length</code> (however it
+spells the definition: a <code class="language-plaintext highlighter-rouge">fn</code>, a module-level <code class="language-plaintext highlighter-rouge">let</code>, an <code class="language-plaintext highlighter-rouge">extern</code> block, an interface or
+impl method) or ships a forked <code class="language-plaintext highlighter-rouge">List</code> via <code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code>, the connection is dropped
+and you’re back to the obligation being skipped, with no message, rather than proved.</p>
+
+<p><strong>“Dropped” means dropped for the whole compilation unit, not just the file you’re
+editing.</strong> The check is syntactic and unit-global: it doesn’t ask whether the competing
+binding could win at your call site at all, because answering that needs a resolver this
+pass doesn’t have. One real competitor anywhere in the unit (including inside a
+<code class="language-plaintext highlighter-rouge">MARCH_LIB_PATH</code> dependency you never opened, and remembering that the compiler prepends
+the entire standard library to every compilation) disables the alias program-wide.
+That’s a real cost, and it’s the direction the checker errs in on purpose:
+over-withdrawing loses a proof (silence), while under-withdrawing would put a wrong fact
+in the assumption set and flag correct code.</p>
+
+<p>The withdrawal rules for the specific import forms:</p>
+
+<ul>
+  <li>A selector-less <code class="language-plaintext highlighter-rouge">use Foo.List</code> (importing the module itself, not a member of it)
+resolves its target: <code class="language-plaintext highlighter-rouge">use Analytics.List</code> where <code class="language-plaintext highlighter-rouge">Analytics.List</code> only has a <code class="language-plaintext highlighter-rouge">size</code>
+function leaves <code class="language-plaintext highlighter-rouge">List.length</code> connected to <code class="language-plaintext highlighter-rouge">len</code>; a <code class="language-plaintext highlighter-rouge">use</code> with a target that really does
+define <code class="language-plaintext highlighter-rouge">length</code> withdraws it.</li>
+  <li><code class="language-plaintext highlighter-rouge">alias Foo.List as List</code> and a named import (<code class="language-plaintext highlighter-rouge">use Foo.{List}</code>) withdraw the alias
+unconditionally.</li>
+  <li>A glob import (<code class="language-plaintext highlighter-rouge">import Foo</code>, <code class="language-plaintext highlighter-rouge">use Foo.*</code>) withdraws the alias only if <code class="language-plaintext highlighter-rouge">Foo</code>
+<strong>actually provides</strong> a competing <code class="language-plaintext highlighter-rouge">List</code>, resolved by walking the unit’s own module
+structure; if the glob’s target can’t be resolved, it still withdraws.</li>
+  <li>Either side of the guard applies only to the <strong>program’s</strong> own bindings, never the
+standard library’s own. The two conditions are ANDed, so a glob withdraws only when it
+is your code <em>and</em> its target really provides a competitor.</li>
+</ul>
+
+<h3 id="the-same-for-strings-but-only-the-byte-valued-names">The same for strings, but only the byte-valued names</h3>
+
+<p><code class="language-plaintext highlighter-rouge">len</code> measures a <code class="language-plaintext highlighter-rouge">String</code> too, and the same connection is made for <code class="language-plaintext highlighter-rouge">String.byte_size</code>
+and the <code class="language-plaintext highlighter-rouge">string_byte_length</code> builtin:</p>
+
+<pre><code class="language-march">fn slug(s : {String | len(_) &gt; 0}) : String do String.slice(s, 0, 1) end
+
+fn label(t : String) : String do
+  if String.byte_size(t) &gt; 0 do slug(t) else "?" end   -- proved
+end
+</code></pre>
+
+<p>Swap the guard for <code class="language-plaintext highlighter-rouge">String.byte_size(t) == 0</code> and that call becomes a compile error, the
+same way it does for lists.</p>
+
+<p>The catch is that <code class="language-plaintext highlighter-rouge">len</code> on a String counts <strong>bytes</strong>, so only byte-valued names get this
+treatment. <code class="language-plaintext highlighter-rouge">String.codepoint_count</code> counts codepoints (it returns 1 for <code class="language-plaintext highlighter-rouge">"é"</code> where
+<code class="language-plaintext highlighter-rouge">String.byte_size</code> returns 2) and is left as-is. So is <code class="language-plaintext highlighter-rouge">string_length</code>: it happens to be
+a byte length today, but the <em>name</em> suggests characters, and a connection made on a name
+that might later be corrected is a bug waiting to happen. Reach for <code class="language-plaintext highlighter-rouge">String.byte_size</code> in
+a guard; it states what it means.</p>
+
+<h3 id="a-qualified-spelling-inside-the-predicate-itself">A qualified spelling <em>inside</em> the predicate itself</h3>
+
+<p>Everything above is about a <strong>guard</strong>: ordinary code, outside the <code class="language-plaintext highlighter-rouge">{...}</code>. Writing the
+qualified name <strong>inside</strong> the braces enforces the same contract as the bare <code class="language-plaintext highlighter-rouge">len</code>:</p>
+
+<pre><code class="language-march">fn inner(xs : {List(Int) | List.length(_) &gt; 0}) : Int do 0 end
+fn inner(xs : {List(Int) | len(_) &gt; 0}) : Int do 0 end
+</code></pre>
+
+<p>A refinement predicate is not run through the general expression desugarer the way a
+function body is (no pipe desugaring, no multi-head-fn desugaring), but the one
+transformation that matters here, flattening a module-path call head (<code class="language-plaintext highlighter-rouge">List.length(_)</code>)
+into the dotted form the <code class="language-plaintext highlighter-rouge">len</code> alias keys on, runs over every <code class="language-plaintext highlighter-rouge">TyRefine</code> predicate
+(parameter, return, <code class="language-plaintext highlighter-rouge">let</code>-annotation, top-level and block-level alike, and
+record/variant field types alike). When the alias is live (no competing <code class="language-plaintext highlighter-rouge">List.length</code>
+in scope), the qualified spelling means exactly what <code class="language-plaintext highlighter-rouge">len</code> means, so <code class="language-plaintext highlighter-rouge">inner([])</code> is
+rejected as a real precondition violation.</p>
+
+<p>If a unit has withdrawn the alias by defining its own competing <code class="language-plaintext highlighter-rouge">List.length</code>, the
+qualified spelling enforces no contract (correctly: the alias truly doesn’t apply there),
+and the checker warns, still recommending the bare <code class="language-plaintext highlighter-rouge">len(_)</code> spelling:</p>
+
+<blockquote>
+  <p><code class="language-plaintext highlighter-rouge">List.length</code> is a qualified call inside a refinement predicate. This spelling is
+never reflected here, so the refinement enforces nothing. Use the bare spelling
+<code class="language-plaintext highlighter-rouge">len</code> instead.</p>
+</blockquote>
+
+<p>The same applies to <code class="language-plaintext highlighter-rouge">String.byte_size</code>. Two shapes remain truly unhandled and still
+warn/stay silent: a record <strong>field</strong> call (<code class="language-plaintext highlighter-rouge">{Cfg | c.cb(1) &gt; 0}</code>, never treated as a
+qualified call) and a receiver that is itself a call (<code class="language-plaintext highlighter-rouge">f(x).g(y)</code>, not rendered as a
+path).</p>
+
+<h2 id="appendix-where-refinements-resolve">Appendix: Where Refinements Resolve</h2>
+
+<p><em>This is a plumbing detail about how the checker looks up which function a call refers
+to, not something you need to know to start using refinements.</em></p>
+
+<p>Refinement checking follows the same name resolution as the type checker:
+<strong>direct named calls</strong>, across modules, through <strong><code class="language-plaintext highlighter-rouge">alias</code></strong> and <strong><code class="language-plaintext highlighter-rouge">use</code></strong>:</p>
+
+<pre><code class="language-march">mod App do
+  use Lib.{take_pos}          -- imported name resolves to Lib.take_pos
+  alias Lib.Inner as I        -- alias resolves to Lib.Inner.*
+
+  fn run() : Int do
+    take_pos(-1)              -- error: resolved + checked against Lib's precondition
+    I.helper(-1)             -- error: alias-qualified call checked too
+  end
+end
+</code></pre>
+
+<p>A bare call resolves at the scope that actually owns it: a <code class="language-plaintext highlighter-rouge">use</code> written
+<strong>inside</strong> a nested module is consulted before the checker falls outward to an
+enclosing module’s own definition of the same name, matching how the call
+really dispatches. An enclosing module’s <code class="language-plaintext highlighter-rouge">use</code>, on the other hand, still loses
+to a nested module’s <em>own</em> definition of the name: an import never reaches
+in and overrides a local one.</p>
+
+<pre><code class="language-march">mod Outer do
+  fn take_pos(n : {Int | n &gt;= 0}) : Int do n end   -- Outer's own contract
+
+  mod Inner do
+    use Lib.{take_pos}                              -- Lib's take_pos, unrefined
+
+    fn go() : Int do
+      take_pos(-1)   -- resolves to Lib.take_pos, NOT Outer's — no error
+    end
+  end
+end
+</code></pre>
+
+<p>Checking this call against the <em>enclosing</em> <code class="language-plaintext highlighter-rouge">App.take_pos</code> instead would be a false
+positive on correct code, since <code class="language-plaintext highlighter-rouge">Inner.go</code> never actually calls it, so the checker
+resolves it the way the call really dispatches.</p>
+
+<hr />
+
+<h2 id="appendix-the---no-measure-axioms-flag">Appendix: The <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> Flag</h2>
+
+<p><em>Also a niche knob, only relevant if a measure-heavy build feels slow.</em></p>
+
+<p>Pass <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> to reflect <code class="language-plaintext highlighter-rouge">@[measure]</code> functions <strong>symbolically</strong>
+instead of axiomatising them. This skips the datatype/quantifier reasoning (and
+the soundness gate), trading structural measure reasoning for speed. It changes
+only diagnostics, never the compiled artifact. Refinement checking of plain
+<code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Bool</code> predicates is unaffected and always cheap.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nt">--check</span> <span class="nt">--no-measure-axioms</span> app.march
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/types/">Type System</a>: the types refinements attach to</li>
+  <li><a href="/docs/linear-types/">Linear Types</a>: the other compile-time safety layer</li>
+  <li><a href="/docs/pattern-matching/">Pattern Matching</a>: <code class="language-plaintext highlighter-rouge">match</code> guards feed path sensitivity</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

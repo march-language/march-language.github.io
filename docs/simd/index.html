@@ -1,0 +1,2492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIMD & Native Arrays — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link active">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="simd--native-arrays">SIMD &amp; Native Arrays</h1>
+
+<p><code class="language-plaintext highlighter-rouge">NativeArray</code> is a flat, contiguous numeric array type. Unlike <code class="language-plaintext highlighter-rouge">Array</code> (a
+32-way persistent trie, optimized for structural sharing), <code class="language-plaintext highlighter-rouge">NativeArray</code> maps
+directly onto sequential memory. That makes it cache-friendly for scan
+patterns, and lets <code class="language-plaintext highlighter-rouge">march --compile</code> hand a handful of its operations
+straight to LLVM’s auto-vectorizer, so they run as real SIMD instructions
+(NEON on arm64, SSE4.2+ on x86-64) instead of a scalar loop.</p>
+
+<p>This page covers what actually vectorizes today, how to write code that
+triggers it, and the known gaps; this is a fast path you opt into for
+numeric hot loops, not the default representation for numeric data. It also
+covers the explicit <code class="language-plaintext highlighter-rouge">Simd</code> module (five 128-bit vector types you construct
+and operate on directly, see <a href="#explicit-simd--the-simd-module">below</a>):
+guaranteed vector codegen rather than a <code class="language-plaintext highlighter-rouge">NativeArray</code> loop the optimizer may
+or may not vectorize.</p>
+
+<pre><code class="language-march">let arr = NativeArray.make_float(1_000_000, 0.0)
+let doubled = NativeArray.map_float(arr, fn x -&gt; x *. 2.0)
+let total = NativeArray.sum_float(doubled)
+</code></pre>
+
+<hr />
+
+<h2 id="what-vectorizes">What vectorizes</h2>
+
+<p>Only <strong>compiled</strong> builds (<code class="language-plaintext highlighter-rouge">march --compile</code>) vectorize; the interpreter and
+REPL never do, since there is no LLVM/clang pass in that path. Everything
+below is correct either way; this section is about the compiled fast path.</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">sum_int</code> / <code class="language-plaintext highlighter-rouge">sum_float</code></strong>: both auto-vectorize under <code class="language-plaintext highlighter-rouge">clang -O2</code>. <code class="language-plaintext highlighter-rouge">sum_float</code>
+needed a scoped <code class="language-plaintext highlighter-rouge">#pragma clang fp reassociate(on)</code> around the runtime C
+loop, since strict IEEE 754 float semantics otherwise forbid the reduction
+from reassociating at all (and thus from vectorizing).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">map_int</code></strong>: when the callback is a non-capturing lambda, or captures a
+single variable, the compiler inlines the callback directly into the loop
+instead of dispatching through a closure pointer. That lets clang’s own
+inliner and vectorizer see straight through it, so arithmetic-heavy bodies
+(<code class="language-plaintext highlighter-rouge">fn x -&gt; x * x + 1</code>, <code class="language-plaintext highlighter-rouge">fn x -&gt; x + captured</code>) compile to real SIMD.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">map_float</code></strong>: gets the same inlining treatment as <code class="language-plaintext highlighter-rouge">map_int</code>. If the
+callback’s signature is concretely all-<code class="language-plaintext highlighter-rouge">Float</code> (not still generic), the
+compiler goes one step further and clones the inlined callback under
+natural <code class="language-plaintext highlighter-rouge">double</code> parameters/return with <strong>zero heap boxing</strong>, and the loop
+vectorizes for real (confirmed via <code class="language-plaintext highlighter-rouge">-emit-llvm</code>: NEON <code class="language-plaintext highlighter-rouge">fadd.2d</code>/similar
+vector instructions, not just scalar unrolling).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">map2_int</code> / <code class="language-plaintext highlighter-rouge">map2_float</code></strong> (element-wise over two arrays, e.g.
+<code class="language-plaintext highlighter-rouge">col_add_col</code>’s column-column arithmetic) get the identical treatment:
+same eligibility bar, same boxing-free clone for a concrete-<code class="language-plaintext highlighter-rouge">Float</code>
+callback. Landed after the rest of this page (see the benchmark history
+below); previously these fell straight through to the general
+closure-dispatch path.</li>
+</ul>
+
+<p>A closure that’s <strong>reused elsewhere</strong> (passed to <code class="language-plaintext highlighter-rouge">map</code>/<code class="language-plaintext highlighter-rouge">map2</code> and also
+called directly, or stored and called later), or that captures more than
+one variable, still runs correctly; it just falls back to the general
+closure-dispatch path, which does not vectorize.</p>
+
+<h2 id="narrow-element-widths">Narrow element widths</h2>
+
+<p>Beyond the <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Float</code> (i64/f64) element types shown above, <code class="language-plaintext highlighter-rouge">NativeArray</code>
+also supports three narrower element widths: <strong>f32</strong>, <strong>i32</strong>, and <strong>u8</strong>
+(backed by <code class="language-plaintext highlighter-rouge">NativeF32Arr</code>/<code class="language-plaintext highlighter-rouge">NativeI32Arr</code>/<code class="language-plaintext highlighter-rouge">NativeU8Arr</code>), each with the same
+<code class="language-plaintext highlighter-rouge">make</code>/<code class="language-plaintext highlighter-rouge">length</code>/<code class="language-plaintext highlighter-rouge">get</code>/<code class="language-plaintext highlighter-rouge">set</code>/<code class="language-plaintext highlighter-rouge">sum</code>/<code class="language-plaintext highlighter-rouge">map</code>/<code class="language-plaintext highlighter-rouge">map2</code>/<code class="language-plaintext highlighter-rouge">from_list</code>/<code class="language-plaintext highlighter-rouge">to_list</code> shape as
+<code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Float</code>, plus 8 conversions to/from the wider types (e.g.
+<code class="language-plaintext highlighter-rouge">NativeArray.int_to_u8_arr</code>). They exist to trade range/precision for memory
+bandwidth and SIMD lane count: 50% of the bytes per element of f64/i64 means
+twice the lanes per vector instruction.</p>
+
+<p><strong>Boundary rule:</strong> integer stores truncate mod 2^w two’s-complement, float
+stores round to nearest-even binary32, and loads widen exactly (<code class="language-plaintext highlighter-rouge">u8</code>
+zero-extends to 0..255, <code class="language-plaintext highlighter-rouge">i32</code> sign-extends). <code class="language-plaintext highlighter-rouge">sum_i32</code>/<code class="language-plaintext highlighter-rouge">sum_u8</code> accumulate in
+i64, <code class="language-plaintext highlighter-rouge">sum_f32</code> in double. None of this traps; an out-of-range store
+wraps or rounds rather than erroring.</p>
+
+<p><strong>f32 double-rounding caveat:</strong> map callbacks compute in double and round to
+f32 on store; results can differ in the last ulp from a true single-precision
+pipeline.</p>
+
+<p><code class="language-plaintext highlighter-rouge">map_f32</code>/<code class="language-plaintext highlighter-rouge">map2_f32</code>/<code class="language-plaintext highlighter-rouge">sum_f32</code> get the identical inline-loop vectorization
+treatment described above for <code class="language-plaintext highlighter-rouge">map_float</code>/<code class="language-plaintext highlighter-rouge">map2_float</code>/<code class="language-plaintext highlighter-rouge">sum_float</code>,
+confirmed via <code class="language-plaintext highlighter-rouge">-emit-llvm</code> to compile to real <code class="language-plaintext highlighter-rouge">&lt;4 x float&gt;</code> NEON vector
+instructions, not just scalar unrolling. <code class="language-plaintext highlighter-rouge">fold_i32</code>/<code class="language-plaintext highlighter-rouge">fold_u8</code>/<code class="language-plaintext highlighter-rouge">fold_f32</code>
+(along with <code class="language-plaintext highlighter-rouge">fold_int</code>/<code class="language-plaintext highlighter-rouge">fold_float</code>) all have compiled implementations;
+the fold accumulator is a generic <code class="language-plaintext highlighter-rouge">'a</code> that crosses the closure boundary in
+the erased/boxed representation, so fold is a correctness-first scalar loop
+rather than a vectorized one; see Known limitations below.</p>
+
+<p>Same-box, same-build f32-vs-f64 comparison at N=5M (median of 6 samples,
+two opposite orderings to cancel first-position warmup bias; see
+<code class="language-plaintext highlighter-rouge">bench/RESULTS.md</code>’s <code class="language-plaintext highlighter-rouge">simd-f32</code> section for full methodology):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Benchmark (N=5M)</th>
+      <th>f32</th>
+      <th>f64</th>
+      <th>Speedup</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sum(arr)</code></td>
+      <td>0.49 ms</td>
+      <td>1.19 ms</td>
+      <td>~2.4x</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">map(x -&gt; x*2+1)</code></td>
+      <td>2.27 ms</td>
+      <td>4.54 ms</td>
+      <td>~2.0x</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">map2(a, b, +)</code></td>
+      <td>2.67 ms</td>
+      <td>6.40 ms</td>
+      <td>~2.4x</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">map</code>’s ~2.0x sits right at the theoretical upper limit from doubling the lane
+count; <code class="language-plaintext highlighter-rouge">sum</code>/<code class="language-plaintext highlighter-rouge">map2</code> beat that ratio slightly, within the noise of a shared,
+loaded benchmark machine (absolute ms are not a regression baseline across
+runs; see the “Read this before the numbers” caveats on
+<a href="/docs/simd-benchmarks/">SIMD Benchmarks</a>).</p>
+
+<h2 id="how-to-trigger-it">How to trigger it</h2>
+
+<ol>
+  <li><strong>Use <code class="language-plaintext highlighter-rouge">NativeArray</code>, not <code class="language-plaintext highlighter-rouge">Array</code> or <code class="language-plaintext highlighter-rouge">List</code>, for the hot data.</strong> <code class="language-plaintext highlighter-rouge">Array</code>’s
+trie layout and <code class="language-plaintext highlighter-rouge">List</code>’s cons cells are not contiguous in memory, so
+none of this applies to them.</li>
+  <li><strong>Compile with <code class="language-plaintext highlighter-rouge">--compile --opt 2</code>.</strong> <code class="language-plaintext highlighter-rouge">-O2</code> is what enables clang’s
+auto-vectorizer; an interpreted or unoptimized build never vectorizes.</li>
+  <li><strong>Keep the callback simple and single-use.</strong> A short arithmetic lambda
+passed to <code class="language-plaintext highlighter-rouge">map_int</code>/<code class="language-plaintext highlighter-rouge">map_float</code>/<code class="language-plaintext highlighter-rouge">map2_int</code>/<code class="language-plaintext highlighter-rouge">map2_float</code> and used in no
+other place gets inlined. If you need the same closure for multiple purposes,
+expect the general (non-vectorized, still correct) path.</li>
+  <li><strong>For <code class="language-plaintext highlighter-rouge">Float</code>, avoid leaving the callback’s type generic</strong> if you want the
+zero-boxing path: a concrete <code class="language-plaintext highlighter-rouge">Float -&gt; Float</code> signature is what lets the
+compiler drop the boxing entirely.</li>
+</ol>
+
+<p>You can confirm vectorization yourself with <code class="language-plaintext highlighter-rouge">march --compile --opt 2 --emit-llvm
+your_file.march</code> and grepping the output for vector types (<code class="language-plaintext highlighter-rouge">&lt;2 x double&gt;</code>,
+<code class="language-plaintext highlighter-rouge">&lt;4 x float&gt;</code>) or clang’s <code class="language-plaintext highlighter-rouge">%vector.body</code> loop-vectorizer markers.</p>
+
+<h2 id="benchmarks">Benchmarks</h2>
+
+<p>March vs. hand-written OCaml/Rust, idiomatic Elixir, naive Python, and NumPy
+(a hand-tuned, BLAS-backed reference implementation) on three Float-array
+operations over 5M elements:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Benchmark (N=5M)</th>
+      <th>March</th>
+      <th>OCaml</th>
+      <th>Rust</th>
+      <th>NumPy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sum(arr)</code></td>
+      <td><strong>1.1 ms</strong></td>
+      <td>4.7 ms</td>
+      <td>5.4 ms</td>
+      <td>1.0 ms</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">map(x -&gt; x * 2.0 + 1.0)</code></td>
+      <td>5.1 ms</td>
+      <td>5.5 ms</td>
+      <td>3.9 ms</td>
+      <td>2.1 ms</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">map2(a, b, (x, y) -&gt; x + y)</code></td>
+      <td>6.4 ms</td>
+      <td>7.0 ms</td>
+      <td>4.5 ms</td>
+      <td>1.6 ms</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All three hold up: March ties a hand-tuned, BLAS-backed reference
+implementation (NumPy) on <code class="language-plaintext highlighter-rouge">sum</code>, and is competitive with hand-written
+OCaml/Rust on all three, via general-purpose LLVM auto-vectorization rather
+than a hand-rolled numeric kernel. <code class="language-plaintext highlighter-rouge">map2</code> used to be the odd one out here
+(<strong>299 ms</strong>, no inlining treatment, slower than naive interpreted Python)
+until it got the same closure-inlining/boxing-elimination infrastructure <code class="language-plaintext highlighter-rouge">map</code>
+already had; see the benchmark history in
+<a href="/docs/simd-benchmarks/">SIMD Benchmarks</a> for the
+before/after.</p>
+
+<p>Full write-up (machine profile, methodology, per-language source links) at
+<a href="/docs/simd-benchmarks/">SIMD Benchmarks</a>. Reproduce
+locally with <code class="language-plaintext highlighter-rouge">bash bench/run_benchmarks.sh</code> from a checkout.</p>
+
+<h2 id="known-limitations">Known limitations</h2>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">fold_int</code> / <code class="language-plaintext highlighter-rouge">fold_float</code> / <code class="language-plaintext highlighter-rouge">fold_f32</code> / <code class="language-plaintext highlighter-rouge">fold_i32</code> / <code class="language-plaintext highlighter-rouge">fold_u8</code></strong> all have
+compiled implementations, but fold is not vectorized: the accumulator is a
+generic <code class="language-plaintext highlighter-rouge">'a</code> that must stay boxed/erased across the closure boundary for
+the whole loop, so it’s a correctness-first scalar loop, not a SIMD one.
+Use <code class="language-plaintext highlighter-rouge">sum</code>/<code class="language-plaintext highlighter-rouge">map</code> if you need the auto-vectorized path and your reduction
+fits their shape.</li>
+  <li>
+    <p><strong><code class="language-plaintext highlighter-rouge">fold_float</code> / <code class="language-plaintext highlighter-rouge">fold_f32</code> with a <code class="language-plaintext highlighter-rouge">Float</code> accumulator used to leak ~32 B
+per element; FIXED 2026-08-20.</strong> Each iteration’s accumulator box was never
+released, so folding a 50M-element <code class="language-plaintext highlighter-rouge">NativeFloatArr</code> into a <code class="language-plaintext highlighter-rouge">Float</code> cost
+~1.6 GB of otherwise-unexplained RSS (measured at 5M elements: 193.6 MB with
+a <code class="language-plaintext highlighter-rouge">Float</code> accumulator vs 40.4 MB for the <code class="language-plaintext highlighter-rouge">fold_int</code> control). The result was
+always correct; only memory residency was affected. All five fold helpers
+now release the previous accumulator, and the workarounds this entry used to
+recommend are no longer needed. Pinned by
+<code class="language-plaintext highlighter-rouge">test/native/native_arr_fold_acc_leak_probe.march</code>; see
+<code class="language-plaintext highlighter-rouge">specs/progress/2026-08-20-fold-accumulator-chain-leak-fix.md</code>.</p>
+
+    <p>A fold with a <strong>heap non-<code class="language-plaintext highlighter-rouge">Float</code></strong> accumulator (a <code class="language-plaintext highlighter-rouge">String</code>, <code class="language-plaintext highlighter-rouge">List</code>
+or record rebuilt each step) used to leak one object per element on top of
+that, because the runtime could not tell whether the closure it had just
+called consumed the accumulator it was given. Fixed 2026-08-22: the compiler
+now stamps that fact into the closure object and the fold helpers read it
+back; see
+<code class="language-plaintext highlighter-rouge">specs/progress/2026-08-22-fold-heap-accumulator-borrowed-return-leak.md</code>. It
+is set only when borrow inference can prove the accumulator has no owning
+use, so a callback that passes it to a builtin with undeclared borrow modes
+still leaks; that residual is described in the progress note. <code class="language-plaintext highlighter-rouge">Float</code> and
+<code class="language-plaintext highlighter-rouge">Int</code> accumulators, including <code class="language-plaintext highlighter-rouge">fold_int</code>, <code class="language-plaintext highlighter-rouge">fold_i32</code> and <code class="language-plaintext highlighter-rouge">fold_u8</code>, were
+never affected.</p>
+  </li>
+  <li><strong><code class="language-plaintext highlighter-rouge">DataFrame</code></strong>: <code class="language-plaintext highlighter-rouge">Sum</code>/<code class="language-plaintext highlighter-rouge">Mean</code> aggregation and <code class="language-plaintext highlighter-rouge">col_add_col</code> (column-column
+arithmetic, via <code class="language-plaintext highlighter-rouge">map2_int</code>/<code class="language-plaintext highlighter-rouge">map2_float</code>) use the vectorized <code class="language-plaintext highlighter-rouge">NativeArray</code>
+primitives above under the hood. <code class="language-plaintext highlighter-rouge">Min</code>/<code class="language-plaintext highlighter-rouge">Max</code>/<code class="language-plaintext highlighter-rouge">Std</code>/<code class="language-plaintext highlighter-rouge">Variance</code>/<code class="language-plaintext highlighter-rouge">Median</code>
+aggregation, <code class="language-plaintext highlighter-rouge">ColExpr</code>-based lazy-frame arithmetic, and <code class="language-plaintext highlighter-rouge">fill_null</code> do not
+yet; they’re correct, just not on the fast path.</li>
+  <li>Vectorization is an <strong>LLVM/clang optimizer decision</strong>, not a March
+language guarantee; it can depend on the target architecture and clang
+version. None of the above changes program <em>behavior</em>; a callback that doesn’t
+qualify for inlining, or a loop clang declines to vectorize, still produces
+identical results, just via a scalar loop.</li>
+</ul>
+
+<h2 id="explicit-simd-the-simd-module">Explicit SIMD: the <code class="language-plaintext highlighter-rouge">Simd</code> module</h2>
+
+<p>Everything above is the compiler deciding whether a <code class="language-plaintext highlighter-rouge">NativeArray</code> loop
+qualifies for auto-vectorization: you write plain scalar code and it may or
+may not compile to a vector instruction, depending on the callback shape and
+what <code class="language-plaintext highlighter-rouge">clang -O2</code> chooses to do. <code class="language-plaintext highlighter-rouge">Simd</code> is the opposite trade: a fixed set of
+128-bit vector types you construct and operate on explicitly, so the vector
+lowering is <strong>guaranteed</strong>, not opportunistic.</p>
+
+<h3 id="types-and-operations">Types and operations</h3>
+
+<p>Five vector types, each holding a fixed number of lanes in a 128-bit value:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Lanes</th>
+      <th>Element</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">F32x4</code></td>
+      <td>4</td>
+      <td><code class="language-plaintext highlighter-rouge">Float</code> (binary32, stored widened)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">F64x2</code></td>
+      <td>2</td>
+      <td><code class="language-plaintext highlighter-rouge">Float</code> (binary64)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">I32x4</code></td>
+      <td>4</td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code> (32-bit, wraps mod 2^32)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">I64x2</code></td>
+      <td>2</td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code> (64-bit, wraps mod 2^64)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">U8x16</code></td>
+      <td>16</td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code> (0..255, zero-extended)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each type gets the same op families, named <code class="language-plaintext highlighter-rouge">Simd.&lt;op&gt;_&lt;type&gt;</code>, e.g.
+<code class="language-plaintext highlighter-rouge">Simd.add_f32x4</code>, <code class="language-plaintext highlighter-rouge">Simd.load_u8x16</code>, <code class="language-plaintext highlighter-rouge">Simd.hmax_i32x4</code>:</p>
+
+<ul>
+  <li><strong>Construction/access:</strong> <code class="language-plaintext highlighter-rouge">splat</code>, <code class="language-plaintext highlighter-rouge">make</code> (one arg per lane), <code class="language-plaintext highlighter-rouge">extract</code>,
+<code class="language-plaintext highlighter-rouge">replace</code>, <code class="language-plaintext highlighter-rouge">load</code> (from a matching <code class="language-plaintext highlighter-rouge">NativeArray</code>), <code class="language-plaintext highlighter-rouge">store</code>.</li>
+  <li><strong>Compare/bitwise/select:</strong> <code class="language-plaintext highlighter-rouge">eq</code>, <code class="language-plaintext highlighter-rouge">lt</code>, <code class="language-plaintext highlighter-rouge">gt</code> (mask results: all-ones lane
+where true, zero otherwise), <code class="language-plaintext highlighter-rouge">and</code>, <code class="language-plaintext highlighter-rouge">or</code>, <code class="language-plaintext highlighter-rouge">xor</code>, <code class="language-plaintext highlighter-rouge">not</code>, <code class="language-plaintext highlighter-rouge">select</code>
+(mask-driven per-lane choice between two vectors), plus mask-consuming
+scans: <code class="language-plaintext highlighter-rouge">any</code>, <code class="language-plaintext highlighter-rouge">all</code>, <code class="language-plaintext highlighter-rouge">first_set</code>. All four mask consumers read a lane’s
+<strong>high bit</strong> (its sign bit): in <code class="language-plaintext highlighter-rouge">select</code>, a lane with its high bit set
+picks <code class="language-plaintext highlighter-rouge">a</code>, otherwise <code class="language-plaintext highlighter-rouge">b</code>. The canonical all-ones/all-zero lanes that
+<code class="language-plaintext highlighter-rouge">eq</code>/<code class="language-plaintext highlighter-rouge">lt</code>/<code class="language-plaintext highlighter-rouge">gt</code> produce read identically under any convention; the high-bit
+rule is what a hand-rolled non-canonical mask (say a lane of <code class="language-plaintext highlighter-rouge">0xFFFFFFFE</code>)
+follows, and it is the same rule interpreted and compiled.</li>
+  <li><strong>Arithmetic:</strong> <code class="language-plaintext highlighter-rouge">add</code>, <code class="language-plaintext highlighter-rouge">sub</code>, <code class="language-plaintext highlighter-rouge">mul</code>, <code class="language-plaintext highlighter-rouge">min</code>, <code class="language-plaintext highlighter-rouge">max</code>, <code class="language-plaintext highlighter-rouge">sum</code> (horizontal,
+accumulated sequentially: float families in double, int families in
+<code class="language-plaintext highlighter-rouge">i64</code>), <code class="language-plaintext highlighter-rouge">hmin</code>, <code class="language-plaintext highlighter-rouge">hmax</code>; float families additionally get <code class="language-plaintext highlighter-rouge">div</code>, <code class="language-plaintext highlighter-rouge">fma</code>
+(true fused multiply-add, one rounding; can differ from a separate
+multiply-then-add in the last ulp) and <code class="language-plaintext highlighter-rouge">sqrt</code>; integer families
+additionally get <code class="language-plaintext highlighter-rouge">shl</code>/<code class="language-plaintext highlighter-rouge">shr</code>.</li>
+</ul>
+
+<p>That is 127 operations total across the five types. Lane get/set indices
+(<code class="language-plaintext highlighter-rouge">extract</code>, <code class="language-plaintext highlighter-rouge">replace</code>, <code class="language-plaintext highlighter-rouge">load</code>/<code class="language-plaintext highlighter-rouge">store</code> offsets) are refinement-typed to the
+type’s lane count, so an out-of-range literal index is a compile-time
+refinement-check failure rather than a runtime panic. An index the
+refinement checker cannot decide is <em>not</em> rejected (March reports only
+definite failures), so every such index is bounds-checked at run time and
+panics out of range: <code class="language-plaintext highlighter-rouge">load</code>/<code class="language-plaintext highlighter-rouge">store</code> against the array length, <code class="language-plaintext highlighter-rouge">extract</code>/
+<code class="language-plaintext highlighter-rouge">replace</code> against the lane count. A statically in-range literal lane index
+skips the check and compiles to a bare <code class="language-plaintext highlighter-rouge">extractelement</code>/<code class="language-plaintext highlighter-rouge">insertelement</code>.
+Each type implements <code class="language-plaintext highlighter-rouge">Show</code>, <code class="language-plaintext highlighter-rouge">Eq</code>, and <code class="language-plaintext highlighter-rouge">Hash</code>.</p>
+
+<p><strong>Boundary rule</strong>, matching <code class="language-plaintext highlighter-rouge">NativeArray</code>’s narrow-width contract: lane
+get/set traffics in widened <code class="language-plaintext highlighter-rouge">Int</code>/<code class="language-plaintext highlighter-rouge">Float</code>; integer narrowing on store wraps
+mod 2^w two’s-complement; <code class="language-plaintext highlighter-rouge">f32</code> narrowing rounds to nearest-even; <code class="language-plaintext highlighter-rouge">u8</code> loads
+zero-extend, <code class="language-plaintext highlighter-rouge">i32</code> loads sign-extend. <code class="language-plaintext highlighter-rouge">min</code>/<code class="language-plaintext highlighter-rouge">max</code>/<code class="language-plaintext highlighter-rouge">hmin</code>/<code class="language-plaintext highlighter-rouge">hmax</code> on floats use
+minNum/maxNum semantics (a NaN operand loses to the other; both-NaN is NaN).
+None of this traps on out-of-range <em>values</em>; only out-of-range
+<strong>indices</strong> panic. Lane 0 is the first <code class="language-plaintext highlighter-rouge">make_*</code> argument / the
+lowest-addressed element on <code class="language-plaintext highlighter-rouge">load</code>.</p>
+
+<pre><code class="language-march">let a = Simd.load_f32x4(arr, 0)
+let b = Simd.splat_f32x4(2.0)
+let doubled = Simd.mul_f32x4(a, b)
+let total = Simd.sum_f32x4(doubled)
+</code></pre>
+
+<h3 id="the-register-residency-contract">The register-residency contract</h3>
+
+<p><code class="language-plaintext highlighter-rouge">--compile</code> lowers every <code class="language-plaintext highlighter-rouge">Simd</code> op, including <code class="language-plaintext highlighter-rouge">load</code>/<code class="language-plaintext highlighter-rouge">store</code>, to native
+LLVM vector instructions/intrinsics (<code class="language-plaintext highlighter-rouge">&lt;4 x float&gt;</code>, <code class="language-plaintext highlighter-rouge">llvm.fma.v4f32</code>, etc.),
+not a scalar loop standing in for one. A vector value is <strong>register-resident</strong>
+inside a function body and boxed into a 32-byte runtime cell only at the
+boundaries where it has to cross one: a call, a return, or a store into an
+aggregate field. Two shapes are guaranteed allocation-free (confirmed via
+<code class="language-plaintext highlighter-rouge">--emit-llvm</code>, pinned by fixtures):</p>
+
+<ol>
+  <li>A <strong>straight-line kernel</strong>: construct, operate, consume, all within one
+function body with no intervening call that takes the vector as an
+argument.</li>
+  <li>A <strong>self-tail-recursive accumulator loop</strong>: the natural shape for a
+dot-product-style horizontal reduction, where the vector is threaded as
+the function’s own parameter across each recursive call. The accumulator
+stays in a vector register across iterations; the loop body performs no
+allocation.</li>
+</ol>
+
+<p><code class="language-plaintext highlighter-rouge">store_*</code> follows <code class="language-plaintext highlighter-rouge">NativeArray</code>’s FBIP contract: an in-place update when the
+array isn’t shared, a copy-on-write when it is.</p>
+
+<h3 id="the-candid-performance-story">The candid performance story</h3>
+
+<p>Guaranteed vector codegen is not automatically a performance win over the
+implicit path above; it depends on the shape of the computation:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kernel (N=5M <code class="language-plaintext highlighter-rouge">f32</code> / 16MB <code class="language-plaintext highlighter-rouge">u8</code>)</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">u8</code> delimiter scan: <code class="language-plaintext highlighter-rouge">Simd</code> vs. scalar March loop</td>
+      <td><strong>~11.5x</strong> faster</td>
+    </tr>
+    <tr>
+      <td>Dot product loop framework, held constant: <code class="language-plaintext highlighter-rouge">Simd</code> vs. scalar March index loop (same elementwise/reduce shape, no library calls either side)</td>
+      <td><strong>4.0x</strong> faster</td>
+    </tr>
+    <tr>
+      <td>Dot product: hand-written <code class="language-plaintext highlighter-rouge">Simd</code> accumulator loop vs. <code class="language-plaintext highlighter-rouge">NativeArray.map2_f32</code> + <code class="language-plaintext highlighter-rouge">sum_f32</code> composition</td>
+      <td><code class="language-plaintext highlighter-rouge">Simd</code> loop <strong>~3.9x slower</strong> (10.0 ms vs. 2.55 ms)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The scanner and the loop-framework comparison are <code class="language-plaintext highlighter-rouge">Simd</code> doing exactly what
+it is for: cross-lane, register-resident vector work beating a scalar loop
+by close to the lane-count ratio. The third row looks like a regression but
+isn’t one: it is not a SIMD cost at all. <code class="language-plaintext highlighter-rouge">NativeArray.map2_f32</code>/<code class="language-plaintext highlighter-rouge">sum_f32</code>
+each compile to a single call into a tight C runtime loop; a hand-written
+March index loop, <code class="language-plaintext highlighter-rouge">Simd</code>-accumulated or not, pays per-iteration overhead
+unrelated to vectors (a preemption check, a stack
+save/restore, RC bookkeeping on locals, an unhoisted length call). That
+overhead is tracked as its own item, general to every hand-written
+<code class="language-plaintext highlighter-rouge">NativeArray</code> index loop:
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-08-11-march-index-loop-per-iteration-overhead.md</code>.</p>
+
+<p><strong>Recommendation:</strong> for a simple elementwise-then-reduce pipeline (map,
+then sum; map2, then reduce), reach for <code class="language-plaintext highlighter-rouge">NativeArray.map</code>/<code class="language-plaintext highlighter-rouge">map2</code>/<code class="language-plaintext highlighter-rouge">sum</code>
+first; they already compile to the tight C loop and currently beat a
+hand-rolled <code class="language-plaintext highlighter-rouge">Simd</code> loop doing the same computation. Reach for <code class="language-plaintext highlighter-rouge">Simd</code>
+directly when you need something <code class="language-plaintext highlighter-rouge">NativeArray</code>’s builtin ops don’t express:
+cross-lane structure (masks, <code class="language-plaintext highlighter-rouge">select</code>, comparisons feeding a scan),
+fused multi-op kernels (e.g. <code class="language-plaintext highlighter-rouge">fma</code> in one instruction), or byte-level
+scanning, where <code class="language-plaintext highlighter-rouge">Simd</code> is a clear win.</p>
+
+<p><code class="language-plaintext highlighter-rouge">DataFrame</code>’s <code class="language-plaintext highlighter-rouge">Min</code>/<code class="language-plaintext highlighter-rouge">Max</code> aggregation was evaluated against a <code class="language-plaintext highlighter-rouge">Simd</code>-based
+migration and intentionally <strong>not</strong> migrated: a probe measured a
+<code class="language-plaintext highlighter-rouge">Simd.min_i64x2</code>/<code class="language-plaintext highlighter-rouge">max_i64x2</code> accumulator loop at ~8.2x slower than the
+existing <code class="language-plaintext highlighter-rouge">native_int_arr_min</code>/<code class="language-plaintext highlighter-rouge">native_float_arr_min</code> C reduction, for the
+same index-loop-overhead reason above. Note the upper limit here is lower even
+once that overhead is fixed: <code class="language-plaintext highlighter-rouge">i64x2</code>/<code class="language-plaintext highlighter-rouge">f64x2</code> are only 2 lanes wide (vs. 4
+for the <code class="language-plaintext highlighter-rouge">f32x4</code>/<code class="language-plaintext highlighter-rouge">i32x4</code>/<code class="language-plaintext highlighter-rouge">u8x16</code> families used in the scanner/dot-product
+comparisons), so a Min/Max migration is a re-open condition on the index-
+loop-overhead fix, not a closed door. See <code class="language-plaintext highlighter-rouge">bench/RESULTS.md</code>’s
+<code class="language-plaintext highlighter-rouge">simd-kernels</code> section for full methodology and numbers.</p>
+
+<h3 id="fixed-128-bit-width">Fixed 128-bit width</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Simd</code> is fixed at 128 bits on every target, rather than a portable/
+scalable width that adapts to the host’s widest vector unit (AVX2/AVX-512
+on some x86-64 hosts, SVE on some arm64 hosts). That was an intentional
+choice, not an oversight: 128 bits is the width every target this compiles
+to actually has (NEON on arm64, SSE2 baseline on x86-64, and it aligns
+with WASM-SIMD’s 128-bit vectors), so a <code class="language-plaintext highlighter-rouge">Simd</code> program has <strong>identical
+semantics on every target</strong>, interpreted or compiled, with no runtime
+feature detection and no “may run at a different width depending on the
+machine that built it” caveat. It also keeps interpreter/native parity
+testing tractable: one lane count per type, not a matrix over host vector
+widths. A portable/scalable width is a plausible future layer on top of
+this (e.g. a <code class="language-plaintext highlighter-rouge">Simd.wide_*</code> variant sized at compile time to the host), but
+it is additive; this fixed-128 module is not something a portable-width
+feature needs to replace.</p>
+
+<h3 id="known-limitations-1">Known limitations</h3>
+
+<ul>
+  <li><strong>TCO-entry box leak; fixed 2026-08-11.</strong> A self-tail-recursive function’s
+vector accumulator used to leak one 32-byte box per <strong>call</strong> (not per loop
+iteration; the loop body itself, per the register-residency contract
+above, is allocation-free). The call site now releases the caller-created
+temp box for callees with a native vector TCO slot; measured RSS on a
+2,000,000-call probe went from ~64 MB to ~2.7 MB. The fix is narrow:
+non-TCO vector params still leak per call, and three call paths
+(raises-wrapper, blocking-extern, hot-reload dispatch) are intentionally
+excluded; see <code class="language-plaintext highlighter-rouge">specs/todos/2026-08-12-simd-nontco-vector-param-leak.md</code> for
+the still-open generalization. Pinned by
+<code class="language-plaintext highlighter-rouge">test/native/simd_leak_probe.march</code> (leak must happen) and
+<code class="language-plaintext highlighter-rouge">test/native/simd_vector_escape_arg.march</code> (release must NOT happen for an
+escaping vector). See <code class="language-plaintext highlighter-rouge">specs/progress/2026-08-11-simd-tco-entry-box-leak.md</code>.</li>
+  <li><strong>Mutual-recursion accumulators stay boxed.</strong> The register-residency
+optimization above covers self-tail-recursion only; a vector threaded
+through a mutual-recursion group is still correct but boxes/unboxes on
+every call, same as before the TCO optimization landed. This is a
+intentional wontfix-until-demand, not a gap-in-waiting. <code class="language-plaintext highlighter-rouge">test/native/
+simd_mutual_tco.march</code> pins it two ways: an output diff (the boxed path
+still computes the right answer) and an IR-shape rule
+(<code class="language-plaintext highlighter-rouge">simd_mutual_tco_llvm_check</code> in <code class="language-plaintext highlighter-rouge">test/dune</code>) asserting a <code class="language-plaintext highlighter-rouge">@__mutco_*</code>
+dispatcher is emitted at all with both accumulator slots boxed as
+<code class="language-plaintext highlighter-rouge">alloca ptr</code>. The second rule is not redundant: the two lowerings print
+the same number, and the fixture was briefly an empty check because the TIR
+inliner collapsed the mutual pair into self-recursion. So a change to the
+mutual-TCO slot strategy can neither silently corrupt the result nor
+silently stop being tested. See
+<code class="language-plaintext highlighter-rouge">specs/progress/2026-08-13-simd-closeouts-task3-mutual-tco-pin.md</code>.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">fma</code> is a true fused multiply-add</strong> (<code class="language-plaintext highlighter-rouge">llvm.fma.v4f32</code>/<code class="language-plaintext highlighter-rouge">v2f64</code>, one
+rounding); it can differ from a separate multiply followed by an add in
+the last ulp. Both backends run the same operation on both widths: for
+<code class="language-plaintext highlighter-rouge">f64x2</code> the interpreter uses OCaml’s <code class="language-plaintext highlighter-rouge">Float.fma</code> (binary64-fused), and for
+<code class="language-plaintext highlighter-rouge">f32x4</code> it emulates a <em>single</em>-rounded binary32 fma (round-to-odd over
+binary64, <code class="language-plaintext highlighter-rouge">eval.ml</code>’s <code class="language-plaintext highlighter-rouge">fma32_single_round</code>) rather than double-rounding a
+binary64 <code class="language-plaintext highlighter-rouge">Float.fma</code>, which is what it did until 2026-08-13 and which
+truly diverged in the last ulp on rounding-boundary triples. Pinned by
+test t15 of the <code class="language-plaintext highlighter-rouge">simd_vector</code> suite and fuzzed compiled-vs-interpreted over
+400k boundary-heavy lanes by <code class="language-plaintext highlighter-rouge">test/native/simd_fma_fuzz.march</code>.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">i64x2</code> interpreter parity edge:</strong> lane values beyond ±2^62 lose their
+top bit under the interpreter only, because OCaml’s native <code class="language-plaintext highlighter-rouge">int</code> is
+63-bit. Compiled <code class="language-plaintext highlighter-rouge">i64x2</code> uses a true 64-bit lane and has no such limit.
+Tests are confined to ±2^62 to avoid asserting on the divergent range.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">==</code>/<code class="language-plaintext highlighter-rouge">show</code> under a polymorphic context fall back to generic runtime
+helpers</strong>, not the static <code class="language-plaintext highlighter-rouge">Eq</code>/<code class="language-plaintext highlighter-rouge">Show</code> impl. At a statically-known vector
+type, <code class="language-plaintext highlighter-rouge">==</code> dispatches the type’s <code class="language-plaintext highlighter-rouge">Eq</code> impl (lane-wise, NaN lanes unequal)
+and <code class="language-plaintext highlighter-rouge">show</code> renders per-lane. Under an erased type variable (a generic
+function that never specializes the vector type), both instead go
+through the same pointer-identity/opaque-tag runtime helpers <code class="language-plaintext highlighter-rouge">NativeArray</code>
+already has this caveat with; not specific to <code class="language-plaintext highlighter-rouge">Simd</code>.</li>
+  <li><strong>Not supported on the JavaScript target.</strong> Fixed 128-bit SIMD has no JS
+lowering; compiling any <code class="language-plaintext highlighter-rouge">Simd.*</code> call with <code class="language-plaintext highlighter-rouge">--target js</code> fails the build
+with a diagnostic naming the builtin, rather than emitting a call that
+throws <code class="language-plaintext highlighter-rouge">ReferenceError</code> at runtime. Use <code class="language-plaintext highlighter-rouge">NativeArray</code>’s <code class="language-plaintext highlighter-rouge">map</code>/<code class="language-plaintext highlighter-rouge">map2</code>/<code class="language-plaintext highlighter-rouge">sum</code>
+for numeric hot loops on that target instead.</li>
+</ul>
+
+<h2 id="see-also">See also</h2>
+
+<ul>
+  <li><a href="/docs/stdlib/NativeArray.html">Standard Library → NativeArray</a>: full API reference.</li>
+  <li><a href="/docs/stdlib/DataFrame.html">Standard Library → DataFrame</a>: columnar data built on <code class="language-plaintext highlighter-rouge">NativeArray</code>.</li>
+  <li><a href="/docs/parallel-collections/">Parallel Collections</a>: parallelizing across cores, a different axis from vectorizing within one core.</li>
+  <li><a href="/docs/value-representation/">Value Representation</a>: how March values are represented at the bit level, including the float-boxing tradeoff mentioned above.</li>
+  <li><a href="/docs/memory-model/">Memory Model</a>: Perceus reference counting and FBIP, the allocation model underneath the register-residency contract above.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

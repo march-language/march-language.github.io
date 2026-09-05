@@ -1,0 +1,2802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Type System — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link active">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="type-system">Type System</h1>
+
+<p>March uses Hindley-Milner type inference with bidirectional checking at function boundaries. You get the convenience of inferred types with the safety of static checking.</p>
+
+<blockquote>
+  <p><strong>New here? Read the first part.</strong> Everything up through <a href="#opaque-types">Opaque Types</a> (ADTs, records, <code class="language-plaintext highlighter-rouge">Option</code>, <code class="language-plaintext highlighter-rouge">Result</code>, tuples, lists) is the everyday type system and all you need to start writing March. The later sections (<a href="#dependent-types">Dependent Types</a>, the safety-tool matrix, and the inference deep-dive) are <strong>advanced; come back to them later</strong>, once the basics feel natural.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="primitive-types">Primitive Types</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Literals</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>64-bit signed integer</td>
+      <td><code class="language-plaintext highlighter-rouge">42</code>, <code class="language-plaintext highlighter-rouge">-7</code>, <code class="language-plaintext highlighter-rouge">0</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Float</code></td>
+      <td>64-bit IEEE 754</td>
+      <td><code class="language-plaintext highlighter-rouge">3.14</code>, <code class="language-plaintext highlighter-rouge">-0.5</code>, <code class="language-plaintext highlighter-rouge">1.0e10</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Boolean</td>
+      <td><code class="language-plaintext highlighter-rouge">true</code>, <code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">String</code></td>
+      <td>UTF-8 string</td>
+      <td><code class="language-plaintext highlighter-rouge">"hello"</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Char</code></td>
+      <td>Unicode scalar value</td>
+      <td>(accessed via String operations)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">()</code></td>
+      <td>Unit (no value)</td>
+      <td><code class="language-plaintext highlighter-rouge">()</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="type-annotations">Type Annotations</h2>
+
+<p>Annotations are optional everywhere except:</p>
+<ul>
+  <li>Recursive functions where inference would loop</li>
+  <li>When you want explicit documentation</li>
+</ul>
+
+<pre><code class="language-march">fn add(x : Int, y : Int) : Int do
+  x + y
+end
+
+-- Equally valid — fully inferred:
+fn add(x, y) do x + y end
+</code></pre>
+
+<p>Parameter and return annotations use <code class="language-plaintext highlighter-rouge">:</code>:</p>
+<pre><code class="language-march">let count : Int = 0
+fn process(data : List(String)) : Option(Int) do ... end
+</code></pre>
+
+<hr />
+
+<h2 id="algebraic-data-types-adts">Algebraic Data Types (ADTs)</h2>
+
+<h3 id="sum-types-variants">Sum Types (Variants)</h3>
+
+<p>Variants declare a type with multiple possible shapes. No leading <code class="language-plaintext highlighter-rouge">|</code> on the first case:</p>
+
+<pre><code class="language-march">type Color = Red | Green | Blue
+
+type Shape =
+  Circle(Float)
+  | Rect(Float, Float)
+  | Triangle(Float, Float, Float)
+</code></pre>
+
+<p>Constructors are capitalized. They can carry zero or more fields:</p>
+
+<pre><code class="language-march">type Expr =
+  Num(Int)
+  | Add(Expr, Expr)
+  | Mul(Expr, Expr)
+  | Neg(Expr)
+</code></pre>
+
+<p>Use constructors by applying them like functions:</p>
+
+<pre><code class="language-march">let c = Circle(3.14)
+let r = Rect(4.0, 6.0)
+let e = Add(Num(1), Mul(Num(2), Num(3)))
+</code></pre>
+
+<h3 id="record-types">Record Types</h3>
+
+<p>Records have named fields:</p>
+
+<pre><code class="language-march">type Point = { x : Float, y : Float }
+type User  = { name : String, age : Int, email : String }
+</code></pre>
+
+<p>Create, access, and update:</p>
+
+<pre><code class="language-march">let p = { x: 1.0, y: 2.0 }
+let moved = { p with x: 5.0 }
+let dist = p.x +. p.y
+</code></pre>
+
+<p>Records and variants can be combined; a variant constructor can carry a record:</p>
+
+<pre><code class="language-march">type Config =
+  Default
+  | Custom({ host : String, port : Int, debug : Bool })
+</code></pre>
+
+<hr />
+
+<h2 id="working-with-records">Working with Records</h2>
+
+<p>Update fields with <code class="language-plaintext highlighter-rouge">{ base with field: value }</code>. This creates a new record; the original is unchanged:</p>
+
+<pre><code class="language-march">let p2 = { p with x: 5.0 }  -- new Point, y unchanged
+let u2 = { u with age: 31 } -- new User, name/email unchanged
+</code></pre>
+
+<p>Records can also be destructured with a record pattern (<code class="language-plaintext highlighter-rouge">{ x, y } -&gt; ...</code> in
+a <code class="language-plaintext highlighter-rouge">match</code>, a <code class="language-plaintext highlighter-rouge">let</code>, or a function parameter). In a <code class="language-plaintext highlighter-rouge">match</code> arm the field list
+is open (<code class="language-plaintext highlighter-rouge">{ x }</code> matches any record with an <code class="language-plaintext highlighter-rouge">x</code> field, whatever else it
+has), while a <code class="language-plaintext highlighter-rouge">let</code> binding or a bare record-pattern function parameter
+still requires naming every field. See
+<a href="/docs/pattern-matching/#record-patterns">Pattern Matching</a> for the syntax,
+punning rules, and why those two positions differ.</p>
+
+<hr />
+
+<h2 id="atoms">Atoms</h2>
+
+<p>An atom is a named constant with a value that is its own name. Atoms are written with a leading colon:</p>
+
+<pre><code class="language-march">:ok
+:error
+:pending
+:one_for_one
+</code></pre>
+
+<p>Atoms are commonly used as tags in supervision strategies, HTTP methods, and
+protocol states: an <code class="language-plaintext highlighter-rouge">Atom</code>-typed value that stores one of a few expected
+names:</p>
+
+<pre><code class="language-march">fn describe(status : Atom) : String do
+  match status do
+    :ok      -&gt; "success"
+    :error   -&gt; "failure"
+    :pending -&gt; "in progress"
+    _        -&gt; "unknown"
+  end
+end
+</code></pre>
+
+<p>All atom literals share the single type <code class="language-plaintext highlighter-rouge">Atom</code>: <code class="language-plaintext highlighter-rouge">:ok</code> and <code class="language-plaintext highlighter-rouge">:oke</code> (a typo)
+both typecheck fine as <code class="language-plaintext highlighter-rouge">Atom</code>, so a misspelled atom is <strong>not</strong> caught at the
+type level (unlike a misspelled ADT constructor, which is a compile error).
+An atom pattern’s type is always the bare, tag-erased <code class="language-plaintext highlighter-rouge">Atom</code>, regardless of
+the atom’s name or payload arity.</p>
+
+<p>The grammar also accepts atoms as variant-constructor names in a <code class="language-plaintext highlighter-rouge">type</code>
+declaration (<code class="language-plaintext highlighter-rouge">type Status = :ok | :error | :pending</code>, parsed the same as
+<code class="language-plaintext highlighter-rouge">:ok(String)</code>-style payload variants), but this does not build a nominal
+sum type the way an <code class="language-plaintext highlighter-rouge">UPPER_IDENT</code>-constructor <code class="language-plaintext highlighter-rouge">type</code> does: a binding
+annotated <code class="language-plaintext highlighter-rouge">: Status</code> cannot be constructed or matched
+with <code class="language-plaintext highlighter-rouge">:ok</code>-style syntax (<code class="language-plaintext highlighter-rouge">expected `Status` but got `Atom`</code>), because
+<code class="language-plaintext highlighter-rouge">:ok</code> in expression/pattern position always denotes the one ambient <code class="language-plaintext highlighter-rouge">Atom</code>
+type, and match exhaustiveness against such a <code class="language-plaintext highlighter-rouge">type</code> declaration is not
+enforced; a <code class="language-plaintext highlighter-rouge">match</code> over an atom value still needs its own <code class="language-plaintext highlighter-rouge">_</code> catch-all
+regardless of what <code class="language-plaintext highlighter-rouge">type</code> declarations exist. Prefer plain ADTs
+(capitalized constructors) when you want an actual closed, exhaustively-
+checked sum type; reserve atoms for open-ended tags as shown above.</p>
+
+<hr />
+
+<h2 id="type-parameters-generics">Type Parameters (Generics)</h2>
+
+<p>Type parameters are lowercase:</p>
+
+<pre><code class="language-march">type Option(a) = None | Some(a)
+type Result(a, e) = Ok(a) | Err(e)
+type Pair(a, b) = Pair(a, b)
+type Tree(a) = Leaf | Node(Tree(a), a, Tree(a))
+</code></pre>
+
+<p>Use the same lowercase letters in function signatures to refer to type parameters:</p>
+
+<pre><code class="language-march">fn identity(x : a) : a do x end
+
+fn map_option(opt : Option(a), f : a -&gt; b) : Option(b) do
+  match opt do
+    None    -&gt; None
+    Some(x) -&gt; Some(f(x))
+  end
+end
+</code></pre>
+
+<p>The compiler infers type parameter instantiations at call sites:</p>
+
+<pre><code class="language-march">map_option(Some(42), fn x -&gt; x * 2)     -- Option(Int)
+map_option(Some("hi"), String.byte_size) -- Option(Int) — there is no `String.length`
+</code></pre>
+
+<hr />
+
+<h2 id="type-aliases">Type Aliases</h2>
+
+<p>Give a type a shorter name:</p>
+
+<pre><code class="language-march">type Name = String
+type Age  = Int
+type DB   = Map(String, List(Int))
+</code></pre>
+
+<p>A type alias expands to its definition, so a value declared as the alias can be
+used where the underlying type is expected, e.g. a <code class="language-plaintext highlighter-rouge">Name</code> flows into a function
+taking a <code class="language-plaintext highlighter-rouge">String</code>. The reverse is not always accepted: passing a bare <code class="language-plaintext highlighter-rouge">String</code>
+where the alias <code class="language-plaintext highlighter-rouge">Name</code> is expected can be rejected, so don’t rely on aliases
+being freely interchangeable in both directions. Use aliases for readability,
+not as a substitute for a distinct wrapper type.</p>
+
+<hr />
+
+<h2 id="optiona">Option(a)</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Option(a)</code> represents a value that may or may not be present:</p>
+
+<pre><code class="language-march">type Option(a) = None | Some(a)
+</code></pre>
+
+<p>Standard pattern:</p>
+
+<pre><code class="language-march">fn safe_head(xs : List(a)) : Option(a) do
+  match xs do
+    Nil        -&gt; None
+    Cons(h, _) -&gt; Some(h)
+  end
+end
+</code></pre>
+
+<p>Stdlib helpers (from prelude, always in scope):</p>
+
+<pre><code class="language-march">unwrap(Some(42))           -- 42 (panics if None)
+unwrap_or(None, 0)         -- 0
+</code></pre>
+
+<p>From <code class="language-plaintext highlighter-rouge">Option</code> module:</p>
+
+<pre><code class="language-march">Option.map(Some(5), fn x -&gt; x + 1)  -- Some(6)
+Option.flat_map(opt, fn x -&gt; ...)   -- flatMap (not `and_then` — no such function)
+Option.unwrap_or_else(opt, fn () -&gt; compute_default())
+Option.is_some(opt)
+Option.is_none(opt)
+</code></pre>
+
+<hr />
+
+<h2 id="resulta-e">Result(a, e)</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Result(a, e)</code> represents either success or failure:</p>
+
+<pre><code class="language-march">type Result(a, e) = Ok(a) | Err(e)
+</code></pre>
+
+<p>Functions that can fail return <code class="language-plaintext highlighter-rouge">Result</code>:</p>
+
+<pre><code class="language-march">fn parse_int(s : String) : Result(Int, String) do
+  -- returns Ok(n) or Err("not a valid integer")
+  Option.to_result(String.to_int(s), "not a valid integer")
+end
+</code></pre>
+
+<p>Chain multiple fallible operations with <code class="language-plaintext highlighter-rouge">let?</code> (propagates <code class="language-plaintext highlighter-rouge">Err</code> automatically):</p>
+
+<pre><code class="language-march">fn run(input : String) : Result(String, String) do
+  let? n    = parse_int(input)
+  let? user = fetch_user(n)
+  Ok(display(user))
+end
+</code></pre>
+
+<p>Use <code class="language-plaintext highlighter-rouge">with</code> when you need custom <code class="language-plaintext highlighter-rouge">else</code> handling or mixed <code class="language-plaintext highlighter-rouge">Option</code>/<code class="language-plaintext highlighter-rouge">Result</code> chains (the <code class="language-plaintext highlighter-rouge">with</code> construct is covered in the Pattern Matching page; it short-circuits on non-matching patterns):</p>
+
+<pre><code class="language-march">with Ok(n)    &lt;- parse_int(input),
+     Ok(user) &lt;- fetch_user(n) do
+  display(user)
+else
+  Err(e) -&gt; println("Error: " ++ e)
+end
+</code></pre>
+
+<p>Stdlib helpers:</p>
+
+<pre><code class="language-march">Result.map(Ok(5), fn x -&gt; x + 1)     -- Ok(6)
+Result.map_err(Err("x"), String.to_uppercase)
+Result.flat_map(res, fn v -&gt; ...)      -- flatMap (not `and_then` — no such function)
+Result.unwrap(Ok(42))                  -- 42
+Result.unwrap_or(Err("e"), 0)          -- 0
+Result.is_ok(res)
+Result.is_err(res)
+</code></pre>
+
+<hr />
+
+<h2 id="the-let-operator">The <code class="language-plaintext highlighter-rouge">let?</code> Operator</h2>
+
+<p><code class="language-plaintext highlighter-rouge">let?</code> is syntactic sugar for unwrapping a <code class="language-plaintext highlighter-rouge">Result</code> and propagating errors automatically. Inside a function that returns <code class="language-plaintext highlighter-rouge">Result</code>, <code class="language-plaintext highlighter-rouge">let?</code> saves you from writing nested <code class="language-plaintext highlighter-rouge">match</code> expressions:</p>
+
+<pre><code class="language-march">fn load_config(path : String) : Result(Config, String) do
+  let? raw = File.read(path)          -- unwrap or propagate Err
+  let? cfg = parse_config(raw)        -- unwrap or propagate Err (your own parser)
+  Ok(cfg)
+end
+</code></pre>
+
+<p>Each <code class="language-plaintext highlighter-rouge">let? x = expr</code> desugars to:</p>
+
+<pre><code class="language-march">match expr do
+  Ok(x)  -&gt; &lt;rest of function&gt;
+  Err(e) -&gt; Err(e)    -- early return, propagating the error
+end
+</code></pre>
+
+<p><strong>There is no postfix <code class="language-plaintext highlighter-rouge">?</code> unwrap operator on arbitrary expressions</strong> (e.g.
+<code class="language-plaintext highlighter-rouge">f()?</code>); only the <code class="language-plaintext highlighter-rouge">let?</code> binding form above exists. A bare <code class="language-plaintext highlighter-rouge">?</code> in expression
+position is a distinct, unrelated feature (a typed hole for
+incomplete-program tooling), not an unwrap shorthand.</p>
+
+<p><code class="language-plaintext highlighter-rouge">let?</code> only works with <code class="language-plaintext highlighter-rouge">Result(a, e)</code>. For <code class="language-plaintext highlighter-rouge">Option(a)</code>, use <code class="language-plaintext highlighter-rouge">match</code> or the
+<code class="language-plaintext highlighter-rouge">with</code> construct (or convert first with <code class="language-plaintext highlighter-rouge">Option.to_result</code>).</p>
+
+<hr />
+
+<h2 id="tuples">Tuples</h2>
+
+<p>Tuples are anonymous ordered products:</p>
+
+<pre><code class="language-march">let pair : (Int, String) = (1, "hello")
+let triple : (Int, Float, Bool) = (1, 2.0, true)
+let unit : () = ()
+</code></pre>
+
+<p>Destructure with <code class="language-plaintext highlighter-rouge">let</code> or pattern matching:</p>
+
+<pre><code class="language-march">let (a, b) = pair
+match triple do
+  (n, f, b) -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="lists">Lists</h2>
+
+<p><code class="language-plaintext highlighter-rouge">List(a)</code> is a singly-linked cons list:</p>
+
+<pre><code class="language-march">type List(a) = Nil | Cons(a, List(a))
+</code></pre>
+
+<p>List literals desugar to <code class="language-plaintext highlighter-rouge">Cons</code> chains:</p>
+
+<pre><code class="language-march">[1, 2, 3]   -- Cons(1, Cons(2, Cons(3, Nil)))
+[]          -- Nil
+</code></pre>
+
+<hr />
+
+<h2 id="function-types">Function Types</h2>
+
+<p>Function types are written with <code class="language-plaintext highlighter-rouge">-&gt;</code>, right-associative:</p>
+
+<pre><code class="language-march">Int -&gt; Bool          -- takes Int, returns Bool
+Int -&gt; Int -&gt; Int    -- curried: takes Int, returns (Int -&gt; Int)
+(Int, Int) -&gt; Int    -- takes a pair
+</code></pre>
+
+<p>Higher-order functions:</p>
+
+<pre><code class="language-march">fn apply(f : Int -&gt; Int, x : Int) : Int do f(x) end
+fn compose(f : b -&gt; c, g : a -&gt; b) : a -&gt; c do
+  fn x -&gt; f(g(x))
+end
+</code></pre>
+
+<hr />
+
+<h2 id="qualified-types">Qualified Types</h2>
+
+<p>Types from modules are accessed with <code class="language-plaintext highlighter-rouge">.</code>:</p>
+
+<pre><code class="language-march">Http.Request(String)  -- Request is generic over its body type
+Http.Method
+</code></pre>
+
+<hr />
+
+<h2 id="dependent-types">Dependent Types</h2>
+
+<p>A <strong>dependent type</strong> is a type that depends on a <em>value</em>, not just on other
+types. March has two flavours, each with different trade-offs.</p>
+
+<h3 id="refinement-types-value-predicates">Refinement Types: value predicates</h3>
+
+<p>A <strong>refinement type</strong> <code class="language-plaintext highlighter-rouge">{T | predicate}</code> constrains what values a type can hold.
+The predicate is checked by an SMT solver (Z3) at compile time, so a whole
+class of bugs (negative sizes, out-of-bounds indices, division by zero) becomes
+a compile error instead of a runtime panic.</p>
+
+<pre><code class="language-march">-- Precondition: callers must pass a positive chunk size
+fn chunks(xs : List(a), size : {Int | _ &gt; 0}) : List(List(a)) do ... end
+
+-- Postcondition: this function promises a non-negative count
+fn count(xs : List(a)) : {Int | _ &gt;= 0} do List.length(xs) end
+
+chunks([1,2,3,4,5], 0)   -- compile error: 0 can never be &gt; 0
+chunks([1,2,3,4,5], 2)   -- ok
+</code></pre>
+
+<p>Checking follows <strong>definite-failure semantics</strong>: a diagnostic is emitted only
+when the predicate can <em>never</em> hold, never for unknown or possibly-valid
+values. This means no false positives, but also no proof obligation: if the
+solver can’t decide, it stays silent.</p>
+
+<pre><code class="language-march">fn f(n : Int) : Int do
+  chunks(data, n)    -- skipped: n could be positive, compiler doesn't know
+end
+</code></pre>
+
+<p>Refinements support <strong>path sensitivity</strong>: a guard you write becomes an
+assumption the solver can use:</p>
+
+<pre><code class="language-march">fn safe_chunks(xs : List(a), n : Int) : List(List(a)) do
+  if n &gt; 0 do
+    chunks(xs, n)    -- ok: the guard established n &gt; 0
+  else
+    [xs]
+  end
+end
+</code></pre>
+
+<p>For predicates over data structures, define a <strong><code class="language-plaintext highlighter-rouge">@[measure]</code></strong>: a total,
+terminating function the solver axiomatises by structure:</p>
+
+<pre><code class="language-march">@[measure]
+fn size(t : Tree(a)) : Int do
+  match t do
+    Leaf          -&gt; 0
+    Node(l, _, r) -&gt; 1 + size(l) + size(r)
+  end
+end
+
+fn get(t : Tree(a), i : {Int | _ &gt;= 0 &amp;&amp; _ &lt; size(t)}) : a do ... end
+</code></pre>
+
+<p>See the <a href="/docs/refinement-types/">Refinement Types guide</a> for the full syntax,
+measure soundness gate, <code class="language-plaintext highlighter-rouge">--no-measure-axioms</code> flag, and limitations.</p>
+
+<h3 id="type-level-naturals-dimension-constraints">Type-Level Naturals: dimension constraints</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Nat</code> in a type parameter threads a <em>compile-time</em> natural number through the
+type, making shape mismatches impossible to express:</p>
+
+<pre><code class="language-march">type Vector(n, a) = Vector(Array(a))
+
+fn zip_vectors(v1 : Vector(n, a), v2 : Vector(n, b)) : Vector(n, (a, b)) do
+  -- the compiler verifies both arguments have the same length n
+  ...
+end
+</code></pre>
+
+<p>Arithmetic on naturals is supported at the type level:</p>
+
+<pre><code class="language-march">type Doubled(n, a) = Array(n * 2, a)
+</code></pre>
+
+<p>This is resolved entirely during type inference; no Z3 involved. It is
+appropriate for <strong>structural shape constraints</strong> (array lengths, matrix
+dimensions) where the relationship is fixed at the call site. Refinements are
+appropriate for <strong>value-range constraints</strong> (non-negative, bounded, non-zero)
+where the relationship is a predicate you want to check against a concrete
+argument.</p>
+
+<h3 id="choosing-between-the-two">Choosing between the two</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Refinement types</th>
+      <th>Type-level naturals</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Constraint kind</td>
+      <td>Value predicates (<code class="language-plaintext highlighter-rouge">&gt;= 0</code>, <code class="language-plaintext highlighter-rouge">!= 0</code>, <code class="language-plaintext highlighter-rouge">&lt; len(xs)</code>)</td>
+      <td>Shape/dimension equality</td>
+    </tr>
+    <tr>
+      <td>Base types</td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Nat</code> (non-negative integer)</td>
+    </tr>
+    <tr>
+      <td>Solver</td>
+      <td>Z3 SMT (optional)</td>
+      <td>Type inference (always)</td>
+    </tr>
+    <tr>
+      <td>False positives</td>
+      <td>None (definite-failure only)</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>HOF / dynamic dispatch</td>
+      <td>Not checked</td>
+      <td>Checked</td>
+    </tr>
+    <tr>
+      <td>Incomplete by design?</td>
+      <td>Yes</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="opaque-types">Opaque Types</h2>
+
+<p>Hide a type’s representation while keeping the name usable in signatures:</p>
+
+<pre><code class="language-march">mod Token do
+  opaque type Token = Token(String)
+
+  fn make(s : String) : Token do Token(s) end
+  fn value(t : Token) : String do
+    match t do Token(s) -&gt; s end
+  end
+end
+</code></pre>
+
+<p>Outside <code class="language-plaintext highlighter-rouge">Token</code>, callers can use <code class="language-plaintext highlighter-rouge">Token</code> as a type but cannot construct or pattern-match it directly, only through the module’s public API.</p>
+
+<p>For completely hidden types, use <code class="language-plaintext highlighter-rouge">ptype</code>:</p>
+
+<pre><code class="language-march">ptype Internal = Foo | Bar(Int)
+-- Both the type name and constructors are private
+</code></pre>
+
+<hr />
+
+<h2 id="operator-reference">Operator Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operator</th>
+      <th>Types</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">+</code> <code class="language-plaintext highlighter-rouge">-</code> <code class="language-plaintext highlighter-rouge">*</code> <code class="language-plaintext highlighter-rouge">/</code></td>
+      <td>any <code class="language-plaintext highlighter-rouge">Num</code> (<code class="language-plaintext highlighter-rouge">Int</code> or <code class="language-plaintext highlighter-rouge">Float</code>)</td>
+      <td>Arithmetic: polymorphic, works on either</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">%</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Integer modulo (monomorphic, <code class="language-plaintext highlighter-rouge">Int</code> only)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">+.</code> <code class="language-plaintext highlighter-rouge">-.</code> <code class="language-plaintext highlighter-rouge">*.</code> <code class="language-plaintext highlighter-rouge">/.</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Float</code></td>
+      <td>Float arithmetic (monomorphic, <code class="language-plaintext highlighter-rouge">Float</code> only)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">==</code> <code class="language-plaintext highlighter-rouge">!=</code></td>
+      <td>any <code class="language-plaintext highlighter-rouge">Eq</code></td>
+      <td>Equality / inequality</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;</code> <code class="language-plaintext highlighter-rouge">&gt;</code> <code class="language-plaintext highlighter-rouge">&lt;=</code> <code class="language-plaintext highlighter-rouge">&gt;=</code></td>
+      <td>any <code class="language-plaintext highlighter-rouge">Ord</code> (<code class="language-plaintext highlighter-rouge">Int</code>, <code class="language-plaintext highlighter-rouge">Float</code>, <code class="language-plaintext highlighter-rouge">String</code>)</td>
+      <td>Ordering</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&amp;&amp;</code> <code class="language-plaintext highlighter-rouge">\|\|</code> <code class="language-plaintext highlighter-rouge">!</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Boolean and / or / not</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">++</code></td>
+      <td><code class="language-plaintext highlighter-rouge">String</code></td>
+      <td>String concatenation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">\|&gt;</code></td>
+      <td>any</td>
+      <td>Pipe: <code class="language-plaintext highlighter-rouge">x \|&gt; f</code> is <code class="language-plaintext highlighter-rouge">f(x)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong><code class="language-plaintext highlighter-rouge">+</code> <code class="language-plaintext highlighter-rouge">-</code> <code class="language-plaintext highlighter-rouge">*</code> <code class="language-plaintext highlighter-rouge">/</code> are <code class="language-plaintext highlighter-rouge">Num</code>-polymorphic: they work on both <code class="language-plaintext highlighter-rouge">Int</code> and <code class="language-plaintext highlighter-rouge">Float</code>
+without a dot suffix.</strong> The dot-suffixed forms (<code class="language-plaintext highlighter-rouge">+.</code> etc.) are the
+<em>monomorphic</em> Float-only versions, useful when you want to pin a type down;
+they reject an <code class="language-plaintext highlighter-rouge">Int</code> operand rather than converting it. <code class="language-plaintext highlighter-rouge">%</code> has no dot form
+and is <code class="language-plaintext highlighter-rouge">Int</code>-only in both directions:</p>
+
+<pre><code class="language-march">let a = 1.5 +. 2.5   -- Float: correct (monomorphic +.)
+let b = 1.5 + 2.5    -- Float: also correct — + is Num-polymorphic, not Int-only
+let c = 1 +. 2       -- type error: +. is Float-only, rejects Int operands
+let d = 1.5 % 2.0     -- type error: % is Int-only, rejects Float operands
+</code></pre>
+
+<p>The pipe operator chains transformations left-to-right:</p>
+
+<pre><code class="language-march">[1, 2, 3, 4, 5]
+  |&gt; List.filter(fn x -&gt; x % 2 == 0)
+  |&gt; List.map(fn x -&gt; x * x)
+  |&gt; List.fold_left(0, fn (acc, x) -&gt; acc + x)
+-- evaluates to 20
+</code></pre>
+
+<hr />
+
+<h2 id="which-safety-tool-for-which-job">Which Safety Tool for Which Job</h2>
+
+<p>March gives you many ways to make illegal states unrepresentable. Choose by <strong>the
+guarantee you want</strong>, not by the feature name. This table is keyed on the
+guarantee:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Guarantee you want</th>
+      <th>Reach for</th>
+      <th>Checked by</th>
+      <th>Granularity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A value stays in a numeric/logical range (<code class="language-plaintext highlighter-rouge">&gt;= 0</code>, <code class="language-plaintext highlighter-rouge">!= 0</code>, <code class="language-plaintext highlighter-rouge">&lt; len</code>)</td>
+      <td>Refinement <code class="language-plaintext highlighter-rouge">{T \| pred}</code></td>
+      <td>SMT solver (Z3), compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A dimension/length matches across values</td>
+      <td>Type-level natural <code class="language-plaintext highlighter-rouge">Vector(n, a)</code></td>
+      <td>Type inference, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A value can only be built through a vetted constructor</td>
+      <td>Smart-constructor / opaque <code class="language-plaintext highlighter-rouge">ptype</code></td>
+      <td>Type checker (private constructor)</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>Validate data with a shape that isn’t known until runtime</td>
+      <td>Runtime validator returning <code class="language-plaintext highlighter-rouge">Result</code></td>
+      <td>Your code, run time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A resource is used the right number of times</td>
+      <td><code class="language-plaintext highlighter-rouge">linear</code> (exactly once) / <code class="language-plaintext highlighter-rouge">affine</code> (at most once)</td>
+      <td>Type checker, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>A resource is used in the right order (open → read → close)</td>
+      <td>Typestate (<code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code>)</td>
+      <td>Type checker, compile time</td>
+      <td>Per value</td>
+    </tr>
+    <tr>
+      <td>Code may only touch resources it was granted</td>
+      <td>Capability <code class="language-plaintext highlighter-rouge">needs</code> / <code class="language-plaintext highlighter-rouge">Cap(X)</code></td>
+      <td>Type checker (transitive), compile time</td>
+      <td>Per module / call</td>
+    </tr>
+    <tr>
+      <td>A two-party conversation follows a protocol</td>
+      <td>Session type <code class="language-plaintext highlighter-rouge">protocol</code> + <code class="language-plaintext highlighter-rouge">Chan</code></td>
+      <td>Type checker, compile time</td>
+      <td>Per channel</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="two-confusable-pairs">Two confusable pairs</h3>
+
+<p><strong>Refinement vs. smart-constructor.</strong> A refinement <code class="language-plaintext highlighter-rouge">{Int | _ &gt; 0}</code> checks a
+<em>predicate the solver can read</em> every time the value flows into a refined
+position; great for arithmetic ranges and bounds. A smart-constructor (<code class="language-plaintext highlighter-rouge">ptype</code>
+with a private constructor) enforces an invariant the solver <em>can’t</em> express
+(<code class="language-plaintext highlighter-rouge">Email</code> is well-formed, <code class="language-plaintext highlighter-rouge">Sanitized</code> has been escaped): the only way to get the
+type is to go through the function that establishes the invariant. Use a
+refinement when the property is arithmetic; use a smart-constructor when it’s
+structural or semantic.</p>
+
+<p><strong>Refinement vs. runtime validator.</strong> They live at different boundaries:
+<strong>refine internals, validate untrusted input at the edge.</strong> A refinement is a
+<em>static</em> contract between functions you control; it disappears at runtime. A
+runtime validator returning <code class="language-plaintext highlighter-rouge">Result</code> is for data crossing a trust boundary (a
+request body, a file, a CLI argument) where you truly don’t know the value
+until it arrives. Validate once at the edge, then carry the proof inward as a
+smart-constructor or a refined type.</p>
+
+<p>See <a href="/docs/safety-by-construction/">Safety by Construction</a> for one function that
+threads capability, typestate, and refinement together.</p>
+
+<hr />
+
+<h2 id="whats-inferred-what-you-must-write">What’s Inferred, What You Must Write</h2>
+
+<p>March’s rule of thumb: <strong>it infers structure (facts it can read off your code)
+and asks you to declare claims (constraints, predicates, and effects it must
+verify against your code).</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>What March does</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Inferred</strong> (you write no annotation)</td>
+      <td>Reconstructed from the code</td>
+      <td>Types of <code class="language-plaintext highlighter-rouge">let</code> locals; lambda parameter types; generic instantiation at call sites</td>
+    </tr>
+    <tr>
+      <td><strong>Optional</strong> (write for docs/clarity)</td>
+      <td>Inferred, but you may pin it</td>
+      <td>Function parameter and return signatures</td>
+    </tr>
+    <tr>
+      <td><strong>NOT inferred</strong> (you declare, compiler verifies)</td>
+      <td>A claim the compiler checks but won’t guess</td>
+      <td>Interface constraints (<code class="language-plaintext highlighter-rouge">when Ord(a)</code>); refinement predicates (<code class="language-plaintext highlighter-rouge">{Int \| _ &gt;= 0}</code>); capabilities (<code class="language-plaintext highlighter-rouge">needs IO.FileRead</code>)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The imbalance is intentional. A <em>fact</em> like “this local is an <code class="language-plaintext highlighter-rouge">Int</code>” the compiler
+can simply read off the expression. A <em>claim</em> like “this argument is always
+positive” or “this module may read files” is a contract you’re asserting: the
+compiler can’t invent the contract for you, but once you state it, it commits you
+(and your callers) to it.</p>
+
+<hr />
+
+<h2 id="what-the-type-system-buys-at-runtime">What the Type System Buys at Runtime</h2>
+
+<p>The static guarantees aren’t just for catching bugs; they let the compiler
+<em>delete</em> runtime apparatus that dynamic languages pay for on every call:</p>
+
+<ul>
+  <li><strong>Whole-program monomorphization → no dynamic dispatch.</strong> Generic code is
+specialized to concrete types, so interface calls become direct calls with no
+vtable lookup. (See <a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Defunctionalization → no heap closures.</strong> Higher-order functions are compiled
+to plain tagged data and a dispatch, so passing a lambda doesn’t allocate a
+closure object on the heap. (See <a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Immutable by default → no write barriers.</strong> Pointer fields are never written
+after construction, so there’s no GC write barrier on the common path. (See
+<a href="/docs/memory-model/">memory model</a>.)</li>
+  <li><strong>Linear / affine → static free.</strong> Values with statically known lifetimes get a
+compiler-inserted <code class="language-plaintext highlighter-rouge">free</code> at last use, with no reference-count bookkeeping at all.
+(See <a href="/docs/memory-model/">memory model</a>.)</li>
+</ul>
+
+<hr />
+
+<h2 id="the-type-hierarchy-at-a-glance">The Type Hierarchy at a Glance</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Types
+├── Primitives: Int, Float, Bool, String, ()
+├── Sum types: type Foo = A | B(T) | ...
+├── Record types: type Foo = { field : T, ... }
+├── Generic types: type Foo(a) = ...
+├── Function types: T -&gt; U
+├── Tuple types: (T, U, V)
+├── Linear/affine: linear T, affine T
+├── Dependent types
+│   ├── Refinement types: {Int | _ &gt;= 0}, {Int | _ != 0}
+│   └── Type-level naturals: Vector(n, a), Matrix(m, n, a)
+└── Stdlib: List(a), Option(a), Result(a,e), Map(k,v), ...
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/pattern-matching/">Pattern Matching</a>: destructuring all these types</li>
+  <li><a href="/docs/linear-types/">Linear Types</a>: ownership and resource safety</li>
+  <li><a href="/docs/refinement-types/">Refinement Types</a>: types that carry a predicate (<code class="language-plaintext highlighter-rouge">{Int | _ &gt;= 0}</code>), checked by an SMT solver</li>
+  <li><a href="/docs/interfaces/">Interfaces</a>: ad-hoc polymorphism with <code class="language-plaintext highlighter-rouge">interface</code>/<code class="language-plaintext highlighter-rouge">impl</code></li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

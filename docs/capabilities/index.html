@@ -1,0 +1,3407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capabilities — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link active">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="capabilities-marchs-effect--capability-system">Capabilities: March’s Effect &amp; Capability System</h1>
+
+<p>March is a <strong>capability-based language</strong>: side effects are <strong>visible in your types</strong>, with zero runtime overhead, enforced at compile time. This guide explains what capabilities are, when to reach for each kind, when to do without them, and how they compose.</p>
+
+<blockquote>
+  <p><strong>A note on the name.</strong> “Effect” here is used in the everyday sense: something
+that touches the outside world, not the academic “effect system” sense. This
+is not Koka, Eff, or OCaml 5’s effect handlers. There are no algebraic
+effects, no effect handlers, no resumable computations, and no user-defined
+custom effects with row-polymorphic inference. What exists is a fixed,
+closed lattice of IO/behavioral capabilities (<code class="language-plaintext highlighter-rouge">IO.Network</code>, <code class="language-plaintext highlighter-rouge">IO.FileWrite</code>,
+<code class="language-plaintext highlighter-rouge">cap pure</code>, …), checked in structural terms by tracing which of them a function’s
+reachable call graph touches. A true per-function effect-row system is
+intentionally <strong>not</strong> built: it would make a <code class="language-plaintext highlighter-rouge">Cap(X)</code> parameter an upper limit
+over everything a function reaches, forcing every caller to thread
+capabilities it does not otherwise need, the opposite of March’s
+module-scoped design. See <a href="#grant">The grant</a>, below.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-problem-they-solve">The problem they solve</h2>
+
+<p>In most languages, a function’s signature tells you what data flows in and out. It states no fact about what the function <em>does to the world</em>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Does this read a file? Call the network? Write to a database?
+# You have to read the implementation to find out.
+</span><span class="k">def</span> <span class="nf">compute_price</span><span class="p">(</span><span class="n">product_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="p">...</span>
+</code></pre></div></div>
+
+<p>That invisibility causes three recurring problems:</p>
+
+<p><strong>Accidental effects.</strong> A function you thought was pure secretly calls a logger, which opens a file, which fails in a read-only sandbox. You find out at runtime.</p>
+
+<p><strong>Unclear contracts.</strong> “Does this library write files at any point?” requires reading all the source. No amount of documentation fully substitutes for a machine-checked declaration.</p>
+
+<p><strong>Audit blind spots.</strong> Answering “which modules talk to the network?” in a large codebase means grepping and hoping, unless the compiler tracks it.</p>
+
+<p>March’s capability system addresses all three. Effects appear in the type, and the compiler traces them through the call graph. An uncovered capability is a hard, build-breaking error, whether <code class="language-plaintext highlighter-rouge">Cap(X)</code> flows through a signature or a function body simply calls an IO builtin directly (the latter was advisory until 2026-08-06). What that does and does not guarantee is stated once, canonically, under <a href="#what-the-compiler-tells-you">“What the compiler tells you”</a> below; the rest of this page just refers back to it. To <em>audit</em> what a dependency or a compiled binary actually possesses, rather than what a module declares, see <a href="/docs/capability-audit/">Capability Audit</a>.</p>
+
+<pre><code class="language-march">mod Price do
+  -- No `needs`, and every parameter here is an ordinary value; no `Cap(X)`
+  -- anywhere in the signature. This module cannot be forced to declare a
+  -- capability it doesn't have, and calling into it can never trigger a
+  -- signature-level cap error.
+  fn compute(base : Float, discount : Float) : Float do
+    base * (1.0 - discount)
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="which-tool-do-i-need">Which tool do I need?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Tool</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Control what external resources a module may touch</td>
+      <td>IO caps (<code class="language-plaintext highlighter-rouge">needs</code> / <code class="language-plaintext highlighter-rouge">Cap(X)</code>)</td>
+    </tr>
+    <tr>
+      <td>Guarantee a function is pure</td>
+      <td>Declare no capability; absence enforces it</td>
+    </tr>
+    <tr>
+      <td>Prove initialization ran before dependent code</td>
+      <td>Proof caps (<code class="language-plaintext highlighter-rouge">proof cap</code>)</td>
+    </tr>
+    <tr>
+      <td>Prove a specific value has been processed</td>
+      <td>Opaque refined type (<code class="language-plaintext highlighter-rouge">ptype</code>)</td>
+    </tr>
+    <tr>
+      <td>Track a resource’s open/closed/consumed lifecycle</td>
+      <td>Typestate (<code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code>)</td>
+    </tr>
+    <tr>
+      <td>Exclude allocation/IO from a realtime callback</td>
+      <td>Specialization tag (<code class="language-plaintext highlighter-rouge">Tagged(X, Realtime)</code>)</td>
+    </tr>
+    <tr>
+      <td>Thread many capabilities without parameter explosion</td>
+      <td>Capability environment record</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="io-capabilities">IO capabilities</h2>
+
+<p>Every module that touches external resources declares <code class="language-plaintext highlighter-rouge">needs</code>:</p>
+
+<pre><code class="language-march">mod Server do
+  needs IO.Network
+
+  fn listen(cap : Cap(IO.Network), port : Int) : () do
+    ...
+  end
+end
+</code></pre>
+
+<p>The compiler enforces this transitively <strong>when the capability flows through a signature</strong>:
+<code class="language-plaintext highlighter-rouge">Server.listen</code> takes <code class="language-plaintext highlighter-rouge">Cap(IO.Network)</code> as a parameter, so any module that <code class="language-plaintext highlighter-rouge">use</code>s
+<code class="language-plaintext highlighter-rouge">Server</code> and calls <code class="language-plaintext highlighter-rouge">listen</code> must itself declare <code class="language-plaintext highlighter-rouge">needs IO.Network</code> (directly or via a
+broader ancestor, e.g. <code class="language-plaintext highlighter-rouge">needs IO</code>), or the build fails with a clear message telling you
+which import requires which cap. For example, a <code class="language-plaintext highlighter-rouge">Caller</code> module <code class="language-plaintext highlighter-rouge">use</code>ing <code class="language-plaintext highlighter-rouge">Server</code> without
+<code class="language-plaintext highlighter-rouge">needs IO.Network</code> gets <code class="language-plaintext highlighter-rouge">module `Caller` imports `Server` which requires
+`Cap(IO.Network)`, but `IO.Network` is not declared in `needs`.</code> (This signature/<code class="language-plaintext highlighter-rouge">use</code>/<code class="language-plaintext highlighter-rouge">extern</code>
+surface is the hard-error side of the line drawn in <a href="#what-the-compiler-tells-you">“What the compiler tells you”</a>.)</p>
+
+<h3 id="propagation-is-demand-driven">Propagation is demand-driven</h3>
+
+<p>You inherit only what you actually reference.
+Importing a module costs you the capabilities of the <em>functions you reference from
+it</em>, not the imported module’s whole set. So importing <code class="language-plaintext highlighter-rouge">List</code> to call <code class="language-plaintext highlighter-rouge">map</code> costs
+no capability, even though <code class="language-plaintext highlighter-rouge">List.pmap</code> spawns tasks; you would only owe <code class="language-plaintext highlighter-rouge">needs IO.Spawn</code>
+if you actually referenced <code class="language-plaintext highlighter-rouge">pmap</code>. The reference set is exact: a function passed as
+a value counts, and a capability a referenced function reaches only through a private
+helper still counts. It is computed per import site, so two modules importing
+the same library can owe different capabilities.</p>
+
+<p>This rule can only require <strong>less</strong> than the older module-granular one, so no
+module that compiles today can start failing because of it. One conservative
+carve-over errs toward requiring more: an import with a target that has not been
+analyzed yet, because the two modules import each other cyclically, falls back
+to the imported module’s whole declared set.</p>
+
+<p><strong>What counts as a capability’s source.</strong> Every declaration form that can hold
+an expression is recorded, not just <code class="language-plaintext highlighter-rouge">fn</code> bodies: <code class="language-plaintext highlighter-rouge">fn</code> signatures and bodies,
+guards, default-argument expressions, actor handlers, <code class="language-plaintext highlighter-rouge">extern</code> blocks,
+module-level <code class="language-plaintext highlighter-rouge">let</code> bindings, interface default methods, and <code class="language-plaintext highlighter-rouge">impl</code> methods. So a
+function that does no impure work beyond reading a module-level <code class="language-plaintext highlighter-rouge">let</code> that
+prints does owe <code class="language-plaintext highlighter-rouge">IO.Console</code>, and so does anything that imports it for that function. Any
+path through an ordinary function or a builtin call is counted as well. (Before
+2026-08-06 the last four forms had no per-function record, which could silently
+drop a capability along a transitive path; see
+<code class="language-plaintext highlighter-rouge">specs/progress/2026-08-06-record-fn-caps-misses-dlet-and-methods.md</code>.)</p>
+
+<h3 id="capability-hierarchy">Capability hierarchy</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(IO)</code> is the root. Sub-capabilities narrow what is allowed:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>IO
+├── IO.Console          — stdout/stderr (println, print)
+├── IO.FileSystem
+│   ├── IO.FileRead     — read files, list directories
+│   └── IO.FileWrite    — write, delete, rename files/dirs
+├── IO.Network
+│   ├── IO.NetConnect   — outbound TCP
+│   │   ├── IO.NetConnect.TLS  — encrypted transport (tls_connect, tls_accept, …)
+│   │   ├── IO.Database †  — database connections (child of NetConnect)
+│   │   └── IO.WebSocket †  — WebSocket connections (child of NetConnect)
+│   └── IO.NetListen    — bind + listen on a port
+├── IO.Process          — env vars, child processes, process exit
+├── IO.Clock            — wall clock, monotonic time
+├── IO.Random           — CSPRNG (random_bytes, uuid_v4)
+├── IO.Signal           — OS-signal watchers (Signal.watch/unwatch/raise)
+├── IO.Spawn            — task spawning (task_spawn, task_spawn_link, …)
+├── IO.Mut              — shared mutable state (Vault tables)
+├── IO.Telemetry †      — telemetry/observability emission
+└── IO.Foreign          — calling unverified C (extern blocks)
+    └── IO.Foreign.Blocking — blocking extern (spawns OS thread)
+</code></pre></div></div>
+
+<p><strong>†  declaration-only</strong>: the compiler accepts the <code class="language-plaintext highlighter-rouge">needs</code> as a surface-contract
+annotation but does not scan for specific builtins behind it (there is no dedicated
+builtin set to attribute to it). It makes the concern visible to callers; it is not
+enforced by a body scan the way the other capabilities are.</p>
+
+<p>Declaring a capability is a compile-time claim. To see it become a <em>runtime</em>
+boundary, a compiled binary actually denying the syscalls a withheld
+capability gates, see <a href="/docs/capability-enforcement/#os-level-enforcement-sandboxing-the-compiled-binary">OS-level enforcement</a>,
+including the <a href="/docs/capability-enforcement/#os-primitives-capability-by-capability">full capability-to-OS-primitive map</a>.</p>
+
+<p>This <code class="language-plaintext highlighter-rouge">IO</code> lattice is closed: every <code class="language-plaintext highlighter-rouge">IO</code>-rooted path in a <code class="language-plaintext highlighter-rouge">needs</code> declaration must appear in it. An unrecognized <code class="language-plaintext highlighter-rouge">IO</code>-rooted path (wrong case, a typo) or a bare leaf standing in for a real capability (<code class="language-plaintext highlighter-rouge">needs Network</code> instead of <code class="language-plaintext highlighter-rouge">needs IO.Network</code>) is a compile-time error with a did-you-mean suggestion, rather than being silently accepted and only surfacing later as a confusing “no function requires it” warning or an unrelated missing-<code class="language-plaintext highlighter-rouge">needs</code> error. Capability roots outside the <code class="language-plaintext highlighter-rouge">IO</code> lattice (e.g. <code class="language-plaintext highlighter-rouge">needs Ffi</code>, a dotted namespace like <code class="language-plaintext highlighter-rouge">needs Db.Migrated</code>, or an FFI extern’s <code class="language-plaintext highlighter-rouge">Cap(LibC)</code>) are intentionally not in this table and stay free-form. The one exception is a <em>bare, single-segment</em> name with a spelling that collides with a real capability’s leaf case-insensitively: <code class="language-plaintext highlighter-rouge">needs Network</code> is rejected in favor of <code class="language-plaintext highlighter-rouge">needs IO.Network</code>, since that’s almost always a real capability written without its <code class="language-plaintext highlighter-rouge">IO.</code> path rather than an actual FFI root. A dotted non-<code class="language-plaintext highlighter-rouge">IO</code> path is never subject to that check, even if its last segment happens to coincide with an <code class="language-plaintext highlighter-rouge">IO</code> capability’s leaf (<code class="language-plaintext highlighter-rouge">needs MyLib.Clock</code>, <code class="language-plaintext highlighter-rouge">needs Vendor.Random</code>): the dot makes it unambiguously its own namespace.</p>
+
+<p>A module that declares <code class="language-plaintext highlighter-rouge">needs IO</code> can pass <code class="language-plaintext highlighter-rouge">Cap(IO)</code> to any function that requires a narrower cap. Use <code class="language-plaintext highlighter-rouge">cap_narrow</code> to produce a sub-capability. It’s free, compile-time only:</p>
+
+<pre><code class="language-march">fn start(cap : Cap(IO)) : () do
+  let net_cap  : Cap(IO.Network)        = cap_narrow(cap)
+  let tls_cap  : Cap(IO.NetConnect.TLS) = cap_narrow(cap)
+  Server.listen(net_cap, 8080)
+end
+</code></pre>
+
+<h3 id="choosing-the-right-level">Choosing the right level</h3>
+
+<p>Use the <strong>narrowest capability that accurately describes what the code actually does</strong>. Narrower declarations make stronger claims; the compiler verifies them.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>What the code does</th>
+      <th>Declare</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No external state, no I/O</td>
+      <td><em>(no <code class="language-plaintext highlighter-rouge">needs</code> line, pure by declaration)</em></td>
+    </tr>
+    <tr>
+      <td>Print to stdout/stderr</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Console</code></td>
+    </tr>
+    <tr>
+      <td>Read files or directories</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileRead</code></td>
+    </tr>
+    <tr>
+      <td>Write, delete, or rename files</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code></td>
+    </tr>
+    <tr>
+      <td>Read <strong>and</strong> write files</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.FileSystem</code></td>
+    </tr>
+    <tr>
+      <td>Outbound TCP</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code></td>
+    </tr>
+    <tr>
+      <td>Outbound HTTPS only, no plaintext TCP</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetConnect.TLS</code></td>
+    </tr>
+    <tr>
+      <td>WebSocket connections only</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.WebSocket</code></td>
+    </tr>
+    <tr>
+      <td>Accept inbound connections</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.NetListen</code></td>
+    </tr>
+    <tr>
+      <td>Vault tables (shared mutable state)</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Mut</code></td>
+    </tr>
+    <tr>
+      <td>Spawn green tasks</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Spawn</code></td>
+    </tr>
+    <tr>
+      <td>Wall clock or sleep</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Clock</code></td>
+    </tr>
+    <tr>
+      <td>Random number generation</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Random</code></td>
+    </tr>
+    <tr>
+      <td>Watch OS signals (<code class="language-plaintext highlighter-rouge">Signal.watch</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Signal</code></td>
+    </tr>
+    <tr>
+      <td>Environment variables, child processes</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Process</code></td>
+    </tr>
+    <tr>
+      <td>Calling C via <code class="language-plaintext highlighter-rouge">extern</code></td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code></td>
+    </tr>
+    <tr>
+      <td>Blocking C calls (OS threads)</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code> + <code class="language-plaintext highlighter-rouge">needs IO.Foreign.Blocking</code></td>
+    </tr>
+    <tr>
+      <td>Application entry point or top-level composition</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>In libraries, prefer narrow caps.</strong> A library that only reads config files should declare <code class="language-plaintext highlighter-rouge">needs IO.FileRead</code>, not <code class="language-plaintext highlighter-rouge">needs IO</code>. Callers can then hand it a read-only view, statically proving it cannot secretly write.</p>
+
+<p><strong>In entry points, <code class="language-plaintext highlighter-rouge">needs IO</code> is fine.</strong> The interesting precision lives in the libraries. Application main modules compose everything; they don’t need to obsess over narrowing.</p>
+
+<h3 id="what-the-compiler-tells-you">What the compiler tells you</h3>
+
+<p>An uncovered capability is a <strong>build-breaking ERROR</strong> (<code class="language-plaintext highlighter-rouge">--check</code> exits 1). Which
+route it takes to being uncovered no longer changes the severity. That changed
+on 2026-08-06; before then a direct builtin call in a function body was only a
+warning.</p>
+
+<p><strong>Signature, transitive <code class="language-plaintext highlighter-rouge">use</code>, or <code class="language-plaintext highlighter-rouge">extern</code>.</strong> If <code class="language-plaintext highlighter-rouge">Cap(X)</code> appears in a
+function/actor/extern parameter, or you <code class="language-plaintext highlighter-rouge">use</code> a module and reference a function
+from it that needs a capability you haven’t declared:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check caller.march   # `use`s a module needing Cap(IO.Network), no `needs IO.Network` of its own
+-- ERROR --
+module `Caller` imports `Server` which requires `Cap(IO.Network)`, but `IO.Network` is not declared in `needs`.
+help: add `needs IO.Network` to the module body.
+$ echo $?
+1
+</code></pre></div></div>
+
+<p>(Note the scope: it is the functions you <em>reference</em> that count, not the
+imported module as a whole. See <a href="#propagation-is-demand-driven">“Propagation is demand-driven”</a>.)</p>
+
+<p><strong>A direct body call to an IO builtin</strong>, with no <code class="language-plaintext highlighter-rouge">Cap(X)</code> anywhere in a
+signature, is now the same severity:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check reader.march   # fn slurp(path) do file_read(path) end — no needs
+-- ERROR -- function bodies in `Reader` call builtins that require `Cap(IO.FileRead)`, but `Reader` declares no matching `needs`.
+hint: add these to the module body —
+        needs IO.FileRead
+$ echo $?
+1
+</code></pre></div></div>
+
+<p>The error includes a machine-applicable fix, so <code class="language-plaintext highlighter-rouge">forge fix</code> will insert the
+<code class="language-plaintext highlighter-rouge">needs</code> line for you. Every offending capability in the module is collapsed
+into <strong>one</strong> diagnostic, not one per call site: a <code class="language-plaintext highlighter-rouge">main</code> that touches four
+undeclared capabilities gets a single error naming all four once, with one
+fix that inserts all four <code class="language-plaintext highlighter-rouge">needs</code> lines at once:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- ERROR -- function bodies in `Main` call builtins that require `Cap(IO.Console)`, `Cap(IO.FileWrite)`, `Cap(IO.Random)`, `Cap(Time.Clock)`, but `Main` declares no matching `needs`.
+hint: add these to the module body —
+        needs IO.Console
+        needs IO.FileWrite
+        needs IO.Random
+        needs Time.Clock
+</code></pre></div></div>
+
+<p>The result is one message rather than four separate errors, each with its own single-line fix and
+its own restatement of the capability that was missing.</p>
+
+<h4 id="what-this-does-and-does-not-guarantee">What this does and does not guarantee</h4>
+
+<p>The error above is easy to over-read, so let’s be precise about what it actually covers:</p>
+
+<ul>
+  <li>It catches a <strong>direct</strong> call to a capability builtin: <code class="language-plaintext highlighter-rouge">file_read(p)</code>.</li>
+  <li>It does <strong>not</strong> catch, on its own, the same operation routed through a stdlib
+wrapper, <code class="language-plaintext highlighter-rouge">File.read(p)</code>. That call is invisible to <em>this</em> check; it is caught
+by the capability upper limit instead, a sound subset of which runs under
+<code class="language-plaintext highlighter-rouge">--check</code> since 2026-08-17, so <code class="language-plaintext highlighter-rouge">--check</code> now exits 1 on the common
+stdlib-mediated case rather than 0.</li>
+  <li>The complete check is the <strong>capability upper limit</strong>, below, which works on
+<strong>emitted code</strong> and therefore cannot be evaded by re-routing through a
+helper. It is on by default, but it runs on the compile path, so <code class="language-plaintext highlighter-rouge">--check</code>
+on its own catches the common stdlib-mediated call as of 2026-08-17 (a subset of
+the upper-limit check now runs under <code class="language-plaintext highlighter-rouge">--check</code>); <code class="language-plaintext highlighter-rouge">--compile</code> remains the complete check.</li>
+</ul>
+
+<p>So <code class="language-plaintext highlighter-rouge">needs</code> is a <strong>mandatory, mechanically-verified manifest</strong> of the builtins a
+module calls directly, not, on its own, proof that a module cannot reach a
+capability. That comes from the upper-limit check, which means it comes from <code class="language-plaintext highlighter-rouge">march
+--compile</code>, not from <code class="language-plaintext highlighter-rouge">--check</code>.</p>
+
+<p>There’s also a distinction hiding in the word “capability” here: this
+check makes you <em>declare</em> what you touch. It does not make anyone <em>grant</em> it.
+<code class="language-plaintext highlighter-rouge">needs</code> is a self-declaration, and any module may write any <code class="language-plaintext highlighter-rouge">needs</code> line. IO
+builtins take no capability argument.</p>
+
+<h4 id="capabilities-are-inferred-from-the-call-graph-not-threaded-through-parameters">Capabilities are inferred from the call graph, not threaded through parameters</h4>
+
+<p>The compiler figures out what a function touches by walking its call graph
+at compile time (the same closure computation Check 4 uses above:
+<code class="language-plaintext highlighter-rouge">caps(f) = own(f) ∪ ⋃ { caps(g) | g ∈ refs(f) }</code>). It doesn’t need the
+capability passed to it as a value to know that. (This is a different
+mechanism from the <a href="#capability-inference-hints">Capability inference hints</a>
+below, which just suggests a missing <code class="language-plaintext highlighter-rouge">needs</code> line. The walk described here
+is the actual check, used everywhere on this page.)</p>
+
+<p>Here’s what that means in practice. <code class="language-plaintext highlighter-rouge">log</code> and <code class="language-plaintext highlighter-rouge">log_error</code> below take no
+<code class="language-plaintext highlighter-rouge">Cap</code> parameter at all, and the write still succeeds. The compiler follows
+the call graph down to <code class="language-plaintext highlighter-rouge">file_write</code> and finds that the <em>module</em> <code class="language-plaintext highlighter-rouge">Logger</code>
+declares <code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code>:</p>
+
+<pre><code class="language-march">mod Logger do
+  needs IO.Console
+  needs IO.FileWrite
+
+  fn log(msg : String) : Unit do
+    let _ = file_write("/var/log/app.log", msg)
+    ()
+  end
+
+  fn log_error(msg : String) : Unit do
+    log("ERROR: " ++ msg)
+  end
+
+  fn main(_console : Cap(IO.Console), _write : Cap(IO.FileWrite)) : Unit do
+    log_error("disk full")
+  end
+end
+</code></pre>
+
+<p>This compiles as-is. Delete <code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code> and it fails. Look at
+<em>how</em> it fails: not a missing-parameter error, but the compiler walking the
+call graph and naming the whole path:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>function bodies in `Logger` call builtins that require `Cap(IO.FileWrite)`, but
+`Logger` declares no matching `needs`.
+...
+reached from `main`: main → log_error → log
+</code></pre></div></div>
+
+<p>If you’ve used an object-capability language, this probably looks wrong.
+In Wyvern, E, or Newspeak’s capability subset, authority exists <em>only</em> as a
+value: a function that never receives the write capability as a parameter
+verifiably cannot write, full stop. There’s no “the module can write” without
+something proving it. <code class="language-plaintext highlighter-rouge">log</code> there would need a signature like
+<code class="language-plaintext highlighter-rouge">log(write : WriteCap, msg : String)</code>, and every caller above it would need
+to hold and forward that same value.</p>
+
+<p>March gives you a different, coarser guarantee: not “this function received
+the authority as data,” but “the compiler checked the module’s entire
+reachable call graph, however many private helpers deep, and none of it
+goes beyond what the module declared.” It’s still a real, mechanically
+checked guarantee (<code class="language-plaintext highlighter-rouge">--check</code> exits 1 on the deleted-<code class="language-plaintext highlighter-rouge">needs</code> version above),
+just a coarser one than “authority is exactly what flows through
+parameters.”</p>
+
+<p>March does still require capabilities to flow as explicit values in one
+place: across module boundaries. Look back at the very first example on
+this page. <code class="language-plaintext highlighter-rouge">Server.listen</code> takes <code class="language-plaintext highlighter-rouge">Cap(IO.Network)</code> as a parameter, so any
+<em>other</em> module that imports <code class="language-plaintext highlighter-rouge">Server</code> and calls <code class="language-plaintext highlighter-rouge">listen</code> has to hold that
+capability itself, or the build fails naming the missing <code class="language-plaintext highlighter-rouge">needs</code> (Check 4,
+above). Inside a single module, no rule forces that: <code class="language-plaintext highlighter-rouge">needs</code> already covers
+everything the module can reach. Cross a module boundary, though, and a
+<code class="language-plaintext highlighter-rouge">Cap(X)</code> parameter behaves exactly like it would in an object-capability
+language: authority only gets in if it’s passed in.</p>
+
+<h3 id="cap-strict">The capability upper limit: on by default</h3>
+
+<p><code class="language-plaintext highlighter-rouge">needs</code> is an upper limit as well as a floor: the build fails if <strong>any</strong> module’s
+emitted code uses a capability that module did not declare. This is the
+default as of 2026-08-07; <code class="language-plaintext highlighter-rouge">--no-cap-strict</code> opts out, and <code class="language-plaintext highlighter-rouge">--cap-strict</code> is
+still accepted if you would rather say it explicitly.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --compile -o app app.march
+-- CAPABILITY CEILING --
+module `HostileDep` uses `IO.FileRead` but does not declare `needs IO.FileRead`
+
+1 capability ceiling violation(s). Every module's emitted code must stay
+within its own `needs`.
+Add the missing `needs` line to the module named above, or pass
+`--no-cap-strict` to build without this check.
+</code></pre></div></div>
+
+<p>Three things make it stronger than the warnings above.</p>
+
+<p><strong>It covers every route to a capability.</strong> The check runs against the code the
+compiler is about to emit, not the surface syntax, so a direct builtin call, a
+call through a stdlib wrapper like <code class="language-plaintext highlighter-rouge">File.write</code>, and a builtin given out as a
+value all collapse into the same rule. Re-routing a call through a helper does
+not evade it.</p>
+
+<p><strong>It applies per module, including dependencies that never opted in.</strong> March
+dependencies ship as source, so the check runs on your build of their code. A
+dependency declaring only <code class="language-plaintext highlighter-rouge">needs IO.Console</code> with a helper that reads <code class="language-plaintext highlighter-rouge">/etc/passwd</code>
+fails your build. You do not need the publisher’s cooperation.</p>
+
+<p><strong>It fails closed.</strong> A capability the compiler cannot attribute to any module,
+reached only through an indirect call, is reported as a violation rather than
+passed, because that is exactly the route an attacker would use.</p>
+
+<p>Because attribution charges a stdlib-mediated call to the <em>calling</em> module, the
+standard library’s own declarations are not involved: the module that called
+<code class="language-plaintext highlighter-rouge">File.write</code> is the one required to declare <code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code>.</p>
+
+<p>It is strict, and turning it on by default is a breaking change for code
+written before it: a module that reaches a capability through the stdlib now
+has to say so, <code class="language-plaintext highlighter-rouge">needs IO.Console</code> most commonly. The compiler names the module
+and the capability, so each fix is one line. <code class="language-plaintext highlighter-rouge">--no-cap-strict</code> unblocks a build
+you do not want to migrate yet.</p>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Foreign</code> is excluded: <code class="language-plaintext highlighter-rouge">extern</code> blocks are already an error when undeclared,
+and what linked C code does is outside the capability model entirely.</p>
+
+<p>To re-check the same upper limit on a binary you did not build, see
+<a href="/docs/capability-audit/#auditing-a-compiled-binary"><code class="language-plaintext highlighter-rouge">forge cap inspect --strict</code></a>.</p>
+
+<h3 id="grant">The grant: <code class="language-plaintext highlighter-rouge">main</code>’s parameter bounds the whole program</h3>
+
+<p>Everything above verifies the <em>manifest</em>: <code class="language-plaintext highlighter-rouge">needs</code> must be present and truthful,
+end to end. None of it stops anything. A module that declares
+<code class="language-plaintext highlighter-rouge">needs IO.Network</code> and exfiltrates passes every check, because the declaration
+is true. The grant is the point where March enforces a <strong>no</strong>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">main</code>’s capability parameter is the program’s grant, and the program’s whole
+transitive capability closure must sit under it:</p>
+
+<pre><code class="language-march">mod Report do
+  needs IO.Console
+
+  fn main(cap : Cap(IO.Console)) : () do
+    println("report done")
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(IO.Console)</code> here is a machine-checked claim: this program, every helper,
+every stdlib call, every dependency <code class="language-plaintext highlighter-rouge">main</code> reaches, touches no resource beyond the
+console. Add a <code class="language-plaintext highlighter-rouge">save</code> helper that calls <code class="language-plaintext highlighter-rouge">file_write</code> anywhere in that closure
+and the build fails, naming the chain from <code class="language-plaintext highlighter-rouge">main</code> down to the frame that
+actually possesses the capability:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`main` is granted `Cap(IO.Console)`, but the program reaches `IO.FileWrite`
+(reached from `main`: main → save). The grant is a ceiling on the WHOLE program:
+declaring `needs IO.FileWrite` does not raise it.
+help: add a `Cap(IO.FileWrite)` parameter to `main` (e.g.
+`fn main(…, _cap_filewrite : Cap(IO.FileWrite))`), or widen the whole grant to
+`Cap(IO)`, or remove the use.
+</code></pre></div></div>
+
+<p>The help names the <strong>precise</strong> capability to add as a parameter before the
+broad <code class="language-plaintext highlighter-rouge">Cap(IO)</code> escape hatch: least privilege is the default the diagnostic
+steers you toward, not the widest grant.</p>
+
+<p><strong>Actors are inside the grant.</strong> A message handler’s body counts against
+<code class="language-plaintext highlighter-rouge">main</code>’s grant exactly like any other reachable code: an actor with a handler that
+calls <code class="language-plaintext highlighter-rouge">file_write</code> is charged the moment the program <code class="language-plaintext highlighter-rouge">spawn</code>s it, so a program
+granted only <code class="language-plaintext highlighter-rouge">Cap(IO.Console)</code> cannot smuggle a file write into a handler. An
+actor that is <em>defined but never spawned</em> costs no capability, the same
+dead-code-is-free rule the rest of the grant follows.</p>
+
+<p>Three signatures, three meanings:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><code class="language-plaintext highlighter-rouge">main</code> signature</th>
+      <th>grant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">fn main()</code></td>
+      <td><strong>empty</strong>: a build error the moment the program’s closure reaches any capability; only a program that truly touches no IO compiles with it</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">fn main(cap : Cap(IO))</code></td>
+      <td>full IO, the established entry-point convention</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">fn main(cap : Cap(IO.Console))</code></td>
+      <td>narrow: the closure must sit under it</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">fn main(a : Cap(IO.Console), b : Cap(IO.Spawn))</code></td>
+      <td>union of the parameters, for when the program needs two narrow grants without widening to <code class="language-plaintext highlighter-rouge">Cap(IO)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A parameterless <code class="language-plaintext highlighter-rouge">main</code> used to be ambient: any pre-grant program kept
+compiling under it. As of the grant shipping, it means the opposite.
+<code class="language-plaintext highlighter-rouge">fn main() : () do file_write(...) end</code> is a compile error naming the exact
+grant to add (<code class="language-plaintext highlighter-rouge">`main` performs IO but declares no grant. The program
+reaches `IO.FileWrite`...</code>), and <code class="language-plaintext highlighter-rouge">forge fix</code> writes the missing parameter
+for you.</p>
+
+<p>Two intentional edges:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">IO.Foreign</code> cannot sit under a narrow grant.</strong> What linked C code does is
+invisible to the capability lattice, so a program with a closure that reaches an
+<code class="language-plaintext highlighter-rouge">extern</code> block is not accepted under any grant narrower than <code class="language-plaintext highlighter-rouge">Cap(IO)</code>. The
+check will not certify a bound it cannot see.</li>
+  <li><strong>The grant bounds what <code class="language-plaintext highlighter-rouge">main</code> reaches, not what the file contains.</strong> Dead
+code costs no capability, the same reachability the upper limit uses. (Its <code class="language-plaintext highlighter-rouge">needs</code>
+line is still required; the manifest checks are unchanged and orthogonal.)</li>
+</ul>
+
+<p>The grant is <code class="language-plaintext highlighter-rouge">needs</code>’ missing complement: <code class="language-plaintext highlighter-rouge">needs</code> states what a <em>module</em>
+touches, and the grant bounds what the <em>program</em> may. Sandbox ladder stages A/B/D
+are shipped (<code class="language-plaintext highlighter-rouge">specs/2026-08-08-r1-no-ambient-io-design.md</code>). Per-function
+grants (effect rows) are stage C and intentionally <strong>not</strong> built: making a
+<code class="language-plaintext highlighter-rouge">Cap(X)</code> parameter an upper limit over everything a function reaches would force
+every caller to thread capabilities it does not otherwise need, which is the
+opposite of March’s module-scoped design. A <code class="language-plaintext highlighter-rouge">Cap(X)</code> parameter is an authority
+marker at a module boundary; the <em>checks</em> are <code class="language-plaintext highlighter-rouge">needs</code>, the module upper limit, and
+<code class="language-plaintext highlighter-rouge">main</code>’s grant.</p>
+
+<h3 id="when-not-to-use-io-capabilities">When <em>not</em> to use IO capabilities</h3>
+
+<p><strong>Pure functions need no declaration.</strong> If a function hashes a string, parses JSON, sorts a list, or formats a number, write no <code class="language-plaintext highlighter-rouge">needs</code>. Since 2026-08-06 the absence of <code class="language-plaintext highlighter-rouge">needs</code> is machine-verified for direct builtin calls as well as the signature/<code class="language-plaintext highlighter-rouge">use</code>/<code class="language-plaintext highlighter-rouge">extern</code> surface. A module calling an IO builtin in a body without declaring it is rejected, not warned. The one route still outside that check is a stdlib-mediated call; see <a href="#what-the-compiler-tells-you">“What the compiler tells you”</a>.</p>
+
+<p><strong>Don’t over-narrow to look principled.</strong> Declaring <code class="language-plaintext highlighter-rouge">needs IO.FileRead</code> when your function also writes is a lie the compiler will catch. If a function reads and writes, <code class="language-plaintext highlighter-rouge">needs IO.FileSystem</code> is correct even if it feels “less precise.” Accurate beats narrow-but-wrong.</p>
+
+<p><strong>Don’t use IO caps for pure domain concepts.</strong> A function that validates an email address or checks a constraint has no business with capabilities. Capabilities exist for external state, not for logic.</p>
+
+<p><strong>Don’t use capabilities for per-value guarantees.</strong> <code class="language-plaintext highlighter-rouge">Cap(IO.FileRead)</code> proves a module is <em>allowed</em> to read files; it states no fact about whether a specific string value came from a trusted source. For per-value guarantees, use an opaque refined type.</p>
+
+<p><strong>Small scripts: just use <code class="language-plaintext highlighter-rouge">needs IO</code>.</strong> For a 50-line script you’ll run once, fine-grained capability declarations add more friction than value. Use <code class="language-plaintext highlighter-rouge">needs IO</code> at the top and move on. The value of narrow caps emerges in larger codebases with multiple contributors over time.</p>
+
+<hr />
+
+<h2 id="specific-io-capabilities">Specific IO capabilities</h2>
+
+<h3 id="iomut-shared-mutable-state">IO.Mut: shared mutable state</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Mut</code> covers Vault tables, process-global shared mutable hash maps. A module with no <code class="language-plaintext highlighter-rouge">needs IO.Mut</code> is statically proven never to touch shared mutable state:</p>
+
+<pre><code class="language-march">mod Cache do
+  needs IO.Mut
+
+  fn store(key : String, val : Int) : () do
+    let tbl = Vault.new("app_cache")
+    Vault.set(tbl, key, val)
+  end
+end
+</code></pre>
+
+<p>This is especially useful for library code that should have no hidden state.</p>
+
+<p><strong>Reads need no capability.</strong> A Vault table is in-memory: no part of what a <code class="language-plaintext highlighter-rouge">Vault.get</code>/<code class="language-plaintext highlighter-rouge">Vault.size</code>/<code class="language-plaintext highlighter-rouge">Vault.keys</code> lookup does escapes the process, so it exercises no ambient authority and needs no <code class="language-plaintext highlighter-rouge">needs IO.Mut</code>. What IS authority is turning a NAME into a table handle (<code class="language-plaintext highlighter-rouge">Vault.new</code>/<code class="language-plaintext highlighter-rouge">Vault.whereis</code>, the <code class="language-plaintext highlighter-rouge">File.open(path)</code> shape) and mutating state other actors observe (<code class="language-plaintext highlighter-rouge">Vault.set</code>, <code class="language-plaintext highlighter-rouge">Vault.set_ttl</code>, <code class="language-plaintext highlighter-rouge">Vault.drop</code>, <code class="language-plaintext highlighter-rouge">Vault.update</code>); those keep <code class="language-plaintext highlighter-rouge">needs IO.Mut</code>. Accepted trade-off: a read of shared mutable state is non-deterministic (it observes another actor’s writes), so <code class="language-plaintext highlighter-rouge">needs</code> no longer signals “this function is not pure” for a reader. Authority stays auditable at the boundary, since some module still had to name the table and declare the capability to create or write it.</p>
+
+<h3 id="ionetconnecttls-encrypted-transport-only">IO.NetConnect.TLS: encrypted transport only</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.NetConnect.TLS</code> is a child of <code class="language-plaintext highlighter-rouge">IO.NetConnect</code>. Declaring it (without <code class="language-plaintext highlighter-rouge">IO.NetConnect</code>) proves the module uses <em>only</em> encrypted connections, no plaintext TCP. Declaring <code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code> covers both.</p>
+
+<pre><code class="language-march">mod HttpsClient do
+  needs IO.NetConnect.TLS  -- plaintext TCP is statically excluded
+
+  fn fetch(fd, h, host) do
+    tls_connect(fd, h, host)
+  end
+end
+</code></pre>
+
+<h3 id="iotelemetry-observability-annotation">IO.Telemetry: observability annotation</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Telemetry</code> is declaration-only: the compiler accepts it as a semantic annotation but does not scan for specific builtins. Use it to make telemetry visible in a module’s surface contract so callers know this module emits observability data:</p>
+
+<pre><code class="language-march">mod Metrics do
+  needs IO.Telemetry
+
+  fn record_request(duration : Int) : () do
+    ...
+  end
+end
+</code></pre>
+
+<h3 id="ioforeign--calling-unverified-c">IO.Foreign: calling unverified C</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IO.Foreign</code> is a meta-capability triggered by the <strong>presence of an <code class="language-plaintext highlighter-rouge">extern</code> block</strong>, not by any specific builtin call. C code bypasses every March type guarantee, so the compiler requires you to acknowledge this explicitly.</p>
+
+<pre><code class="language-march">mod Bindings do
+  needs IO.Foreign
+  needs IO.FileSystem  -- the specific cap the C code uses
+
+  extern "libc": Cap(IO.FileSystem) do
+    fn read(fd : Int, buf : String, n : Int) : Int
+  end
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">blocking</code> modifier spawns an OS thread. Declare both caps when any extern function is blocking:</p>
+
+<pre><code class="language-march">mod Bindings do
+  needs IO.Foreign
+  needs IO.Foreign.Blocking
+  needs IO.FileSystem
+
+  extern "libc": Cap(IO.FileSystem) do
+    blocking fn slow_read(fd : Int) : Int
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">needs IO.Foreign</code> on its own subsumes <code class="language-plaintext highlighter-rouge">IO.Foreign.Blocking</code> (parent covers child), so one declaration suppresses both warnings if you prefer coarser annotations.</p>
+
+<hr />
+
+<h2 id="behavioral-module-caps-cap-no_panic-cap-no_alloc-cap-no_extern-cap-pure-cap-deterministic">Behavioral module caps: <code class="language-plaintext highlighter-rouge">cap no_panic</code>, <code class="language-plaintext highlighter-rouge">cap no_alloc</code>, <code class="language-plaintext highlighter-rouge">cap no_extern</code>, <code class="language-plaintext highlighter-rouge">cap pure</code>, <code class="language-plaintext highlighter-rouge">cap deterministic</code></h2>
+
+<p>Beyond IO permission caps and proof caps, March has five <em>behavioral</em> capability declarations that trigger static analysis passes rather than IO-permission accounting. They share only the <code class="language-plaintext highlighter-rouge">cap</code> keyword with <code class="language-plaintext highlighter-rouge">needs</code>/<code class="language-plaintext highlighter-rouge">Cap(X)</code>. A module can declare <code class="language-plaintext highlighter-rouge">cap no_panic</code> and separately declare <code class="language-plaintext highlighter-rouge">needs IO.Network</code>, and the two mechanisms never interact. Each lives as a bare <code class="language-plaintext highlighter-rouge">cap &lt;name&gt;</code> statement in the module body.</p>
+
+<h3 id="cap-no_panic-guaranteed-panic-free"><code class="language-plaintext highlighter-rouge">cap no_panic</code>: guaranteed panic-free</h3>
+
+<pre><code class="language-march">mod SafeMath do
+  cap no_panic
+
+  fn divide(a : {v : Int | v &gt;= 0}, d : {v : Int | v &gt; 0}) : Int do
+    a / d
+  end
+end
+</code></pre>
+
+<p>A module with <code class="language-plaintext highlighter-rouge">cap no_panic</code> must not contain any expression that can panic at runtime. Three checks enforce that, covering three different ways code panics: an unsafe call, an unsafe division, and an unhandled <code class="language-plaintext highlighter-rouge">match</code> case.</p>
+
+<p><strong>1. Unsafe calls.</strong> Some functions can panic: <code class="language-plaintext highlighter-rouge">panic</code> itself, <code class="language-plaintext highlighter-rouge">List.tail</code> on an empty list, <code class="language-plaintext highlighter-rouge">Option.unwrap</code> on <code class="language-plaintext highlighter-rouge">None</code>. The compiler splits these into two groups:</p>
+
+<ul>
+  <li><strong>Always banned, no way around it</strong>: <code class="language-plaintext highlighter-rouge">panic</code>/<code class="language-plaintext highlighter-rouge">panic_</code>/<code class="language-plaintext highlighter-rouge">todo_</code>/<code class="language-plaintext highlighter-rouge">unreachable_</code>, and <code class="language-plaintext highlighter-rouge">Array.get</code>/<code class="language-plaintext highlighter-rouge">Array.set</code>/<code class="language-plaintext highlighter-rouge">Array.pop</code>. No code you write can make these safe, so <code class="language-plaintext highlighter-rouge">cap no_panic</code> simply forbids calling them, directly or through a local helper that calls them (a helper that panics makes every one of its own callers unsafe too, and each gets its own error).</li>
+  <li>
+    <p><strong>Allowed if you prove it’s safe</strong>: partial functions that come with a refinement precondition, such as <code class="language-plaintext highlighter-rouge">List.nth</code>, <code class="language-plaintext highlighter-rouge">List.tail</code>, <code class="language-plaintext highlighter-rouge">List.head</code>, <code class="language-plaintext highlighter-rouge">Option.unwrap</code>, <code class="language-plaintext highlighter-rouge">Result.unwrap</code>, <code class="language-plaintext highlighter-rouge">Random.choice_weighted</code>, and <code class="language-plaintext highlighter-rouge">Stats.percentile</code>. Guard the call with something that proves the precondition, and it’s accepted:</p>
+
+    <pre><code class="language-march">mod Safe do
+  cap no_panic
+  -- Accepted: the guard proves `len(xs) &gt; 0`, which is List.tail's contract.
+  fn rest(xs : List(Int)) : List(Int) do
+    if List.length(xs) &gt; 0 do List.tail(xs) else xs end
+  end
+end
+</code></pre>
+
+    <p>This reuses the same proof the refinement checker produces elsewhere; it doesn’t derive anything a second time. Only a full proof counts: an unproven guard, a skipped check, or an <code class="language-plaintext highlighter-rouge">@[trusted]</code> assertion all still produce the panic error. (<code class="language-plaintext highlighter-rouge">@[trusted]</code> in particular is intentional. A capability with “guaranteed no panics” as its whole point can’t accept, with no visible sign, an unchecked assertion as if it were a proof.)</p>
+
+    <p><strong>Not every panic on a guarded function is covered.</strong> The precondition only expresses what the <em>type system</em> can see, usually “the list isn’t empty.” <code class="language-plaintext highlighter-rouge">Random.choice_weighted</code> also panics if every weight is zero or any weight is negative, but that depends on the actual <code class="language-plaintext highlighter-rouge">Float</code> values in the list, not its length, so no refinement can rule it out. A <code class="language-plaintext highlighter-rouge">cap no_panic</code> module that calls it with a proven-non-empty, all-zero-weight list compiles clean and still panics at runtime. <code class="language-plaintext highlighter-rouge">Stats.correlation</code> and <code class="language-plaintext highlighter-rouge">Stats.linear_regression</code> have the same gap: their length preconditions are checked, but a zero-variance input still panics. If you’re relying on <code class="language-plaintext highlighter-rouge">cap no_panic</code> for one of these functions, know which panic you’re actually protected from.</p>
+
+    <p>One tooling caveat: <code class="language-plaintext highlighter-rouge">march check</code> and the editor/LSP are more conservative than <code class="language-plaintext highlighter-rouge">march --compile</code>/<code class="language-plaintext highlighter-rouge">march --check</code> here, since they don’t run the same proof infrastructure. For these guarded functions they fall back to banning them by name rather than checking your proof (except inside a nested <code class="language-plaintext highlighter-rouge">mod</code>, where the LSP does check). A guarded <code class="language-plaintext highlighter-rouge">List.tail</code> can compile clean under <code class="language-plaintext highlighter-rouge">march --check</code> while <code class="language-plaintext highlighter-rouge">march check</code> still reports it, or your editor still underlines it. Trust <code class="language-plaintext highlighter-rouge">march --check</code> for the real answer.</p>
+  </li>
+</ul>
+
+<p><strong>2. Unsafe division.</strong> Every integer division needs its divisor proven non-zero, via the Z3 SMT solver for anything non-obvious. A divisor is discharged by a literal, by an enclosing <code class="language-plaintext highlighter-rouge">if</code>/<code class="language-plaintext highlighter-rouge">when</code> guard (read through <code class="language-plaintext highlighter-rouge">&amp;&amp;</code>/<code class="language-plaintext highlighter-rouge">||</code>/<code class="language-plaintext highlighter-rouge">not</code>, on either branch), or by an <code class="language-plaintext highlighter-rouge">Int</code> refinement on the parameter it came from; anything the solver can’t settle is a conservative error. The exact guard semantics, how conjunctive and disjunctive facts discharge, let-bound divisors, and rebinding, are in <a href="/docs/refinement-types/#cap-no_panic--divisions-that-cant-panic">Refinement Types → <code class="language-plaintext highlighter-rouge">cap no_panic</code></a>. If Z3 itself is unavailable, the check stays conservative rather than skipping: an unverified division is still an error.</p>
+
+<p>Use <code class="language-plaintext highlighter-rouge">Math.checked_div</code> / <code class="language-plaintext highlighter-rouge">Math.checked_mod</code> when you can’t prove the divisor is non-zero statically. They return <code class="language-plaintext highlighter-rouge">Option(Int)</code> instead of panicking.</p>
+
+<p><strong>3. Non-exhaustive <code class="language-plaintext highlighter-rouge">match</code>.</strong> In an ordinary module, a <code class="language-plaintext highlighter-rouge">match</code> that doesn’t cover every constructor is a warning; the build still succeeds. Under <code class="language-plaintext highlighter-rouge">cap no_panic</code> it’s an error: an uncovered case is a runtime panic waiting to happen (“no matching clause”), and excluding that is exactly what the capability promises.</p>
+
+<h3 id="cap-no_alloc-no-heap-allocation"><code class="language-plaintext highlighter-rouge">cap no_alloc</code>: no heap allocation</h3>
+
+<pre><code class="language-march">mod RealTimeDSP do
+  cap no_alloc
+
+  fn mix(a : Float, b : Float, gain : Float) : Float do
+    (a + b) * gain
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">cap no_alloc</code> walks every function body and flags heap-allocating expressions:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Allocating expression</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ETuple</code> with ≥1 items</td>
+      <td>tuple construction allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ERecord</code></td>
+      <td>record construction allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ECon</code> with ≥1 args (e.g. <code class="language-plaintext highlighter-rouge">Some(x)</code>)</td>
+      <td>boxed constructor allocates</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ELam</code></td>
+      <td>lambda/closure allocates</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Nullary constructors (<code class="language-plaintext highlighter-rouge">None</code>, <code class="language-plaintext highlighter-rouge">True</code>, <code class="language-plaintext highlighter-rouge">False</code>, custom zero-arg tags) and unit <code class="language-plaintext highlighter-rouge">()</code> are safe. They compile to immediate integer tags with no heap allocation.</p>
+
+<p>The check recurses into sub-expressions inside <code class="language-plaintext highlighter-rouge">if</code>, <code class="language-plaintext highlighter-rouge">match</code>, <code class="language-plaintext highlighter-rouge">let</code>, blocks, etc.</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">cap no_alloc</code> and <code class="language-plaintext highlighter-rouge">@[no_alloc]</code> are different checks.</strong> <code class="language-plaintext highlighter-rouge">cap no_alloc</code> is
+syntactic and pre-optimisation: it walks the source of every function in the
+module and rejects the constructs in the table above, in every mode including
+the interpreter. The <code class="language-plaintext highlighter-rouge">@[no_alloc]</code> attribute (see
+<a href="surface-syntax.md">surface syntax</a>) is a per-function <em>contract</em> checked on
+the compiled program, after Perceus reference counting and escape analysis, so
+a constructor the compiler reuses in place and a value it promotes to the stack
+both pass. It is also transitive: everything the function calls must be
+allocation-free too. Use the cap when the question is “does this source
+construct heap values”; use the contract when the question is “does the
+compiled binary allocate”. The two are not unified yet — the contract has no
+answer under the interpreter, where no TIR exists (see
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-03-unify-cap-no-alloc-with-contract.md</code>).</p>
+
+<h3 id="cap-no_extern-no-foreign-calls"><code class="language-plaintext highlighter-rouge">cap no_extern</code>: no foreign calls</h3>
+
+<pre><code class="language-march">mod NoFFIService do
+  cap no_extern
+  needs IO.Network
+
+  fn ping(_cap : Cap(IO.Network), host : String) : Int do
+    string_length(host)
+  end
+end
+</code></pre>
+
+<p>A module with <code class="language-plaintext highlighter-rouge">cap no_extern</code> may not contain an <code class="language-plaintext highlighter-rouge">extern</code> block and may not declare <code class="language-plaintext highlighter-rouge">needs IO.Foreign</code>. Either one is an immediate error. Useful for a module that must stay pure C-free code, e.g. because it needs to run somewhere <code class="language-plaintext highlighter-rouge">extern</code>’s FFI trust boundary isn’t available.</p>
+
+<h3 id="cap-pure-no-side-effects-at-all"><code class="language-plaintext highlighter-rouge">cap pure</code>: no side effects at all</h3>
+
+<pre><code class="language-march">mod PureMath do
+  cap pure
+
+  fn add(a : Int, b : Int) : Int do
+    a + b
+  end
+end
+</code></pre>
+
+<p>A module with <code class="language-plaintext highlighter-rouge">cap pure</code> bans every call to a builtin that performs any side effect: file IO, network IO, spawning, sending, vault access, console output, randomness, the clock, as well as <code class="language-plaintext highlighter-rouge">spawn</code>/<code class="language-plaintext highlighter-rouge">send</code>/<code class="language-plaintext highlighter-rouge">exit</code>. The banned set is derived from the same authoritative builtin-to-capability table (<code class="language-plaintext highlighter-rouge">builtin_cap_table</code>) the ordinary IO-cap body-scan check consults, so it stays in sync with the real builtin surface. A module declaring <code class="language-plaintext highlighter-rouge">cap pure</code> and calling <code class="language-plaintext highlighter-rouge">file_write</code> is rejected:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check leaky_pure.march   # cap pure; fn write(...) : Result(Unit, String) do file_write(path, contents) end
+-- ERROR -- `write` in `mod LeakyPure` (declared `cap pure`) calls `file_write`, which has side effects.
+$ echo $?
+1
+</code></pre></div></div>
+
+<h3 id="cap-deterministic-no-clock-no-randomness"><code class="language-plaintext highlighter-rouge">cap deterministic</code>: no clock, no randomness</h3>
+
+<pre><code class="language-march">mod DeterministicSim do
+  cap deterministic
+
+  fn checksum(bytes : String) : Int do
+    string_length(bytes)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">cap deterministic</code> is <strong>strictly weaker than <code class="language-plaintext highlighter-rouge">cap pure</code></strong>: it bans only the two nondeterminism sources, wall-clock/monotonic-clock reads and random-number generation, so a <code class="language-plaintext highlighter-rouge">cap deterministic</code> module may still perform ordinary IO such as <code class="language-plaintext highlighter-rouge">file_read</code>, as long as it never touches the clock or an RNG:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ march --check clock_leak.march   # cap deterministic; calls unix_time_ms(())
+-- ERROR -- `now` in `mod DetLeak` (declared `cap deterministic`) calls `unix_time_ms`, which is non-deterministic.
+$ echo $?
+1
+</code></pre></div></div>
+
+<h3 id="choosing-among-the-five">Choosing among the five</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>I want to…</th>
+      <th>Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prove no integer division can panic, and rule out non-exhaustive matches</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> + Int refinements on divisor params</td>
+    </tr>
+    <tr>
+      <td>Guarantee safe use in a realtime audio callback</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_alloc</code> (+ <code class="language-plaintext highlighter-rouge">Tagged(DSP, Realtime)</code> for the calling site)</td>
+    </tr>
+    <tr>
+      <td>Keep a module free of C/FFI trust-boundary crossings</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_extern</code></td>
+    </tr>
+    <tr>
+      <td>Guarantee a module has zero side effects, not just no IO caps declared</td>
+      <td><code class="language-plaintext highlighter-rouge">cap pure</code></td>
+    </tr>
+    <tr>
+      <td>Guarantee reproducible output (no clock, no RNG) while still allowing ordinary IO</td>
+      <td><code class="language-plaintext highlighter-rouge">cap deterministic</code></td>
+    </tr>
+    <tr>
+      <td>Both: pure, panic-free, zero-alloc</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> and <code class="language-plaintext highlighter-rouge">cap no_alloc</code> together</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All five declarations can coexist in the same module. Each is checked by its own independent pass, and none of them subsumes or implies any other.</p>
+
+<hr />
+
+<h2 id="capability-inference-hints">Capability inference hints</h2>
+
+<p>If you call a function that requires a <code class="language-plaintext highlighter-rouge">needs X</code> declaration but your module doesn’t have one, the compiler emits a <strong>hint</strong> (not an error) pointing to the call site:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hint: this call uses IO.FileRead but mod Config does not declare `needs IO.FileRead`.
+hint: add `needs IO.FileRead` to the module body.
+</code></pre></div></div>
+
+<p>This is informational and <strong>not necessarily backed by a type error</strong>. A hint on a
+plain body call can appear on a program that otherwise checks clean, so it is the whole
+story in that case, not a preview of a rejection. See <a href="#what-the-compiler-tells-you">“What the compiler tells
+you”</a> for exactly when a hint is instead backed by a hard
+error.</p>
+
+<hr />
+
+<h2 id="putting-it-together">Putting it together</h2>
+
+<p>Here’s how capability declarations compose across a small web application. Reading the <code class="language-plaintext highlighter-rouge">needs</code> list of each module answers “what does this module do to the world?” without opening the implementation:</p>
+
+<pre><code class="language-march">mod AppConfig do
+  -- Note: named `AppConfig`, not `Config` — `Config` is already a stdlib
+  -- module (`stdlib/config.march`), and a user module of the same name
+  -- would collide with it once this file joins a real multi-file build.
+  needs IO.FileRead          -- reads one config file, nothing else
+
+  type AppConfig = AppConfig
+
+  fn load(path : String) : AppConfig do ... end
+end
+
+mod Metrics do
+  needs IO.Telemetry         -- makes observability a visible architectural concern
+
+  fn record(event : String, duration : Int) : () do ... end
+end
+
+mod Api do
+  -- Likewise `WebServer`/`ConnCtx` here, not `HttpServer`/`Conn` — those
+  -- names are already taken by stdlib's `HttpServer` module.
+  use WebServer
+
+  needs IO.NetListen         -- binds a port
+  needs IO.NetConnect.TLS    -- outbound HTTPS only — no plaintext TCP
+  needs IO.Mut               -- session vault
+
+  fn start(io : Cap(IO.NetListen), tls : Cap(IO.NetConnect.TLS),
+           mut : Cap(IO.Mut)) : () do
+    WebServer.new()
+    |&gt; WebServer.plug(fn conn -&gt; handle(conn, tls, mut))
+    |&gt; WebServer.run(io, 8080)
+  end
+end
+
+mod Main do
+  use AppConfig
+  use Api
+
+  needs IO
+
+  -- The initial Cap(IO) is provided implicitly by the runtime to `main()` —
+  -- there is no `root_cap()` call in user code.
+  fn main(cap : Cap(IO)) : () do
+    let config  = AppConfig.load("/etc/myapp/config.toml")
+    let io_cap  : Cap(IO.NetListen)      = cap_narrow(cap)
+    let tls_cap : Cap(IO.NetConnect.TLS) = cap_narrow(cap)
+    let mut_cap : Cap(IO.Mut)            = cap_narrow(cap)
+    Api.start(io_cap, tls_cap, mut_cap)
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">AppConfig</code> is verifiably read-only. <code class="language-plaintext highlighter-rouge">Api</code> cannot read files and cannot use plaintext TCP. If <code class="language-plaintext highlighter-rouge">AppConfig.load</code> at any point called a network function, the build would fail until <code class="language-plaintext highlighter-rouge">needs IO.NetConnect</code> was added. No audit needed.</p>
+
+<hr />
+
+<h2 id="runtime-behaviour">Runtime behaviour</h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">Cap(X)</code> is a <strong>nullable pointer</strong>. By default it is null — compiling to <code class="language-plaintext highlighter-rouge">null</code> in LLVM IR and <code class="language-plaintext highlighter-rouge">VUnit</code> in the interpreter, with no allocation, no indirection and no overhead — and that is what every capability is unless something explicitly attaches a <a href="#runtime-dictionaries-swapping-what-a-capability-does">runtime dictionary</a> to it. Enforcement of the capability <em>types</em> is purely at compile time. Enforcement of the capability <em>types</em> is purely at compile time, but a compiled binary can additionally turn its declared set into a kernel-enforced sandbox at startup, and a running node can gate hot deploys against it. Both live on their own page: see <a href="/docs/capability-enforcement/">Capability Enforcement</a> (OS-level sandboxing via <code class="language-plaintext highlighter-rouge">forge cap run</code> / <code class="language-plaintext highlighter-rouge">--cap-sandbox</code>, and node-local hot-deploy admission control).</p>
+
+<hr />
+
+<h2 id="proof-caps-encoding-initialization-order">Proof caps: encoding initialization order</h2>
+
+<p>IO caps control <em>which resources</em> a module may touch. Proof caps control <em>when</em> dependent code may run. They’re separate concerns.</p>
+
+<h3 id="the-problem-they-solve-1">The problem they solve</h3>
+
+<p>Some operations must happen before others:</p>
+
+<pre><code class="language-march">-- What stops someone calling this before run_migrations?
+fn query(sql : String) : List(Row) do ... end
+</code></pre>
+
+<p>A proof cap makes “migrations have run” part of the type:</p>
+
+<pre><code class="language-march">mod Db do
+  proof cap Migrated
+  needs IO
+
+  fn run_migrations(cap : Cap(IO)) : Cap(Db.Migrated) do
+    -- do the real migration work using the IO capability, then mint the proof.
+    -- `mint_cap` is the sanctioned way to construct a proof cap; it typechecks
+    -- ONLY here — inside a public `fn` of the declaring module. Runtime-erased.
+    mint_cap(cap)
+  end
+
+  fn query(m : Cap(Db.Migrated), sql : String) : List(Row) do
+    -- cannot be called without migration proof
+    ...
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code> is <strong>unforgeable</strong>. Every claim below is compiler-enforced:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">cap_narrow</code> cannot produce it. This is enforced, not just “not in the IO hierarchy”: <code class="language-plaintext highlighter-rouge">cap_narrow</code>’s result may never be a nominal proof cap in <em>any</em> expression position (it only attenuates IO caps).</li>
+  <li>The runtime-provided <code class="language-plaintext highlighter-rouge">Cap(IO)</code> in <code class="language-plaintext highlighter-rouge">main()</code> cannot produce it. The only mint is <code class="language-plaintext highlighter-rouge">mint_cap</code>, and <code class="language-plaintext highlighter-rouge">mint_cap</code> is gated.</li>
+  <li>Only public (<code class="language-plaintext highlighter-rouge">fn</code>) functions of <code class="language-plaintext highlighter-rouge">mod Db</code> can <code class="language-plaintext highlighter-rouge">mint_cap</code> it. Private (<code class="language-plaintext highlighter-rouge">pfn</code>) functions may pass it through but cannot construct one.</li>
+  <li>External code can pass it through, but cannot construct one. No polymorphic launder through a nested unannotated helper can erase the cap type either (the deeper forge, closed by the nested-module soundness fix).</li>
+</ul>
+
+<p>Any module that accepts <code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code> must declare <code class="language-plaintext highlighter-rouge">needs Db.Migrated</code>. Forgery is a compile error:</p>
+
+<pre><code class="language-march">mod Sys do
+  mod Db do
+    proof cap Migrated
+  end
+
+  mod App do
+    needs IO
+    needs Db.Migrated
+
+    -- ERROR: only public functions of `Db` can construct `Cap(Db.Migrated)`.
+    -- `mint_cap` outside the declaring module is rejected.
+    fn bad(cap : Cap(IO)) : Cap(Db.Migrated) do mint_cap(cap) end
+
+    -- ERROR: cap_narrow can no longer forge a proof cap in any position.
+    fn steal(cap : Cap(IO)) : Cap(Db.Migrated) do cap_narrow(cap) end
+
+    -- OK: pass-through is allowed
+    fn relay(m : Cap(Db.Migrated)) : Cap(Db.Migrated) do m end
+  end
+end
+</code></pre>
+
+<p>The sanctioned way to mint a proof cap is the gated <code class="language-plaintext highlighter-rouge">mint_cap</code> primitive, which only
+typechecks inside a public <code class="language-plaintext highlighter-rouge">fn</code> of the declaring module and is erased at runtime;
+<code class="language-plaintext highlighter-rouge">cap_narrow</code> can never produce a proof cap, in any position, since it only attenuates
+ordinary IO caps.</p>
+
+<blockquote>
+  <p><strong>Known gap:</strong> a <code class="language-plaintext highlighter-rouge">cap_narrow</code> result wrapped in a container through a polymorphic
+factory function can still forge a proof cap in some shapes. This is narrow and not
+yet closed. Avoid laundering a narrowed IO cap through a generic container factory
+if you’re relying on proof-cap unforgeability for a security-sensitive boundary.</p>
+</blockquote>
+
+<h3 id="when-to-use-proof-caps">When to use proof caps</h3>
+
+<p>Proof caps suit <strong>ambient, payload-independent facts</strong>: things true about the <em>system</em>, not about a specific value.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Proof cap</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Db.Migrated)</code></td>
+      <td>Database migrations have run</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Auth.Authenticated)</code></td>
+      <td>The current request has a verified identity</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(App.Initialized)</code></td>
+      <td>Application startup has completed</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Cap(Config.Loaded)</code></td>
+      <td>Configuration has been validated</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The key test: <strong>is there a single, well-defined place in the codebase that produces this capability?</strong> If yes, a proof cap works cleanly. If initialization is diffuse, conditional, or happens in multiple places, a proof cap will feel awkward. Use a runtime flag instead.</p>
+
+<h3 id="when-not-to-use-proof-caps">When <em>not</em> to use proof caps</h3>
+
+<p><strong>Don’t use proof caps for per-value facts.</strong> If the guarantee must be tied to a specific value (“this <code class="language-plaintext highlighter-rouge">String</code> has been sanitized”), use an opaque refined type:</p>
+
+<pre><code class="language-march">mod Sanitize do
+  ptype Sanitized = Sanitized(String)   -- private constructor
+
+  fn sanitize(raw : String) : Sanitized do
+    Sanitized(escape_html(raw))
+  end
+
+  fn render(s : Sanitized) : String do
+    let (Sanitized(text)) = s
+    text
+  end
+end
+</code></pre>
+
+<p>A <code class="language-plaintext highlighter-rouge">Cap(Sanitized)</code> would prove “some string was sanitized somewhere,” but not that the string you’re about to render <em>is</em> the one that was sanitized. The opaque type ties proof and data together: you physically cannot pass an unsanitized string to <code class="language-plaintext highlighter-rouge">render</code>.</p>
+
+<p><strong>Don’t use proof caps when there’s no single mint point.</strong> Unforgeability is only meaningful when the minting surface is small and auditable. If the initialization is spread across many code paths, the cap gives a false sense of safety.</p>
+
+<hr />
+
+<h2 id="typestate-tracking-resource-lifecycle">Typestate: tracking resource lifecycle</h2>
+
+<p>IO caps answer “is this module allowed to open a file?” Typestate answers “is <em>this specific handle</em> currently open or closed?”</p>
+
+<h3 id="handler-s-from-the-standard-library"><code class="language-plaintext highlighter-rouge">Handle(R, S)</code> from the standard library</h3>
+
+<p><code class="language-plaintext highlighter-rouge">stdlib/handle.march</code> ships a canonical typestate handle:</p>
+
+<pre><code class="language-march">always_linear type Handle(r, s) = Handle(Int)
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">r</code> parameter is a phantom <em>resource tag</em> and <code class="language-plaintext highlighter-rouge">s</code> is the current <em>state</em>. Because <code class="language-plaintext highlighter-rouge">Handle</code> is <code class="language-plaintext highlighter-rouge">always_linear</code>, dropping it without consuming it, or consuming it twice, are both compile-time errors.</p>
+
+<pre><code class="language-march">tag ConnTag
+tag Closed
+tag Open
+
+fn connect(cap : Cap(IO.Network)) : Handle(ConnTag, Closed) do ... end
+fn open(h : Handle(ConnTag, Closed)) : Handle(ConnTag, Open) do ... end
+fn query(h : Handle(ConnTag, Open), sql : String) : (List(Row), Handle(ConnTag, Open)) do ... end
+fn close(h : Handle(ConnTag, Open)) : Handle(ConnTag, Closed) do ... end
+</code></pre>
+
+<p>The wrong call order is a type error:</p>
+
+<pre><code class="language-march">let h0 = connect(net_cap)
+let h1 = query(h0, "SELECT 1")  -- ERROR: expected Handle(ConnTag, Open), got Handle(ConnTag, Closed)
+let h2 = open(h0)               -- OK
+let (rows, h3) = query(h2, "SELECT 1")
+let h4 = close(h3)
+</code></pre>
+
+<h3 id="declaring-transitions">Declaring transitions</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">transitions</code> block names every valid state transition. The compiler verifies each <code class="language-plaintext highlighter-rouge">via</code> function exists with the right signature, and warns about functions that look like transitions but aren’t declared:</p>
+
+<pre><code class="language-march">mod Db do
+  transitions Handle do
+    ConnTag: Closed -&gt; Open   via open
+    ConnTag: Open   -&gt; Closed via close
+  end
+end
+</code></pre>
+
+<h3 id="always_linear-type-for-your-own-handles"><code class="language-plaintext highlighter-rouge">always_linear type</code> for your own handles</h3>
+
+<pre><code class="language-march">always_linear type FileHandle(s) = FileHandle(Int)
+
+tag FileClosed
+tag FileOpen
+
+fn open_file(path : String) : FileHandle(FileClosed) do ... end
+fn read_file(h : FileHandle(FileOpen)) : (String, FileHandle(FileOpen)) do ... end
+fn close_file(h : FileHandle(FileOpen)) : FileHandle(FileClosed) do ... end
+</code></pre>
+
+<h3 id="tag--zero-arg-phantom-label-types"><code class="language-plaintext highlighter-rouge">tag</code>: zero-arg phantom label types</h3>
+
+<p><code class="language-plaintext highlighter-rouge">tag Foo</code> is shorthand for <code class="language-plaintext highlighter-rouge">type Foo = Foo</code>, a zero-argument phantom type for state labels and resource tags:</p>
+
+<pre><code class="language-march">tag ConnTag
+tag Closed
+tag Open
+</code></pre>
+
+<h3 id="when-to-use-typestate">When to use typestate</h3>
+
+<p>Use typestate when:</p>
+<ul>
+  <li>A resource has a finite, well-defined lifecycle (closed → open → consumed)</li>
+  <li>Calling operations in the wrong order is a programmer error worth preventing statically</li>
+  <li>The resource must not be dropped without being explicitly released</li>
+</ul>
+
+<p>Don’t use it for:</p>
+<ul>
+  <li>Simple flags or booleans that change frequently at runtime, where the type parameter overhead isn’t worth it</li>
+  <li>Cases where the lifecycle state is dynamic and not known until runtime</li>
+</ul>
+
+<p>The LSP shows typestate hover: hovering any <code class="language-plaintext highlighter-rouge">Handle(R, S)</code> expression displays the current state and all declared transitions from it.</p>
+
+<hr />
+
+<h2 id="runtime-dictionaries-swapping-what-a-capability-does">Runtime dictionaries: swapping what a capability <em>does</em></h2>
+
+<p>A capability proves permission. A <strong>dictionary</strong> attached to one also decides
+what the permitted operations <em>do</em>, so an implementation can be swapped at a
+binding site — for mocking in tests, for tracing, or for pointing a transport
+somewhere else.</p>
+
+<h3 id="your-own-capabilities">Your own capabilities</h3>
+
+<p>Declare the dictionary type on the capability, then attach one:</p>
+
+<pre><code class="language-march">mod Session do
+  type Ops = { emit : (String) -&gt; Int }
+  proof cap Live with Ops
+  needs IO
+
+  fn boot(c : Cap(IO)) : Cap(Session.Live) do
+    cap_impl(mint_cap(c), { emit: fn s -&gt; String.length(s) })
+  end
+
+  fn emit(c : Cap(Session.Live), s : String) : Int do
+    match cap_dict(c) do
+      Some(d) -&gt; d.emit(s)
+      None    -&gt; String.length(s)   -- no dictionary: the ambient behaviour
+    end
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">cap_dict</code> yields an <code class="language-plaintext highlighter-rouge">Option</code>, and <code class="language-plaintext highlighter-rouge">None</code> means “no dictionary — use the
+ambient implementation”. That is what every capability written before
+dictionaries existed reads as, which is why the default path stays visible in
+the source rather than being implied.</p>
+
+<p><code class="language-plaintext highlighter-rouge">cap_narrow</code> carries a dictionary across attenuation: a narrowed capability is
+the same authority, reduced. <code class="language-plaintext highlighter-rouge">mint_cap</code> does <strong>not</strong> — a mint produces a <em>new</em>
+capability, so inheriting the dictionary of the <code class="language-plaintext highlighter-rouge">Cap(IO)</code> it was minted from
+would give it operations belonging to something else.</p>
+
+<p><strong>Who may attach one.</strong> Supplying a dictionary decides what a capability does,
+which is at least as much authority as minting one, so it is gated exactly like
+<a href="#proof-caps-encoding-initialization-order"><code class="language-plaintext highlighter-rouge">mint_cap</code></a>: only a public <code class="language-plaintext highlighter-rouge">fn</code> of
+the declaring module, with the capability fixed at the call site. A supplier
+whose result type is left polymorphic is rejected — it could re-implement every
+capability at once.</p>
+
+<h3 id="mocking-an-io-capability-in-tests">Mocking an IO capability in tests</h3>
+
+<p>IO capabilities have no declaring module, so the rule above has nothing to bind
+to; attaching a dictionary to one is admitted <strong>only in a test build</strong>. There
+is also nothing to hand-write: an IO capability’s dictionary is derived from the
+compiler’s own tables, one field per interceptable operation, each an <code class="language-plaintext highlighter-rouge">Option</code>
+that is <code class="language-plaintext highlighter-rouge">None</code> when not overridden. <code class="language-plaintext highlighter-rouge">march --emit-io-ops</code> prints the shapes.</p>
+
+<pre><code class="language-march">fn main(c : Cap(IO.Console)) do
+  let mock = cap_impl(c, { cap_ops_empty(c) with
+    print_line: Some(fn s -&gt; print("MOCK[" ++ s ++ "]\n")) })
+  with_cap(mock, fn _ -&gt; code_under_test())
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">cap_ops_empty(c)</code> is the all-<code class="language-plaintext highlighter-rouge">None</code> base to override one field of — March
+records unify exactly, so without it every mock would have to spell out every
+operation. <code class="language-plaintext highlighter-rouge">with_cap(mock, fn _ -&gt; …)</code> is the binding site: inside that lambda
+the mock is in force, and nowhere else.</p>
+
+<p>The code under test needs no capability parameter and names no capability. A
+cap-requiring builtin does not take its capability as an argument — the
+requirement is checked against <code class="language-plaintext highlighter-rouge">needs</code>, not passed — so in a test build the
+compiler threads one in for you and routes the operation through the
+dictionary. Outside a test build none of this runs and the program is exactly
+what it always was.</p>
+
+<h3 id="what-cannot-be-intercepted">What cannot be intercepted</h3>
+
+<p>Each of these costs interception, never correctness: an operation that is not
+intercepted behaves exactly as it does today.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Not interceptable</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Polymorphic builtins — all of <code class="language-plaintext highlighter-rouge">vault_*</code>, so <code class="language-plaintext highlighter-rouge">IO.Mut</code> entirely</td>
+      <td>A dictionary field would need rank-2 types</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">println</code>, <code class="language-plaintext highlighter-rouge">random_bytes</code></td>
+      <td>Shadowed by a stdlib March function, so the builtin is dead — intercept the <code class="language-plaintext highlighter-rouge">print_line</code> it delegates to</td>
+    </tr>
+    <tr>
+      <td>An actor whose handlers reach <strong>more than one</strong> capability</td>
+      <td>The capability is captured at the spawn site onto the actor’s runtime metadata, and that carries one. An actor reaching two would need a record of them captured instead — additive, not yet built</td>
+    </tr>
+    <tr>
+      <td>Functions used as values rather than called directly</td>
+      <td>Their arity cannot change</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Actors are reached.</strong> A handler runs on the scheduler, not under the caller
+that spawned it, so there is no parameter to thread a capability through — the
+dispatch function’s arity is frozen because the actor record holds it. The
+capability is instead captured at the <strong>spawn site</strong> and read back by the
+dispatch, which means a mock reaches an actor spawned inside <code class="language-plaintext highlighter-rouge">with_cap</code> and
+does not reach one spawned outside it, regardless of when either actually runs.</p>
+
+<p>Fully mockable today: <code class="language-plaintext highlighter-rouge">IO.Console</code>, <code class="language-plaintext highlighter-rouge">IO.Clock</code>, <code class="language-plaintext highlighter-rouge">IO.Random</code>, <code class="language-plaintext highlighter-rouge">IO.FileRead</code>,
+<code class="language-plaintext highlighter-rouge">IO.FileWrite</code>, <code class="language-plaintext highlighter-rouge">IO.NetConnect</code>, <code class="language-plaintext highlighter-rouge">IO.NetConnect.TLS</code>, <code class="language-plaintext highlighter-rouge">IO.WebSocket</code>,
+<code class="language-plaintext highlighter-rouge">IO.Signal</code>, <code class="language-plaintext highlighter-rouge">IO.FileSystem</code>, <code class="language-plaintext highlighter-rouge">IO.Network</code>.</p>
+
+<hr />
+
+<h2 id="advanced-patterns">Advanced patterns</h2>
+
+<h3 id="specialization-tags-realtime-exclusion">Specialization tags: realtime exclusion</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Tagged(X, T)</code> annotates a capability with a policy. The key narrowing rule: a function taking <code class="language-plaintext highlighter-rouge">Tagged(_, Realtime)</code> is in a realtime context and cannot also hold <code class="language-plaintext highlighter-rouge">Cap(Alloc)</code>, <code class="language-plaintext highlighter-rouge">Cap(IO)</code>, or <code class="language-plaintext highlighter-rouge">Cap(Panic)</code>. The compiler rejects mixed signatures:</p>
+
+<pre><code class="language-march">type DSP = DSP
+type Realtime = Realtime
+
+-- ERROR: realtime functions cannot take Cap(IO)
+fn bad(cap : Tagged(DSP, Realtime), io : Cap(IO)) : () do () end
+
+-- OK: statically proven — no allocation, no IO, no panic
+fn process(cap : Tagged(DSP, Realtime), buf : Buffer(Float32, 256)) : Buffer(Float32, 256) do
+  ...
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Tagged</code> also covers type-indexed specialization (SIMD widths, buffer sizes); monomorphization handles these for free:</p>
+
+<pre><code class="language-march">fn fft(cap : Tagged(SIMD, N), buf : Buffer(Float32, N)) : Buffer(Complex32, N)
+-- monomorphization produces fft_256, fft_1024, etc.
+</code></pre>
+
+<h3 id="capability-environment-records-reducing-parameter-count">Capability environment records: reducing parameter count</h3>
+
+<p>When many functions need the same bundle of capabilities, threading individual <code class="language-plaintext highlighter-rouge">Cap(X)</code> parameters everywhere is tedious. Bundle them into a record instead:</p>
+
+<pre><code class="language-march">type RuntimeEnv = {
+  io    : Cap(IO),
+  clock : Cap(IO.Clock),
+  net   : Cap(IO.Network)
+}
+
+fn run(env : RuntimeEnv, data : Input) : Output do ... end
+</code></pre>
+
+<p>Narrow to a restricted set by constructing a smaller record. The type system enforces what the callee can do through record structure:</p>
+
+<pre><code class="language-march">type PluginEnv = { clock : Cap(IO.Clock) }
+
+fn run_plugin(env : RuntimeEnv, plugin : Plugin) do
+  plugin.run({ clock: env.clock })  -- plugin structurally cannot use IO or network
+end
+</code></pre>
+
+<p>Each env module should provide named narrowing functions:</p>
+
+<pre><code class="language-march">mod RuntimeEnv do
+  fn narrow_for_plugin(env : RuntimeEnv) : PluginEnv do
+    { clock: env.clock }
+  end
+end
+</code></pre>
+
+<h3 id="testing-with-capability-environment-records">Testing with capability environment records</h3>
+
+<p>This pattern predates <a href="#runtime-dictionaries-swapping-what-a-capability-does">runtime dictionaries</a> and is still the right tool when you want the swap to be <strong>visible in the signature</strong> — a <code class="language-plaintext highlighter-rouge">LogEnv</code> parameter says outright that the caller chooses the logger. Reach for a dictionary instead when you want the swap to be invisible: a function taking <code class="language-plaintext highlighter-rouge">Cap(IO.Console)</code> can be mocked without changing its type.</p>
+
+<p>Pair the cap with a function field for swappable runtime behaviour:</p>
+
+<pre><code class="language-march">type LogEnv = {
+  log_cap : Cap(IO.Console),  -- compile-time gate, erased at runtime
+  write   : (String) -&gt; ()    -- runtime behaviour, swappable in tests
+}
+
+fn test_process() do
+  let captured = Vault.new("test_capture")
+  Vault.set(captured, "lines", Nil)
+  let env : LogEnv = {
+    log_cap: test_logger_cap(),
+    write:   fn line -&gt;
+      match Vault.get(captured, "lines") do
+      Some(xs) -&gt; Vault.set(captured, "lines", Cons(line, xs))
+      None     -&gt; Vault.set(captured, "lines", Cons(line, Nil))
+      end
+  }
+  let result = process(env, test_input)
+  let lines = match Vault.get(captured, "lines") do
+    Some(xs) -&gt; xs
+    None     -&gt; Nil
+    end
+  Test.assert_true(List.any(lines, fn l -&gt; String.contains(l, "expected message")), "should have captured the message")
+end
+</code></pre>
+
+<hr />
+
+<h2 id="quick-decision-guide">Quick decision guide</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>I want to…</th>
+      <th>Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prove a module never touches the network</td>
+      <td>Declare only non-network caps; compiler enforces absence</td>
+    </tr>
+    <tr>
+      <td>Guarantee a function is completely pure</td>
+      <td>Declare no <code class="language-plaintext highlighter-rouge">needs</code>; the compiler verifies it</td>
+    </tr>
+    <tr>
+      <td>Let a plugin only read the clock</td>
+      <td><code class="language-plaintext highlighter-rouge">cap_narrow</code> to <code class="language-plaintext highlighter-rouge">Cap(IO.Clock)</code> at the call site</td>
+    </tr>
+    <tr>
+      <td>Guarantee migrations run before any query</td>
+      <td><code class="language-plaintext highlighter-rouge">proof cap Migrated</code> in <code class="language-plaintext highlighter-rouge">mod Db</code></td>
+    </tr>
+    <tr>
+      <td>Prove a specific string has been sanitized</td>
+      <td>Opaque refined type (<code class="language-plaintext highlighter-rouge">ptype</code>), not a proof cap</td>
+    </tr>
+    <tr>
+      <td>Track that a file handle is open vs closed</td>
+      <td><code class="language-plaintext highlighter-rouge">always_linear type</code> + <code class="language-plaintext highlighter-rouge">transitions</code> (typestate)</td>
+    </tr>
+    <tr>
+      <td>Exclude allocation/IO from a realtime callback</td>
+      <td><code class="language-plaintext highlighter-rouge">Tagged(DSP, Realtime)</code></td>
+    </tr>
+    <tr>
+      <td>Thread many caps without adding parameters</td>
+      <td>Capability environment record</td>
+    </tr>
+    <tr>
+      <td>Prove integer division can never panic</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_panic</code> + Int refinements on divisor params</td>
+    </tr>
+    <tr>
+      <td>Guarantee zero heap allocation (realtime/embedded)</td>
+      <td><code class="language-plaintext highlighter-rouge">cap no_alloc</code></td>
+    </tr>
+    <tr>
+      <td>Small script, just want it to work</td>
+      <td><code class="language-plaintext highlighter-rouge">needs IO</code>, don’t overthink it</td>
+    </tr>
+  </tbody>
+</table>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1788621226"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>
