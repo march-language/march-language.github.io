@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>forge search –callers Implementation Plan — March Lang</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM."/>
+
+  <!-- DaisyUI v4 + Tailwind v4 CDN (compatible pair) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" type="text/css"/>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <style>
+    /* ── March palette applied directly — bypasses DaisyUI theme variables ── */
+
+    /* Backgrounds */
+    html, body                       { background-color: #0B1F2A; color: #D6EEF5; }
+    #march-sidebar                   { background-color: #0F2A36; border-right: 1px solid #133847; }
+    #march-topbar                    { background-color: #0F2A36; border-bottom: 1px solid #133847; }
+    #march-footer                    { border-top: 1px solid #133847; color: #7aacbe; }
+    #march-logo-bar                  { border-bottom: 1px solid #133847; }
+    #march-github-bar                { border-top: 1px solid #133847; }
+
+    /* Nav links */
+    #march-nav a                     { color: #a8ccd8; border-radius: 6px; padding: 5px 10px; display: block; font-size: 0.875rem; text-decoration: none; }
+    #march-nav a:hover               { background-color: #133847; color: #D6EEF5; }
+    #march-nav a.active              { background-color: rgba(111,227,214,0.13); color: #6FE3D6; font-weight: 600; }
+    .march-nav-section               { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #3d6678; padding: 14px 10px 4px; }
+
+    /* Prose */
+    .prose                           { color: #D6EEF5; }
+    .prose h1, .prose h2,
+    .prose h3, .prose h4             { color: #E6FCF9; scroll-margin-top: 4rem; }
+    .prose a                         { color: #6FE3D6; text-decoration: none; }
+    .prose a:hover                   { text-decoration: underline; }
+    .prose strong                    { color: #CFF7F1; }
+    .prose table                     { display: block; overflow-x: auto; }
+    .prose td code, .prose th code   { white-space: nowrap; }
+    .prose thead                     { border-bottom-color: #133847; }
+    .prose tbody tr                  { border-bottom-color: #133847; }
+    .prose blockquote                { border-left-color: #1C5D6F; color: #a8ccd8; }
+    .prose hr                        { border-color: #133847; }
+
+    /* Inline code */
+    .prose :not(pre) > code          { background: #0F2A36; color: #6FE3D6; padding: 1px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid #133847; }
+    .prose :not(pre) > code::before,
+    .prose :not(pre) > code::after  { content: none; }
+
+    /* Fenced code blocks */
+    .highlight                       { background: #0B1F2A !important; border-radius: 8px; overflow-x: auto; border: 1px solid #133847; }
+    .highlight pre                   { background: transparent; margin: 0; padding: 1rem 1.25rem; }
+    .highlighter-rouge .highlight    { margin: 1.25rem 0; }
+
+    /* Rouge tokens (March palette) */
+    .highlight .c, .highlight .c1,
+    .highlight .cm, .highlight .cp,
+    .highlight .cs                   { color: #3d6070; font-style: italic; } /* comment */
+    .highlight .k, .highlight .kd,
+    .highlight .kn, .highlight .kp,
+    .highlight .kr                   { color: #6FE3D6; }                    /* keyword */
+    .highlight .kt                   { color: #CFF7F1; }                    /* type */
+    .highlight .s, .highlight .sb,
+    .highlight .sc, .highlight .sd,
+    .highlight .s2, .highlight .sh,
+    .highlight .si, .highlight .sx,
+    .highlight .sr, .highlight .s1,
+    .highlight .ss                   { color: #36D399; }                    /* string */
+    .highlight .m, .highlight .mf,
+    .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il   { color: #FBBF24; }                    /* number */
+    .highlight .o, .highlight .ow   { color: #3ABFF8; }                    /* operator */
+    .highlight .nf, .highlight .fm  { color: #6FE3D6; }                    /* function */
+    .highlight .nc, .highlight .nn  { color: #CFF7F1; }                    /* class/module */
+    .highlight .nb                  { color: #3ABFF8; }                    /* builtin */
+    .highlight .nt                  { color: #6FE3D6; }                    /* tag */
+    .highlight .na                  { color: #36D399; }                    /* attribute */
+    .highlight .err                 { color: #F87272; }                    /* error */
+    .highlight .n, .highlight .nx  { color: #D6EEF5; }                    /* name */
+    .highlight .p                   { color: #C7DDE5; }                    /* punctuation */
+    .highlight .gd                  { color: #F87272; }                    /* deleted */
+    .highlight .gi                  { color: #36D399; }                    /* inserted */
+
+    /* GitHub button */
+    .march-github-btn               { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #1C5D6F; color: #6FE3D6; font-size: 0.8rem; text-decoration: none; transition: background 0.15s; }
+    .march-github-btn:hover         { background-color: #133847; }
+
+    /* Logo hover */
+    .march-logo-link:hover span     { color: #6FE3D6; }
+    .march-logo-link span           { transition: color 0.15s; }
+  </style>
+</head>
+
+<body>
+  <div class="drawer lg:drawer-open">
+    <input id="nav-drawer" type="checkbox" class="drawer-toggle"/>
+
+    <!-- ── Page content ─────────────────────────────────────────────────── -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- Mobile topbar -->
+      <nav id="march-topbar" class="navbar sticky top-0 z-30 lg:hidden">
+        <div class="navbar-start">
+          <label for="nav-drawer" class="btn btn-ghost btn-square drawer-button" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#D6EEF5">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </label>
+        </div>
+        <div class="navbar-center">
+          <a href="/" class="flex items-center gap-2 font-bold text-lg" style="color:#D6EEF5; text-decoration:none;">
+            <img src="/assets/logo.webp" width="26" height="26" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            March
+          </a>
+        </div>
+        <div class="navbar-end gap-1">
+          <!-- Mobile trigger. The modal itself is rendered once, in the sidebar below. -->
+          <button data-ms-open type="button" class="btn btn-ghost btn-square btn-sm" aria-label="Search docs">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a8ccd8" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </button>
+          <a href="https://github.com/march-language/march" class="btn btn-ghost btn-sm" style="color:#a8ccd8;" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="flex-1 w-full max-w-4xl mx-auto px-6 py-10 lg:px-12">
+        <article class="prose max-w-none prose-pre:p-0 prose-pre:bg-transparent prose-pre:rounded-none"
+                 data-pagefind-body data-pagefind-filter="section:Guide">
+          <h1 id="forge-search-callers-implementation-plan">forge search –callers Implementation Plan</h1>
+
+<blockquote>
+  <p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code class="language-plaintext highlighter-rouge">- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+
+<p><strong>Goal:</strong> Add <code class="language-plaintext highlighter-rouge">forge search --callers NAME</code>, a reverse-reference search that resolves who calls a function, uses a constructor, or references a type — reusing the existing <code class="language-plaintext highlighter-rouge">forge search</code> index and the typechecker’s own name resolution (not a textual/grep heuristic).</p>
+
+<p><strong>Architecture:</strong> The typechecker (<code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml</code>) already resolves every <code class="language-plaintext highlighter-rouge">EVar</code> call, <code class="language-plaintext highlighter-rouge">ECon</code> constructor use, and qualified <code class="language-plaintext highlighter-rouge">TyCon</code> type reference against <code class="language-plaintext highlighter-rouge">env</code> while typechecking. We add a small accumulator (<code class="language-plaintext highlighter-rouge">env.refs</code>) that records <code class="language-plaintext highlighter-rouge">(callee, caller, kind, file, line)</code> at the exact points where that resolution already succeeds, plus a <code class="language-plaintext highlighter-rouge">current_decl</code> tracker so each reference knows its enclosing function. <code class="language-plaintext highlighter-rouge">lib/search/search.ml</code>’s existing index (built by the same typecheck pass that already produces <code class="language-plaintext highlighter-rouge">type_map</code>) gains a <code class="language-plaintext highlighter-rouge">references</code> table keyed by callee. <code class="language-plaintext highlighter-rouge">forge/lib/cmd_search.ml</code> exposes it via <code class="language-plaintext highlighter-rouge">--callers</code>.</p>
+
+<p><strong>Tech Stack:</strong> OCaml, dune, Alcotest (<code class="language-plaintext highlighter-rouge">test/test_search.ml</code>), Yojson for the on-disk index cache.</p>
+
+<h2 id="global-constraints">Global Constraints</h2>
+
+<ul>
+  <li>Precision: resolution-based only. A reference is recorded ONLY when it resolves to a real declaration through the typechecker’s own lookup — never a bare textual/name-only match.</li>
+  <li>Reference kinds tracked in this plan: function/value calls (Task 2), constructor uses (Task 3), and <strong>qualified</strong> type-annotation references only (Task 4) — see the accepted gaps below.</li>
+  <li>Index integration: extends the existing <code class="language-plaintext highlighter-rouge">Search.index</code> / <code class="language-plaintext highlighter-rouge">.march/search-index.json</code> cache and the existing <code class="language-plaintext highlighter-rouge">forge search</code> command. No new cache file, no new subcommand.</li>
+  <li>Traversal depth: direct references only. No <code class="language-plaintext highlighter-rouge">--depth N</code> / transitive closure.</li>
+  <li>Corpus: same as today’s <code class="language-plaintext highlighter-rouge">forge search</code> (stdlib + project deps via <code class="language-plaintext highlighter-rouge">Project.load ()</code>).</li>
+  <li><strong>Accepted gaps (do not attempt to fix in this plan — call out clearly if discovered again):</strong>
+    <ul>
+      <li>Special-cased call forms that pattern-match a whole <code class="language-plaintext highlighter-rouge">EApp</code> before the generic <code class="language-plaintext highlighter-rouge">EVar</code> arm runs (<code class="language-plaintext highlighter-rouge">Chan.new</code>, <code class="language-plaintext highlighter-rouge">Chan.send</code>, <code class="language-plaintext highlighter-rouge">Chan.recv</code>, <code class="language-plaintext highlighter-rouge">Chan.close</code>, <code class="language-plaintext highlighter-rouge">Chan.choose</code>, <code class="language-plaintext highlighter-rouge">Chan.offer</code>, <code class="language-plaintext highlighter-rouge">MPST.new</code>, <code class="language-plaintext highlighter-rouge">MPST.send</code>, <code class="language-plaintext highlighter-rouge">MPST.recv</code>, <code class="language-plaintext highlighter-rouge">MPST.close</code>, <code class="language-plaintext highlighter-rouge">cap_narrow</code>, <code class="language-plaintext highlighter-rouge">mint_cap</code> — <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:4797-5290</code>) never reach the generic <code class="language-plaintext highlighter-rouge">EVar</code>/<code class="language-plaintext highlighter-rouge">ECon</code> hooks and will not appear as references. These are compiler builtins, not user-declared callees.</li>
+      <li>Constructor resolution by expected type (<code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:5961</code>, the <code class="language-plaintext highlighter-rouge">Ast.ECon (name, args, sp), exp_ty when ...</code> arm used to disambiguate same-named constructors from context) is a second, separate resolution path from the one this plan instruments (<code class="language-plaintext highlighter-rouge">typecheck.ml:5420</code>). Constructor calls resolved only through that path won’t be recorded as references in this plan.</li>
+      <li>Bare (unqualified) type-annotation references are not tracked — only explicitly-qualified <code class="language-plaintext highlighter-rouge">Mod.TypeName</code> annotations are. Unlike functions and constructors, the typechecker doesn’t currently expose which module a bare type name resolved from a same-module vs. builtin binding, so recording it in v1 would risk misattributing the caller’s own module for a cross-module bare reference.</li>
+    </ul>
+  </li>
+</ul>
+
+<hr />
+
+<h2 id="file-structure">File Structure</h2>
+
+<ul>
+  <li><strong>Modify <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml</code></strong>: add <code class="language-plaintext highlighter-rouge">ref_record</code> type + <code class="language-plaintext highlighter-rouge">env.refs</code>/<code class="language-plaintext highlighter-rouge">env.current_decl</code> fields (Task 1); hook the generic <code class="language-plaintext highlighter-rouge">EVar</code> call-resolution arm and <code class="language-plaintext highlighter-rouge">check_fn</code> (Task 2); hook the <code class="language-plaintext highlighter-rouge">ECon</code> constructor-resolution arm (Task 3); hook <code class="language-plaintext highlighter-rouge">surface_ty</code>’s qualified <code class="language-plaintext highlighter-rouge">TyCon</code> case (Task 4); add <code class="language-plaintext highlighter-rouge">check_module_with_refs</code> next to <code class="language-plaintext highlighter-rouge">check_module</code> (Task 2).</li>
+  <li><strong>Modify <code class="language-plaintext highlighter-rouge">lib/search/search.ml</code></strong>: add <code class="language-plaintext highlighter-rouge">references</code> field to <code class="language-plaintext highlighter-rouge">index</code>, populate it from <code class="language-plaintext highlighter-rouge">TC.check_module_with_refs</code>, extend JSON (de)serialization, add <code class="language-plaintext highlighter-rouge">?callers</code> to <code class="language-plaintext highlighter-rouge">search_combined</code>, add reference-result formatters (Task 5).</li>
+  <li><strong>Modify <code class="language-plaintext highlighter-rouge">forge/lib/cmd_search.ml</code></strong>: add <code class="language-plaintext highlighter-rouge">--callers</code> flag and wire it through (Task 6).</li>
+  <li><strong>Modify <code class="language-plaintext highlighter-rouge">test/dune</code></strong>: add <code class="language-plaintext highlighter-rouge">march_typecheck march_parser march_lexer march_desugar march_ast</code> to the <code class="language-plaintext highlighter-rouge">test_search</code> stanza’s <code class="language-plaintext highlighter-rouge">libraries</code> so tests can drive the typecheck pipeline directly (Task 2).</li>
+  <li><strong>Modify <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></strong>: add reference-tracking tests for each kind, the ambiguous-ctor regression, the cache round-trip, and an end-to-end <code class="language-plaintext highlighter-rouge">--callers</code>-style query test (Tasks 2, 3, 4, 5, 7).</li>
+</ul>
+
+<hr />
+
+<h2 id="task-1-ref_record-type--env-scaffolding">Task 1: <code class="language-plaintext highlighter-rouge">ref_record</code> type + <code class="language-plaintext highlighter-rouge">env</code> scaffolding</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:487-488</code> (just before <code class="language-plaintext highlighter-rouge">type env = {</code>)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:707-709</code> (<code class="language-plaintext highlighter-rouge">make_env</code>)</li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>Produces: <code class="language-plaintext highlighter-rouge">type ref_record = { callee : string; caller : string; ref_kind : [ \</code>Call</td>
+          <td>`Ctor | `TypeRef ]; ref_file : string; ref_line : int }<code class="language-plaintext highlighter-rouge">, and two new </code>env<code class="language-plaintext highlighter-rouge"> fields: </code>refs : ref_record list ref<code class="language-plaintext highlighter-rouge"> and </code>current_decl : string ref`.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+
+<p>This task only adds inert scaffolding (an unused-until-later accumulator) — there is no new observable behavior to unit test, so the “test” is confirming the compiler still builds and the existing suite is unaffected.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Add the <code class="language-plaintext highlighter-rouge">ref_record</code> type immediately before <code class="language-plaintext highlighter-rouge">type env = {</code> (line 488)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">(** A resolved reference recorded during typechecking: [callee] used a
+    declaration that [caller] (both fully-qualified "Mod.name") owns, at
+    [ref_file]:[ref_line]. Populated only where resolution already succeeds —
+    never a textual guess. *)</span>
+<span class="k">type</span> <span class="n">ref_record</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">callee</span>   <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>
+  <span class="n">caller</span>   <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>
+  <span class="n">ref_kind</span> <span class="o">:</span> <span class="p">[</span> <span class="nt">`Call</span> <span class="o">|</span> <span class="nt">`Ctor</span> <span class="o">|</span> <span class="nt">`TypeRef</span> <span class="p">];</span>
+  <span class="n">ref_file</span> <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>
+  <span class="n">ref_line</span> <span class="o">:</span> <span class="kt">int</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Add the two fields to <code class="language-plaintext highlighter-rouge">type env = { ... }</code>, right after <code class="language-plaintext highlighter-rouge">type_map : (Ast.span, ty) Hashtbl.t;</code> (line 498)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">refs</span> <span class="o">:</span> <span class="n">ref_record</span> <span class="kt">list</span> <span class="n">ref</span><span class="p">;</span>
+  <span class="c">(** Resolved call/ctor/type references accumulated during checking, for
+      `forge search --callers`. Shared (mutable) across all env copies
+      derived from the same root, same as [import_tracker]. *)</span>
+  <span class="n">current_decl</span> <span class="o">:</span> <span class="kt">string</span> <span class="n">ref</span><span class="p">;</span>
+  <span class="c">(** Fully-qualified name ("Mod.fn") of the top-level fn/impl-method whose
+      body is currently being checked. Set by [check_fn]; read wherever a
+      [ref_record] is recorded so it knows its caller. Empty string before
+      the first fn is entered. *)</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Initialize both fields in <code class="language-plaintext highlighter-rouge">make_env</code> (line 707-709), alongside <code class="language-plaintext highlighter-rouge">pending_constraints = ref []</code></strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">make_env</span> <span class="n">errors</span> <span class="n">type_map</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">vars</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span> <span class="n">types</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span> <span class="n">ctors</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span> <span class="n">records</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span>
+  <span class="n">level</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">lin</span> <span class="o">=</span> <span class="bp">[]</span><span class="p">;</span>
+  <span class="n">errors</span><span class="p">;</span> <span class="n">pending_constraints</span> <span class="o">=</span> <span class="n">ref</span> <span class="bp">[]</span><span class="p">;</span> <span class="n">type_map</span><span class="p">;</span>
+  <span class="n">refs</span> <span class="o">=</span> <span class="n">ref</span> <span class="bp">[]</span><span class="p">;</span> <span class="n">current_decl</span> <span class="o">=</span> <span class="n">ref</span> <span class="s2">""</span><span class="p">;</span>
+  <span class="n">scheme_witnesses</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="n">inst_witnesses</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">256</span><span class="p">;</span>
+  <span class="n">interfaces</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span> <span class="n">sigs</span> <span class="o">=</span> <span class="bp">[]</span><span class="p">;</span>
+  <span class="n">mod_needs</span> <span class="o">=</span> <span class="bp">[]</span><span class="p">;</span> <span class="n">module_caps</span> <span class="o">=</span> <span class="bp">[]</span><span class="p">;</span> <span class="n">protocols</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span> <span class="n">impls</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span>
+  <span class="n">import_tracker</span> <span class="o">=</span> <span class="n">ref</span> <span class="bp">[]</span><span class="p">;</span>
+  <span class="n">import_idx</span> <span class="o">=</span> <span class="n">make_import_index</span> <span class="bp">()</span><span class="p">;</span>
+  <span class="n">local_fns</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span>
+  <span class="n">fn_arities</span> <span class="o">=</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span>
+  <span class="n">plain_let_names</span> <span class="o">=</span> <span class="nn">StringSet</span><span class="p">.</span><span class="n">empty</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>(Keep every other existing field/line in <code class="language-plaintext highlighter-rouge">make_env</code> exactly as-is — only the one new line is inserted.)</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Build and run the existing suite to confirm no regression</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build lib/typecheck/typecheck.ml</code>
+Expected: builds clean (a record literal missing a field is a hard OCaml compile error, so a clean build already proves both fields are wired into every <code class="language-plaintext highlighter-rouge">env</code> construction site).</p>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh -q</code>
+Expected: same pass count as before this change (no behavior changed yet).</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add lib/typecheck/typecheck.ml
+git commit <span class="nt">-m</span> <span class="s2">"typecheck: add ref_record accumulator scaffolding to env"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="task-2-call-reference-recording-evar--check_module_with_refs">Task 2: Call-reference recording (<code class="language-plaintext highlighter-rouge">EVar</code>) + <code class="language-plaintext highlighter-rouge">check_module_with_refs</code></h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:4697-4704</code> (generic <code class="language-plaintext highlighter-rouge">EVar</code> arm in <code class="language-plaintext highlighter-rouge">infer_expr</code>)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:6690</code> (<code class="language-plaintext highlighter-rouge">check_fn</code>, to set <code class="language-plaintext highlighter-rouge">current_decl</code>)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:11122-11125</code> (add <code class="language-plaintext highlighter-rouge">check_module_with_refs</code> next to <code class="language-plaintext highlighter-rouge">check_module</code>)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/dune</code> (<code class="language-plaintext highlighter-rouge">test_search</code> stanza libraries)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/test_search.ml</code> (new test)</li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>Consumes: <code class="language-plaintext highlighter-rouge">ref_record</code>, <code class="language-plaintext highlighter-rouge">env.refs</code>, <code class="language-plaintext highlighter-rouge">env.current_decl</code>, <code class="language-plaintext highlighter-rouge">env.local_fns : unit StrMap.t</code> (already exists — “function names defined by the module currently being checked”), <code class="language-plaintext highlighter-rouge">env.current_module : string</code> (already exists), <code class="language-plaintext highlighter-rouge">lookup_var</code>, <code class="language-plaintext highlighter-rouge">resolve_qualified_var</code> (all Task 1 / pre-existing).</li>
+  <li>
+    <p>Produces: <code class="language-plaintext highlighter-rouge">TC.check_module_with_refs : ?errors:Err.ctx -&gt; Ast.module_ -&gt; Err.ctx * (Ast.span, TC.ty) Hashtbl.t * TC.ref_record list</code>, used by Task 5.</p>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Write the failing test in <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></strong></li>
+</ul>
+
+<p>First add the extra libraries <code class="language-plaintext highlighter-rouge">test_search</code> needs (edit <code class="language-plaintext highlighter-rouge">test/dune</code>, the <code class="language-plaintext highlighter-rouge">test_search</code> stanza at line 590-592):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> (name test_search)
+ (modules test_search)
+ (libraries march_search march_typecheck march_parser march_lexer march_desugar march_ast alcotest unix))
+</code></pre></div></div>
+
+<p>Then add this test to <code class="language-plaintext highlighter-rouge">test/test_search.ml</code> (near the top, after the Levenshtein tests, before <code class="language-plaintext highlighter-rouge">sample_index</code>):</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">(* ------------------------------------------------------------------ *)</span>
+<span class="c">(* Reference tracking (forge search --callers)                        *)</span>
+<span class="c">(* ------------------------------------------------------------------ *)</span>
+
+<span class="k">module</span> <span class="nc">TC</span> <span class="o">=</span> <span class="nn">March_typecheck</span><span class="p">.</span><span class="nc">Typecheck</span>
+
+<span class="c">(** Parse + desugar a source string into decls wrapped in a DMod, mirroring
+    [Search.parse_file]'s handling of a real .march file. *)</span>
+<span class="k">let</span> <span class="n">decls_of_source</span> <span class="o">~</span><span class="p">(</span><span class="n">file</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="n">mod_name</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="n">src</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">decl</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="k">module</span> <span class="nc">Ast</span> <span class="o">=</span> <span class="nn">March_ast</span><span class="p">.</span><span class="nc">Ast</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">lexbuf</span> <span class="o">=</span> <span class="nn">Lexing</span><span class="p">.</span><span class="n">from_string</span> <span class="n">src</span> <span class="k">in</span>
+  <span class="n">lexbuf</span><span class="o">.</span><span class="nn">Lexing</span><span class="p">.</span><span class="n">lex_curr_p</span> <span class="o">&lt;-</span> <span class="p">{</span> <span class="n">lexbuf</span><span class="o">.</span><span class="nn">Lexing</span><span class="p">.</span><span class="n">lex_curr_p</span> <span class="k">with</span> <span class="nn">Lexing</span><span class="p">.</span><span class="n">pos_fname</span> <span class="o">=</span> <span class="n">file</span> <span class="p">};</span>
+  <span class="k">let</span> <span class="n">m</span> <span class="o">=</span> <span class="nn">March_parser</span><span class="p">.</span><span class="nn">Parser</span><span class="p">.</span><span class="n">module_</span>
+      <span class="p">(</span><span class="nn">March_parser</span><span class="p">.</span><span class="nn">Token_filter</span><span class="p">.</span><span class="n">make</span> <span class="nn">March_lexer</span><span class="p">.</span><span class="nn">Lexer</span><span class="p">.</span><span class="n">token</span><span class="p">)</span> <span class="n">lexbuf</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">m</span> <span class="o">=</span> <span class="nn">March_desugar</span><span class="p">.</span><span class="nn">Desugar</span><span class="p">.</span><span class="n">desugar_module</span> <span class="n">m</span> <span class="k">in</span>
+  <span class="n">ignore</span> <span class="n">mod_name</span><span class="p">;</span>
+  <span class="p">[</span><span class="nn">Ast</span><span class="p">.</span><span class="nc">DMod</span> <span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">mod_name</span><span class="o">,</span> <span class="nn">Ast</span><span class="p">.</span><span class="nc">Public</span><span class="o">,</span> <span class="n">m</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">mod_decls</span><span class="o">,</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">dummy_span</span><span class="p">)]</span>
+
+<span class="k">let</span> <span class="n">check_refs</span> <span class="p">(</span><span class="n">files</span> <span class="o">:</span> <span class="p">(</span><span class="kt">string</span> <span class="o">*</span> <span class="kt">string</span> <span class="o">*</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">list</span><span class="p">)</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="c">(* [files] is (file, mod_name, src) list. *)</span>
+  <span class="k">let</span> <span class="k">module</span> <span class="nc">Ast</span> <span class="o">=</span> <span class="nn">March_ast</span><span class="p">.</span><span class="nc">Ast</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">all_decls</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">concat_map</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">file</span><span class="o">,</span> <span class="n">mod_name</span><span class="o">,</span> <span class="n">src</span><span class="p">)</span> <span class="o">-&gt;</span>
+      <span class="n">decls_of_source</span> <span class="o">~</span><span class="n">file</span> <span class="n">mod_name</span> <span class="n">src</span><span class="p">)</span> <span class="n">files</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">synth</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">module_</span> <span class="o">=</span>
+    <span class="p">{</span> <span class="n">mod_name</span> <span class="o">=</span> <span class="p">{</span> <span class="n">txt</span> <span class="o">=</span> <span class="s2">"__test__"</span><span class="p">;</span> <span class="n">span</span> <span class="o">=</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">dummy_span</span> <span class="p">};</span> <span class="n">mod_decls</span> <span class="o">=</span> <span class="n">all_decls</span> <span class="p">}</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">_errors</span><span class="o">,</span> <span class="n">_type_map</span><span class="o">,</span> <span class="n">refs</span><span class="p">)</span> <span class="o">=</span> <span class="nn">TC</span><span class="p">.</span><span class="n">check_module_with_refs</span> <span class="n">synth</span> <span class="k">in</span>
+  <span class="n">refs</span>
+
+<span class="k">let</span> <span class="n">test_call_ref_same_module</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"a.march"</span><span class="o">,</span> <span class="s2">"A"</span><span class="o">,</span> <span class="s2">"mod A do</span><span class="se">\n</span><span class="s2">  fn helper() do 1 end</span><span class="se">\n</span><span class="s2">  fn main() do helper() end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">calls</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Call</span><span class="p">)</span> <span class="n">refs</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"helper call recorded"</span> <span class="bp">true</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"A.helper"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"A.main"</span><span class="p">)</span> <span class="n">calls</span><span class="p">)</span>
+
+<span class="k">let</span> <span class="n">test_call_ref_cross_module</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"b.march"</span><span class="o">,</span> <span class="s2">"B"</span><span class="o">,</span> <span class="s2">"mod B do</span><span class="se">\n</span><span class="s2">  fn util() do 1 end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+    <span class="p">(</span><span class="s2">"a.march"</span><span class="o">,</span> <span class="s2">"A"</span><span class="o">,</span> <span class="s2">"mod A do</span><span class="se">\n</span><span class="s2">  fn main() do B.util() end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">calls</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Call</span><span class="p">)</span> <span class="n">refs</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"cross-module B.util call recorded"</span> <span class="bp">true</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"B.util"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"A.main"</span><span class="p">)</span> <span class="n">calls</span><span class="p">)</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Run the test to verify it fails</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe 2&gt;&amp;1 | tail -40</code> (expect a compile error: <code class="language-plaintext highlighter-rouge">check_module_with_refs</code>/<code class="language-plaintext highlighter-rouge">ref_record</code>/<code class="language-plaintext highlighter-rouge">ref_kind</code> unbound, since Task 2’s implementation doesn’t exist yet).
+Expected: FAIL — build error referencing the missing <code class="language-plaintext highlighter-rouge">check_module_with_refs</code>/<code class="language-plaintext highlighter-rouge">ref_record</code>.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Hook <code class="language-plaintext highlighter-rouge">check_fn</code> to set <code class="language-plaintext highlighter-rouge">current_decl</code> (line 6690)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">check_fn</span> <span class="n">env</span> <span class="p">(</span><span class="n">def</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">fn_def</span><span class="p">)</span> <span class="n">fn_span</span> <span class="o">:</span> <span class="n">scheme</span> <span class="o">=</span>
+  <span class="n">env</span><span class="o">.</span><span class="n">current_decl</span> <span class="o">:=</span> <span class="n">env</span><span class="o">.</span><span class="n">current_module</span> <span class="o">^</span> <span class="s2">"."</span> <span class="o">^</span> <span class="n">def</span><span class="o">.</span><span class="n">fn_name</span><span class="o">.</span><span class="n">txt</span><span class="p">;</span>
+  <span class="k">let</span> <span class="n">env'</span>    <span class="o">=</span> <span class="n">enter_level</span> <span class="n">env</span> <span class="k">in</span>
+</code></pre></div></div>
+
+<p>(One line inserted before the existing <code class="language-plaintext highlighter-rouge">let env' = enter_level env in</code>; nothing else in <code class="language-plaintext highlighter-rouge">check_fn</code> changes. <code class="language-plaintext highlighter-rouge">env.current_decl</code> is a shared <code class="language-plaintext highlighter-rouge">ref</code>, so this is visible to every nested <code class="language-plaintext highlighter-rouge">infer_expr</code> call for the rest of this function body, including impl-method bodies — <code class="language-plaintext highlighter-rouge">check_fn</code> is also the entry point <code class="language-plaintext highlighter-rouge">DImpl</code> uses at <code class="language-plaintext highlighter-rouge">typecheck.ml:9841</code>.)</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Hook the generic <code class="language-plaintext highlighter-rouge">EVar</code> arm to record calls (lines 4697-4704)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="c">(* ── Variables ────────────────────────────────────────────────── *)</span>
+    <span class="o">|</span> <span class="nn">Ast</span><span class="p">.</span><span class="nc">EVar</span> <span class="n">name</span> <span class="o">-&gt;</span>
+      <span class="n">record_use</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">name</span><span class="o">.</span><span class="n">span</span> <span class="n">env</span><span class="p">;</span>
+      <span class="p">(</span><span class="k">match</span> <span class="n">lookup_var</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">with</span>
+       <span class="o">|</span> <span class="nc">Some</span> <span class="n">sch</span> <span class="o">-&gt;</span>
+         <span class="p">(</span><span class="k">if</span> <span class="nn">StrMap</span><span class="p">.</span><span class="n">mem</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span><span class="o">.</span><span class="n">local_fns</span> <span class="k">then</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">refs</span> <span class="o">:=</span> <span class="p">{</span> <span class="n">callee</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">current_module</span> <span class="o">^</span> <span class="s2">"."</span> <span class="o">^</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span><span class="p">;</span>
+                          <span class="n">caller</span> <span class="o">=</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_decl</span><span class="p">);</span>
+                          <span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Call</span><span class="p">;</span>
+                          <span class="n">ref_file</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
+                          <span class="n">ref_line</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">start_line</span> <span class="p">}</span> <span class="o">::</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">refs</span><span class="p">));</span>
+         <span class="n">instantiate</span> <span class="o">~</span><span class="n">use_span</span><span class="o">:</span><span class="n">name</span><span class="o">.</span><span class="n">span</span> <span class="n">env</span><span class="o">.</span><span class="n">level</span> <span class="n">env</span> <span class="n">sch</span>
+       <span class="o">|</span> <span class="nc">None</span>     <span class="o">-&gt;</span>
+         <span class="c">(* Try qualified module resolution: "Mod.func" *)</span>
+         <span class="k">match</span> <span class="n">resolve_qualified_var</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">with</span>
+         <span class="o">|</span> <span class="n">_</span><span class="o">,</span> <span class="nc">Some</span> <span class="n">sch</span> <span class="o">-&gt;</span>
+           <span class="n">env</span><span class="o">.</span><span class="n">refs</span> <span class="o">:=</span> <span class="p">{</span> <span class="n">callee</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span><span class="p">;</span>
+                         <span class="n">caller</span> <span class="o">=</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_decl</span><span class="p">);</span>
+                         <span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Call</span><span class="p">;</span>
+                         <span class="n">ref_file</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
+                         <span class="n">ref_line</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">start_line</span> <span class="p">}</span> <span class="o">::</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">refs</span><span class="p">);</span>
+           <span class="n">instantiate</span> <span class="o">~</span><span class="n">use_span</span><span class="o">:</span><span class="n">name</span><span class="o">.</span><span class="n">span</span> <span class="n">env</span><span class="o">.</span><span class="n">level</span> <span class="n">env</span> <span class="n">sch</span>
+         <span class="o">|</span> <span class="n">_</span> <span class="k">when</span> <span class="n">is_confirmed_private_qualified</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="o">-&gt;</span>
+           <span class="c">(* A confirmed privacy violation (`Mod.priv_fn`) must be reported
+</span></code></pre></div></div>
+
+<p>(Everything from <code class="language-plaintext highlighter-rouge">| _ when is_confirmed_private_qualified ...</code> onward is unchanged existing code — only the two <code class="language-plaintext highlighter-rouge">if</code>/insertion blocks above are new. Note: <code class="language-plaintext highlighter-rouge">env.local_fns</code> guards the bare-name case so only genuine top-level function calls are recorded, not references to local <code class="language-plaintext highlighter-rouge">let</code>-bound values, which also live in <code class="language-plaintext highlighter-rouge">env.vars</code>.)</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Add <code class="language-plaintext highlighter-rouge">check_module_with_refs</code> next to <code class="language-plaintext highlighter-rouge">check_module</code> (line 11122-11125)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">check_module</span> <span class="o">?</span><span class="n">errors</span> <span class="p">(</span><span class="n">m</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">module_</span><span class="p">)</span> <span class="o">:</span> <span class="nn">Err</span><span class="p">.</span><span class="n">ctx</span> <span class="o">*</span> <span class="p">(</span><span class="nn">Ast</span><span class="p">.</span><span class="n">span</span><span class="o">,</span> <span class="n">ty</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">errs</span><span class="o">,</span> <span class="n">type_map</span><span class="o">,</span> <span class="n">_env</span><span class="p">)</span> <span class="o">=</span> <span class="n">check_module_core</span> <span class="o">?</span><span class="n">errors</span> <span class="n">m</span> <span class="k">in</span>
+  <span class="p">(</span><span class="n">errs</span><span class="o">,</span> <span class="n">type_map</span><span class="p">)</span>
+
+<span class="c">(** Like [check_module], but also returns every resolved call/ctor/type
+    reference recorded during checking — used by [forge search --callers].
+    Order is call-order, most-recent-first is reversed back to source order. *)</span>
+<span class="k">let</span> <span class="n">check_module_with_refs</span> <span class="o">?</span><span class="n">errors</span> <span class="p">(</span><span class="n">m</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">module_</span><span class="p">)</span>
+    <span class="o">:</span> <span class="nn">Err</span><span class="p">.</span><span class="n">ctx</span> <span class="o">*</span> <span class="p">(</span><span class="nn">Ast</span><span class="p">.</span><span class="n">span</span><span class="o">,</span> <span class="n">ty</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span> <span class="o">*</span> <span class="n">ref_record</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">errs</span><span class="o">,</span> <span class="n">type_map</span><span class="o">,</span> <span class="n">final_env</span><span class="p">)</span> <span class="o">=</span> <span class="n">check_module_core</span> <span class="o">?</span><span class="n">errors</span> <span class="n">m</span> <span class="k">in</span>
+  <span class="p">(</span><span class="n">errs</span><span class="o">,</span> <span class="n">type_map</span><span class="o">,</span> <span class="nn">List</span><span class="p">.</span><span class="n">rev</span> <span class="o">!</span><span class="p">(</span><span class="n">final_env</span><span class="o">.</span><span class="n">refs</span><span class="p">))</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Run the test to verify it passes</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; ./_build/default/test/test_search.exe test 'reference'</code> (or <code class="language-plaintext highlighter-rouge">dune exec test/test_search.exe -- test</code>)
+Expected: PASS for <code class="language-plaintext highlighter-rouge">test_call_ref_same_module</code> and <code class="language-plaintext highlighter-rouge">test_call_ref_cross_module</code>. If you haven’t registered the two tests in the Alcotest runner list at the bottom of <code class="language-plaintext highlighter-rouge">test/test_search.ml</code> yet, add them there now (follow the existing <code class="language-plaintext highlighter-rouge">"levenshtein", [...]</code> group pattern — add a <code class="language-plaintext highlighter-rouge">"references", [ Alcotest.test_case "same-module call" \</code>Quick test_call_ref_same_module; Alcotest.test_case “cross-module call” `Quick test_call_ref_cross_module; ]` group) and re-run.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 7: Run the full suite to confirm no regressions</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh -q</code>
+Expected: all passing, count unchanged except the new test_search cases.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 8: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add lib/typecheck/typecheck.ml <span class="nb">test</span>/dune <span class="nb">test</span>/test_search.ml
+git commit <span class="nt">-m</span> <span class="s2">"typecheck: record resolved call references for forge search --callers"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="task-3-constructor-reference-recording-econ">Task 3: Constructor-reference recording (<code class="language-plaintext highlighter-rouge">ECon</code>)</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:5420-5429</code> (<code class="language-plaintext highlighter-rouge">ECon</code> arm in <code class="language-plaintext highlighter-rouge">infer_expr</code>)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>Consumes: <code class="language-plaintext highlighter-rouge">ctor_info.ci_module : string</code> (already exists, doc’d as “declaring module of this constructor’s parent type”).</li>
+  <li>
+    <p>Produces: additional <code class="language-plaintext highlighter-rouge">ref_record</code>s with <code class="language-plaintext highlighter-rouge">ref_kind = \</code>Ctor`.</p>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Write the failing test</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">test_ctor_ref_recorded</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"a.march"</span><span class="o">,</span> <span class="s2">"A"</span><span class="o">,</span>
+     <span class="s2">"mod A do</span><span class="se">\n</span><span class="s2">  type Box = Empty | Full(Int)</span><span class="se">\n</span><span class="s2">  fn main() do Full(1) end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">ctors</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Ctor</span><span class="p">)</span> <span class="n">refs</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"Full ctor use recorded"</span> <span class="bp">true</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"A.Full"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"A.main"</span><span class="p">)</span> <span class="n">ctors</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Add it to <code class="language-plaintext highlighter-rouge">test/test_search.ml</code> next to the Task 2 tests and to the <code class="language-plaintext highlighter-rouge">"references"</code> Alcotest group.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: FAIL — <code class="language-plaintext highlighter-rouge">test_ctor_ref_recorded</code> reports no <code class="language-plaintext highlighter-rouge">A.Full</code>/<code class="language-plaintext highlighter-rouge">A.main</code> entry (nothing records ctor uses yet).</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Hook the <code class="language-plaintext highlighter-rouge">ECon</code> arm (line 5420-5429)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="c">(* ── Constructor application ──────────────────────────────────── *)</span>
+    <span class="o">|</span> <span class="nn">Ast</span><span class="p">.</span><span class="nc">ECon</span> <span class="p">(</span><span class="n">name</span><span class="o">,</span> <span class="n">args</span><span class="o">,</span> <span class="n">sp</span><span class="p">)</span> <span class="o">-&gt;</span>
+      <span class="p">(</span><span class="k">let</span> <span class="n">ci_opt</span> <span class="o">=</span> <span class="k">match</span> <span class="n">lookup_ctor_same_module</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">with</span>
+         <span class="o">|</span> <span class="nc">Some</span> <span class="n">_</span> <span class="k">as</span> <span class="n">r</span> <span class="o">-&gt;</span> <span class="n">r</span>
+         <span class="o">|</span> <span class="nc">None</span> <span class="o">-&gt;</span>
+         <span class="k">match</span> <span class="n">lookup_ctor</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">with</span>
+         <span class="o">|</span> <span class="nc">Some</span> <span class="n">_</span> <span class="k">as</span> <span class="n">r</span> <span class="o">-&gt;</span> <span class="n">r</span>
+         <span class="o">|</span> <span class="nc">None</span> <span class="o">-&gt;</span>
+           <span class="c">(* Try qualified module resolution: "Mod.Ctor" *)</span>
+           <span class="k">let</span> <span class="n">_</span><span class="o">,</span> <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_qualified_ctor</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">in</span>
+           <span class="n">resolved</span>
+       <span class="k">in</span>
+       <span class="p">(</span><span class="k">match</span> <span class="n">ci_opt</span> <span class="k">with</span>
+        <span class="o">|</span> <span class="nc">Some</span> <span class="n">ci</span> <span class="o">-&gt;</span>
+          <span class="n">env</span><span class="o">.</span><span class="n">refs</span> <span class="o">:=</span> <span class="p">{</span> <span class="n">callee</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">ci_module</span> <span class="o">^</span> <span class="s2">"."</span> <span class="o">^</span>
+                          <span class="p">(</span><span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">contains</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="sc">'.'</span>
+                           <span class="k">then</span> <span class="p">(</span><span class="k">let</span> <span class="n">i</span> <span class="o">=</span> <span class="nn">String</span><span class="p">.</span><span class="n">rindex</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="sc">'.'</span> <span class="k">in</span>
+                                 <span class="nn">String</span><span class="p">.</span><span class="n">sub</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+                           <span class="k">else</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span><span class="p">);</span>
+                        <span class="n">caller</span> <span class="o">=</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_decl</span><span class="p">);</span>
+                        <span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Ctor</span><span class="p">;</span>
+                        <span class="n">ref_file</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
+                        <span class="n">ref_line</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">start_line</span> <span class="p">}</span> <span class="o">::</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">refs</span><span class="p">)</span>
+        <span class="o">|</span> <span class="nc">None</span> <span class="o">-&gt;</span> <span class="bp">()</span><span class="p">);</span>
+       <span class="k">match</span> <span class="n">ci_opt</span> <span class="k">with</span>
+       <span class="o">|</span> <span class="nc">None</span> <span class="o">-&gt;</span>
+         <span class="k">let</span> <span class="n">candidates</span> <span class="o">=</span> <span class="n">suggest_ctors</span> <span class="n">name</span><span class="o">.</span><span class="n">txt</span> <span class="n">env</span> <span class="k">in</span>
+</code></pre></div></div>
+
+<p>(The added block sits between the existing <code class="language-plaintext highlighter-rouge">let ci_opt = ... in</code> and the existing <code class="language-plaintext highlighter-rouge">match ci_opt with | None -&gt; ...</code> — it re-matches <code class="language-plaintext highlighter-rouge">ci_opt</code> once purely to record the reference, then falls through to the original <code class="language-plaintext highlighter-rouge">match ci_opt with</code> unchanged. <code class="language-plaintext highlighter-rouge">name.txt</code> may already be <code class="language-plaintext highlighter-rouge">"Mod.Ctor"</code> for an explicitly-qualified constructor use, so the bare ctor name is extracted after the last <code class="language-plaintext highlighter-rouge">.</code> before re-qualifying with <code class="language-plaintext highlighter-rouge">ci.ci_module</code>, keeping the callee format consistent with Task 2’s <code class="language-plaintext highlighter-rouge">"Mod.name"</code>.)</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Run test to verify it passes</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: PASS.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Run the full suite</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh -q</code>
+Expected: all passing.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add lib/typecheck/typecheck.ml <span class="nb">test</span>/test_search.ml
+git commit <span class="nt">-m</span> <span class="s2">"typecheck: record resolved constructor references for forge search --callers"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="task-4-qualified-type-reference-recording-tycon">Task 4: Qualified type-reference recording (<code class="language-plaintext highlighter-rouge">TyCon</code>)</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml:3048-3052</code> (<code class="language-plaintext highlighter-rouge">surface_ty</code>’s <code class="language-plaintext highlighter-rouge">Ast.TyCon</code> case)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>
+    <p>Produces: additional <code class="language-plaintext highlighter-rouge">ref_record</code>s with <code class="language-plaintext highlighter-rouge">ref_kind = \</code>TypeRef<code class="language-plaintext highlighter-rouge">, for explicitly-qualified </code>Mod.TypeName` annotations only (see Global Constraints — bare type references are an accepted gap).</p>
+  </li>
+  <li class="task-list-item">
+    <p><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Read the exact current <code class="language-plaintext highlighter-rouge">Ast.TyCon</code> case before editing</strong></p>
+  </li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">sed -n '3040,3070p' lib/typecheck/typecheck.ml</code> and confirm the match arm shape and the span available (the surrounding <code class="language-plaintext highlighter-rouge">surface_ty</code> signature is <code class="language-plaintext highlighter-rouge">surface_ty env ~tvars (s : Ast.ty) : ty</code>, matching <code class="language-plaintext highlighter-rouge">Ast.TyCon (name, args)</code> — note <code class="language-plaintext highlighter-rouge">Ast.TyCon</code> carries a <code class="language-plaintext highlighter-rouge">name : Ast.name</code> with a <code class="language-plaintext highlighter-rouge">.span</code>, per <code class="language-plaintext highlighter-rouge">lib/ast/ast.ml</code>’s <code class="language-plaintext highlighter-rouge">TyCon of name * ty list</code>). If the arm shape has drifted from what’s captured in this plan’s Task-writing investigation, adapt the insertion point accordingly — the anchor is “wherever <code class="language-plaintext highlighter-rouge">Ast.TyCon (name, args)</code> is matched and resolves to a type”, not the exact line number.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Write the failing test</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">test_typeref_qualified_recorded</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"b.march"</span><span class="o">,</span> <span class="s2">"B"</span><span class="o">,</span> <span class="s2">"mod B do</span><span class="se">\n</span><span class="s2">  type Widget = Widget(Int)</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+    <span class="p">(</span><span class="s2">"a.march"</span><span class="o">,</span> <span class="s2">"A"</span><span class="o">,</span> <span class="s2">"mod A do</span><span class="se">\n</span><span class="s2">  fn make(w: B.Widget) do w end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">tyrefs</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`TypeRef</span><span class="p">)</span> <span class="n">refs</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"B.Widget annotation recorded"</span> <span class="bp">true</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"B.Widget"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"A.make"</span><span class="p">)</span> <span class="n">tyrefs</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Add to <code class="language-plaintext highlighter-rouge">test/test_search.ml</code>’s <code class="language-plaintext highlighter-rouge">"references"</code> group.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Run test to verify it fails</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: FAIL — no <code class="language-plaintext highlighter-rouge">TypeRef</code> entries exist yet.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Hook the qualified <code class="language-plaintext highlighter-rouge">Ast.TyCon</code> case in <code class="language-plaintext highlighter-rouge">surface_ty</code></strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="o">|</span> <span class="nn">Ast</span><span class="p">.</span><span class="nc">TyCon</span> <span class="p">(</span><span class="n">name</span><span class="o">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">(</span><span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">contains</span> <span class="n">name</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">txt</span> <span class="sc">'.'</span> <span class="k">then</span>
+       <span class="n">env</span><span class="o">.</span><span class="n">refs</span> <span class="o">:=</span> <span class="p">{</span> <span class="n">callee</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">txt</span><span class="p">;</span>
+                     <span class="n">caller</span> <span class="o">=</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_decl</span><span class="p">);</span>
+                     <span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`TypeRef</span><span class="p">;</span>
+                     <span class="n">ref_file</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
+                     <span class="n">ref_line</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">span</span><span class="o">.</span><span class="nn">Ast</span><span class="p">.</span><span class="n">start_line</span> <span class="p">}</span> <span class="o">::</span> <span class="o">!</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">refs</span><span class="p">));</span>
+    <span class="c">(* ... existing resolution body unchanged below ... *)</span>
+</code></pre></div></div>
+
+<p>Insert the <code class="language-plaintext highlighter-rouge">if</code>-block as the first line of the existing <code class="language-plaintext highlighter-rouge">Ast.TyCon (name, args) -&gt; ...</code> arm body, leaving every subsequent line of that arm exactly as it already is. Only qualified names (containing <code class="language-plaintext highlighter-rouge">.</code>) are recorded, per the Global Constraints gap.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Run test to verify it passes</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: PASS.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Run the full suite</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh -q</code>
+Expected: all passing.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 7: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add lib/typecheck/typecheck.ml <span class="nb">test</span>/test_search.ml
+git commit <span class="nt">-m</span> <span class="s2">"typecheck: record qualified type-annotation references for forge search --callers"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="task-5-extend-searchindex-with-a-references-table">Task 5: Extend <code class="language-plaintext highlighter-rouge">Search.index</code> with a <code class="language-plaintext highlighter-rouge">references</code> table</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">lib/search/search.ml</code> (<code class="language-plaintext highlighter-rouge">index</code> type, <code class="language-plaintext highlighter-rouge">build_stdlib_index</code>, <code class="language-plaintext highlighter-rouge">build_index_from_dirs</code>, <code class="language-plaintext highlighter-rouge">merge_indices</code>, JSON (de)serialization, <code class="language-plaintext highlighter-rouge">search_combined</code>, new formatters)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>Consumes: <code class="language-plaintext highlighter-rouge">TC.check_module_with_refs</code>, <code class="language-plaintext highlighter-rouge">TC.ref_record</code> (Task 2/3/4).</li>
+  <li>
+    <p>Produces: <code class="language-plaintext highlighter-rouge">index.references : (string, (string * string * int * string) list) Hashtbl.t</code> (callee qualified name -&gt; <code class="language-plaintext highlighter-rouge">(caller, file, line, kind_string)</code> list); <code class="language-plaintext highlighter-rouge">Search.search_combined</code>’s new <code class="language-plaintext highlighter-rouge">?callers:string</code> param returning <code class="language-plaintext highlighter-rouge">(string * string * int * string) list</code>; <code class="language-plaintext highlighter-rouge">Search.format_references_plain</code>/<code class="language-plaintext highlighter-rouge">format_references_colored</code>.</p>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Write the failing test</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">test_index_references_roundtrip</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">:</span> <span class="nn">Search</span><span class="p">.</span><span class="n">ref_entry</span> <span class="kt">list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="nn">Search</span><span class="p">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"A.helper"</span><span class="p">;</span> <span class="n">caller</span> <span class="o">=</span> <span class="s2">"A.main"</span><span class="p">;</span> <span class="n">kind</span> <span class="o">=</span> <span class="s2">"call"</span><span class="p">;</span> <span class="n">file</span> <span class="o">=</span> <span class="s2">"a.march"</span><span class="p">;</span> <span class="n">line</span> <span class="o">=</span> <span class="mi">3</span> <span class="p">};</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">idx</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.{</span> <span class="p">(</span><span class="n">sample_index</span> <span class="bp">()</span><span class="p">)</span> <span class="k">with</span> <span class="n">references</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">references_of_list</span> <span class="n">refs</span> <span class="p">}</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">json</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">index_to_json</span> <span class="n">idx</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">idx2</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">index_from_json</span> <span class="n">json</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">looked_up</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">callers_of</span> <span class="n">idx2</span> <span class="s2">"A.helper"</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">int</span><span class="p">)</span> <span class="s2">"one caller round-tripped"</span> <span class="mi">1</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">length</span> <span class="n">looked_up</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Add to <code class="language-plaintext highlighter-rouge">test/test_search.ml</code>, registered in the Alcotest runner.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: FAIL — <code class="language-plaintext highlighter-rouge">Search.ref_entry</code>/<code class="language-plaintext highlighter-rouge">references_of_list</code>/<code class="language-plaintext highlighter-rouge">callers_of</code> unbound.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Add the <code class="language-plaintext highlighter-rouge">ref_entry</code> type and <code class="language-plaintext highlighter-rouge">index.references</code> field</strong></li>
+</ul>
+
+<p>In <code class="language-plaintext highlighter-rouge">lib/search/search.ml</code>, near the existing <code class="language-plaintext highlighter-rouge">type entry = { ... }</code> (line ~21-30):</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span> <span class="n">ref_entry</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">callee</span> <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>   <span class="c">(* qualified name of the referenced declaration *)</span>
+  <span class="n">caller</span> <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>   <span class="c">(* qualified name of the enclosing declaration *)</span>
+  <span class="n">kind</span>   <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>   <span class="c">(* "call" | "ctor" | "type" *)</span>
+  <span class="n">file</span>   <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>
+  <span class="n">line</span>   <span class="o">:</span> <span class="kt">int</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>In <code class="language-plaintext highlighter-rouge">type index = { ... }</code> (line ~33-36), add:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span> <span class="n">index</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">entries</span>      <span class="o">:</span> <span class="n">entry</span> <span class="kt">list</span><span class="p">;</span>
+  <span class="n">references</span>   <span class="o">:</span> <span class="p">(</span><span class="kt">string</span><span class="o">,</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span><span class="p">;</span>
+  <span class="n">version</span>      <span class="o">:</span> <span class="kt">int</span><span class="p">;</span>
+  <span class="n">generated_at</span> <span class="o">:</span> <span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Add helpers to build/query the references table</strong></li>
+</ul>
+
+<p>Immediately after the <code class="language-plaintext highlighter-rouge">type index</code> block:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">ref_kind_to_string</span> <span class="o">=</span> <span class="k">function</span>
+  <span class="o">|</span> <span class="nt">`Call</span>    <span class="o">-&gt;</span> <span class="s2">"call"</span>
+  <span class="o">|</span> <span class="nt">`Ctor</span>    <span class="o">-&gt;</span> <span class="s2">"ctor"</span>
+  <span class="o">|</span> <span class="nt">`TypeRef</span> <span class="o">-&gt;</span> <span class="s2">"type"</span>
+
+<span class="c">(** Group a flat list of ref_entry into the callee-keyed table [index.references] expects. *)</span>
+<span class="k">let</span> <span class="n">references_of_list</span> <span class="p">(</span><span class="n">refs</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="o">:</span> <span class="p">(</span><span class="kt">string</span><span class="o">,</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">tbl</span> <span class="o">:</span> <span class="p">(</span><span class="kt">string</span><span class="o">,</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">64</span> <span class="k">in</span>
+  <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="n">ref_entry</span><span class="p">)</span> <span class="o">-&gt;</span>
+      <span class="k">let</span> <span class="n">existing</span> <span class="o">=</span> <span class="nn">Option</span><span class="p">.</span><span class="n">value</span> <span class="o">~</span><span class="n">default</span><span class="o">:</span><span class="bp">[]</span> <span class="p">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">find_opt</span> <span class="n">tbl</span> <span class="n">r</span><span class="o">.</span><span class="n">callee</span><span class="p">)</span> <span class="k">in</span>
+      <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">replace</span> <span class="n">tbl</span> <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="p">(</span><span class="n">r</span> <span class="o">::</span> <span class="n">existing</span><span class="p">)</span>
+    <span class="p">)</span> <span class="n">refs</span><span class="p">;</span>
+  <span class="n">tbl</span>
+
+<span class="k">let</span> <span class="n">callers_of</span> <span class="p">(</span><span class="n">idx</span> <span class="o">:</span> <span class="n">index</span><span class="p">)</span> <span class="p">(</span><span class="n">callee</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="nn">Option</span><span class="p">.</span><span class="n">value</span> <span class="o">~</span><span class="n">default</span><span class="o">:</span><span class="bp">[]</span> <span class="p">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">find_opt</span> <span class="n">idx</span><span class="o">.</span><span class="n">references</span> <span class="n">callee</span><span class="p">)</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Wire <code class="language-plaintext highlighter-rouge">TC.ref_record list</code> into index construction</strong></li>
+</ul>
+
+<p>Modify <code class="language-plaintext highlighter-rouge">typecheck_decls</code> (line 357-362) to also return refs, and thread them through <code class="language-plaintext highlighter-rouge">build_stdlib_index</code>/<code class="language-plaintext highlighter-rouge">build_index_from_dirs</code>:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">typecheck_decls</span> <span class="p">(</span><span class="n">all_decls</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">decl</span> <span class="kt">list</span><span class="p">)</span>
+    <span class="o">:</span> <span class="p">(</span><span class="nn">Ast</span><span class="p">.</span><span class="n">span</span><span class="o">,</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ty</span><span class="p">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span> <span class="o">*</span> <span class="n">ref_entry</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">synth</span> <span class="o">:</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">module_</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">mod_name</span>  <span class="o">=</span> <span class="p">{</span> <span class="n">txt</span> <span class="o">=</span> <span class="s2">"__stdlib__"</span><span class="p">;</span> <span class="n">span</span> <span class="o">=</span> <span class="nn">Ast</span><span class="p">.</span><span class="n">dummy_span</span> <span class="p">};</span>
+    <span class="n">mod_decls</span> <span class="o">=</span> <span class="n">all_decls</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">_errors</span><span class="o">,</span> <span class="n">type_map</span><span class="o">,</span> <span class="n">tc_refs</span><span class="p">)</span> <span class="o">=</span> <span class="nn">TC</span><span class="p">.</span><span class="n">check_module_with_refs</span> <span class="n">synth</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+      <span class="p">{</span> <span class="n">callee</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">callee</span><span class="p">;</span> <span class="n">caller</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span><span class="p">;</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="n">ref_kind_to_string</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span><span class="p">;</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_file</span><span class="p">;</span> <span class="n">line</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_line</span> <span class="p">}</span>
+    <span class="p">)</span> <span class="n">tc_refs</span> <span class="k">in</span>
+  <span class="p">(</span><span class="n">type_map</span><span class="o">,</span> <span class="n">refs</span><span class="p">)</span>
+
+<span class="c">(** Build a search index from all stdlib files, with typechecker-inferred types. *)</span>
+<span class="k">let</span> <span class="n">build_stdlib_index</span> <span class="bp">()</span> <span class="o">:</span> <span class="n">index</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">decl_lists</span><span class="o">,</span> <span class="n">source_files</span><span class="p">)</span> <span class="o">=</span> <span class="n">load_stdlib</span> <span class="bp">()</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">type_map</span><span class="o">,</span> <span class="n">refs</span><span class="p">)</span> <span class="o">=</span> <span class="n">typecheck_decls</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">concat</span> <span class="n">decl_lists</span><span class="p">)</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">build_index</span> <span class="n">decl_lists</span> <span class="o">~</span><span class="n">source_files</span> <span class="o">~</span><span class="n">type_map</span> <span class="bp">()</span> <span class="k">in</span>
+  <span class="p">{</span> <span class="n">idx</span> <span class="k">with</span> <span class="n">references</span> <span class="o">=</span> <span class="n">references_of_list</span> <span class="n">refs</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">build_index_from_dirs</code> (line 370-381) doesn’t currently call <code class="language-plaintext highlighter-rouge">typecheck_decls</code> at all (it calls <code class="language-plaintext highlighter-rouge">build_index decls ~source_files:paths ()</code> with no <code class="language-plaintext highlighter-rouge">type_map</code>, so params/return types come out unresolved for project-dependency-only builds — this is pre-existing behavior, not something this task changes). Update it to also typecheck and attach references, matching <code class="language-plaintext highlighter-rouge">build_stdlib_index</code>’s new shape:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">build_index_from_dirs</span> <span class="p">(</span><span class="n">dirs</span> <span class="o">:</span> <span class="kt">string</span> <span class="kt">list</span><span class="p">)</span> <span class="o">:</span> <span class="n">index</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">march_files_in</span> <span class="n">dir</span> <span class="o">=</span> <span class="c">(* unchanged *)</span>
+    <span class="k">try</span>
+      <span class="nn">Sys</span><span class="p">.</span><span class="n">readdir</span> <span class="n">dir</span>
+      <span class="o">|&gt;</span> <span class="nn">Array</span><span class="p">.</span><span class="n">to_list</span>
+      <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="n">f</span> <span class="o">-&gt;</span> <span class="nn">Filename</span><span class="p">.</span><span class="n">check_suffix</span> <span class="n">f</span> <span class="s2">".march"</span><span class="p">)</span>
+      <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">sort</span> <span class="nn">String</span><span class="p">.</span><span class="n">compare</span>
+      <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="nn">Filename</span><span class="p">.</span><span class="n">concat</span> <span class="n">dir</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nc">Sys_error</span> <span class="n">_</span> <span class="o">-&gt;</span> <span class="bp">[]</span>
+  <span class="k">in</span>
+  <span class="k">let</span> <span class="n">paths</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">concat_map</span> <span class="n">march_files_in</span> <span class="n">dirs</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">decls</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="n">parse_file</span> <span class="n">paths</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="p">(</span><span class="n">type_map</span><span class="o">,</span> <span class="n">refs</span><span class="p">)</span> <span class="o">=</span> <span class="n">typecheck_decls</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">concat</span> <span class="n">decls</span><span class="p">)</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">build_index</span> <span class="n">decls</span> <span class="o">~</span><span class="n">source_files</span><span class="o">:</span><span class="n">paths</span> <span class="o">~</span><span class="n">type_map</span> <span class="bp">()</span> <span class="k">in</span>
+  <span class="p">{</span> <span class="n">idx</span> <span class="k">with</span> <span class="n">references</span> <span class="o">=</span> <span class="n">references_of_list</span> <span class="n">refs</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Update <code class="language-plaintext highlighter-rouge">merge_indices</code> (line ~383-385) to merge references too:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">merge_indices</span> <span class="p">(</span><span class="n">a</span> <span class="o">:</span> <span class="n">index</span><span class="p">)</span> <span class="p">(</span><span class="n">b</span> <span class="o">:</span> <span class="n">index</span><span class="p">)</span> <span class="o">:</span> <span class="n">index</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">merged</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">copy</span> <span class="n">a</span><span class="o">.</span><span class="n">references</span> <span class="k">in</span>
+  <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">iter</span> <span class="p">(</span><span class="k">fun</span> <span class="n">k</span> <span class="n">v</span> <span class="o">-&gt;</span>
+      <span class="k">let</span> <span class="n">existing</span> <span class="o">=</span> <span class="nn">Option</span><span class="p">.</span><span class="n">value</span> <span class="o">~</span><span class="n">default</span><span class="o">:</span><span class="bp">[]</span> <span class="p">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">find_opt</span> <span class="n">merged</span> <span class="n">k</span><span class="p">)</span> <span class="k">in</span>
+      <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">replace</span> <span class="n">merged</span> <span class="n">k</span> <span class="p">(</span><span class="n">v</span> <span class="o">@</span> <span class="n">existing</span><span class="p">)</span>
+    <span class="p">)</span> <span class="n">b</span><span class="o">.</span><span class="n">references</span><span class="p">;</span>
+  <span class="p">{</span> <span class="n">a</span> <span class="k">with</span> <span class="n">entries</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">entries</span> <span class="o">@</span> <span class="n">b</span><span class="o">.</span><span class="n">entries</span><span class="p">;</span> <span class="n">references</span> <span class="o">=</span> <span class="n">merged</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Extend JSON (de)serialization (lines 576-596)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">ref_entry_to_json</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="n">ref_entry</span><span class="p">)</span> <span class="o">:</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span>
+  <span class="nt">`Assoc</span> <span class="p">[</span>
+    <span class="s2">"caller"</span><span class="o">,</span> <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span><span class="p">;</span>
+    <span class="s2">"file"</span><span class="o">,</span>   <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="n">file</span><span class="p">;</span>
+    <span class="s2">"line"</span><span class="o">,</span>   <span class="nt">`Int</span> <span class="n">r</span><span class="o">.</span><span class="n">line</span><span class="p">;</span>
+    <span class="s2">"kind"</span><span class="o">,</span>   <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="n">kind</span><span class="p">;</span>
+  <span class="p">]</span>
+
+<span class="k">let</span> <span class="n">ref_entry_of_json</span> <span class="p">(</span><span class="n">callee</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="n">j</span> <span class="o">:</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">t</span><span class="p">)</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="k">open</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="nc">Util</span> <span class="k">in</span>
+  <span class="p">{</span> <span class="n">callee</span><span class="p">;</span>
+    <span class="n">caller</span> <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"caller"</span> <span class="o">|&gt;</span> <span class="n">to_string</span><span class="p">;</span>
+    <span class="n">file</span>   <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"file"</span>   <span class="o">|&gt;</span> <span class="n">to_string</span><span class="p">;</span>
+    <span class="n">line</span>   <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"line"</span>   <span class="o">|&gt;</span> <span class="n">to_int</span><span class="p">;</span>
+    <span class="n">kind</span>   <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"kind"</span>   <span class="o">|&gt;</span> <span class="n">to_string</span><span class="p">;</span>
+  <span class="p">}</span>
+
+<span class="k">let</span> <span class="n">index_to_json</span> <span class="p">(</span><span class="n">idx</span> <span class="o">:</span> <span class="n">index</span><span class="p">)</span> <span class="o">:</span> <span class="kt">string</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs_json</span> <span class="o">:</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span>
+    <span class="nt">`Assoc</span> <span class="p">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">fold</span> <span class="p">(</span><span class="k">fun</span> <span class="n">callee</span> <span class="n">entries</span> <span class="n">acc</span> <span class="o">-&gt;</span>
+        <span class="p">(</span><span class="n">callee</span><span class="o">,</span> <span class="nt">`List</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="n">ref_entry_to_json</span> <span class="n">entries</span><span class="p">))</span> <span class="o">::</span> <span class="n">acc</span>
+      <span class="p">)</span> <span class="n">idx</span><span class="o">.</span><span class="n">references</span> <span class="bp">[]</span><span class="p">)</span>
+  <span class="k">in</span>
+  <span class="k">let</span> <span class="n">j</span> <span class="o">:</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span> <span class="nt">`Assoc</span> <span class="p">[</span>
+    <span class="s2">"version"</span><span class="o">,</span>      <span class="nt">`Int</span> <span class="n">idx</span><span class="o">.</span><span class="n">version</span><span class="p">;</span>
+    <span class="s2">"generated_at"</span><span class="o">,</span> <span class="nt">`String</span> <span class="n">idx</span><span class="o">.</span><span class="n">generated_at</span><span class="p">;</span>
+    <span class="s2">"entries"</span><span class="o">,</span>      <span class="nt">`List</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="n">entry_to_json</span> <span class="n">idx</span><span class="o">.</span><span class="n">entries</span><span class="p">);</span>
+    <span class="s2">"references"</span><span class="o">,</span>   <span class="n">refs_json</span><span class="p">;</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">pretty_to_string</span> <span class="n">j</span>
+
+<span class="k">let</span> <span class="n">index_from_json</span> <span class="p">(</span><span class="n">s</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="o">:</span> <span class="n">index</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="k">open</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="nc">Util</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">j</span> <span class="o">=</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">from_string</span> <span class="n">s</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">references</span> <span class="o">=</span>
+    <span class="k">match</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"references"</span> <span class="k">with</span>
+    <span class="o">|</span> <span class="nt">`Null</span> <span class="o">-&gt;</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">0</span>  <span class="c">(* old cache predating this field *)</span>
+    <span class="o">|</span> <span class="n">refs_json</span> <span class="o">-&gt;</span>
+      <span class="k">let</span> <span class="n">tbl</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">64</span> <span class="k">in</span>
+      <span class="p">(</span><span class="k">match</span> <span class="n">refs_json</span> <span class="k">with</span>
+       <span class="o">|</span> <span class="nt">`Assoc</span> <span class="n">kvs</span> <span class="o">-&gt;</span>
+         <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">callee</span><span class="o">,</span> <span class="n">entries_json</span><span class="p">)</span> <span class="o">-&gt;</span>
+             <span class="k">let</span> <span class="n">entries</span> <span class="o">=</span> <span class="n">entries_json</span> <span class="o">|&gt;</span> <span class="n">to_list</span> <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="n">ref_entry_of_json</span> <span class="n">callee</span><span class="p">)</span> <span class="k">in</span>
+             <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">replace</span> <span class="n">tbl</span> <span class="n">callee</span> <span class="n">entries</span>
+           <span class="p">)</span> <span class="n">kvs</span>
+       <span class="o">|</span> <span class="n">_</span> <span class="o">-&gt;</span> <span class="bp">()</span><span class="p">);</span>
+      <span class="n">tbl</span>
+  <span class="k">in</span>
+  <span class="p">{</span> <span class="n">version</span>      <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"version"</span>      <span class="o">|&gt;</span> <span class="n">to_int</span><span class="p">;</span>
+    <span class="n">generated_at</span> <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"generated_at"</span> <span class="o">|&gt;</span> <span class="n">to_string</span><span class="p">;</span>
+    <span class="n">entries</span>      <span class="o">=</span> <span class="n">j</span> <span class="o">|&gt;</span> <span class="n">member</span> <span class="s2">"entries"</span>      <span class="o">|&gt;</span> <span class="n">to_list</span> <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="n">entry_of_json</span><span class="p">;</span>
+    <span class="n">references</span><span class="p">;</span>
+  <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Bump the cache version constant used when constructing a fresh index (find the <code class="language-plaintext highlighter-rouge">version = 1</code> — or similar — literal near <code class="language-plaintext highlighter-rouge">build_index</code>’s index construction and bump it by one) so a stale on-disk cache from before this change is distinguishable; <code class="language-plaintext highlighter-rouge">--rebuild</code> (already wired in <code class="language-plaintext highlighter-rouge">cmd_search.ml</code>) remains the manual way to force a fresh build either way.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 7: Add <code class="language-plaintext highlighter-rouge">?callers</code> to <code class="language-plaintext highlighter-rouge">search_combined</code> and reference formatters</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">(** Resolve [query] (bare or qualified) to every matching entry's qualified
+    name, then return their combined caller list. Bare names may match
+    entries in more than one module; all matches are merged rather than
+    treated as an error, consistent with [search_name]'s existing UX. *)</span>
+<span class="k">let</span> <span class="n">search_callers</span> <span class="p">(</span><span class="n">idx</span> <span class="o">:</span> <span class="n">index</span><span class="p">)</span> <span class="p">(</span><span class="n">query</span> <span class="o">:</span> <span class="kt">string</span><span class="p">)</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="kt">list</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">qualified_of</span> <span class="p">(</span><span class="n">e</span> <span class="o">:</span> <span class="n">entry</span><span class="p">)</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">module_name</span> <span class="o">=</span> <span class="s2">""</span> <span class="k">then</span> <span class="n">e</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="n">e</span><span class="o">.</span><span class="n">module_name</span> <span class="o">^</span> <span class="s2">"."</span> <span class="o">^</span> <span class="n">e</span><span class="o">.</span><span class="n">name</span>
+  <span class="k">in</span>
+  <span class="k">let</span> <span class="n">candidates</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">contains</span> <span class="n">query</span> <span class="sc">'.'</span> <span class="k">then</span> <span class="p">[</span><span class="n">query</span><span class="p">]</span>
+    <span class="k">else</span>
+      <span class="n">idx</span><span class="o">.</span><span class="n">entries</span>
+      <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="n">e</span> <span class="o">-&gt;</span> <span class="n">e</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">query</span><span class="p">)</span>
+      <span class="o">|&gt;</span> <span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="n">qualified_of</span>
+  <span class="k">in</span>
+  <span class="nn">List</span><span class="p">.</span><span class="n">concat_map</span> <span class="p">(</span><span class="n">callers_of</span> <span class="n">idx</span><span class="p">)</span> <span class="n">candidates</span>
+
+<span class="k">let</span> <span class="n">format_ref_entry</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="n">ref_entry</span><span class="p">)</span> <span class="o">:</span> <span class="kt">string</span> <span class="o">=</span>
+  <span class="nn">Printf</span><span class="p">.</span><span class="n">sprintf</span> <span class="s2">"%s  %s:%d  (%s)"</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="n">r</span><span class="o">.</span><span class="n">file</span> <span class="n">r</span><span class="o">.</span><span class="n">line</span> <span class="n">r</span><span class="o">.</span><span class="n">kind</span>
+
+<span class="k">let</span> <span class="n">format_references_plain</span> <span class="p">(</span><span class="n">refs</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="o">:</span> <span class="kt">unit</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="n">refs</span> <span class="o">=</span> <span class="bp">[]</span> <span class="k">then</span> <span class="n">print_endline</span> <span class="s2">"no references found"</span>
+  <span class="k">else</span> <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="p">(</span><span class="k">fun</span> <span class="n">r</span> <span class="o">-&gt;</span> <span class="n">print_endline</span> <span class="p">(</span><span class="n">format_ref_entry</span> <span class="n">r</span><span class="p">))</span> <span class="n">refs</span>
+
+<span class="k">let</span> <span class="n">format_references_colored</span> <span class="p">(</span><span class="n">refs</span> <span class="o">:</span> <span class="n">ref_entry</span> <span class="kt">list</span><span class="p">)</span> <span class="o">:</span> <span class="kt">unit</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="n">refs</span> <span class="o">=</span> <span class="bp">[]</span> <span class="k">then</span> <span class="nn">Printf</span><span class="p">.</span><span class="n">printf</span> <span class="s2">"</span><span class="se">\027</span><span class="s2">[2mno references found</span><span class="se">\027</span><span class="s2">[0m</span><span class="se">\n</span><span class="s2">"</span>
+  <span class="k">else</span> <span class="k">begin</span>
+    <span class="k">let</span> <span class="n">bold</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\027</span><span class="s2">[1m"</span> <span class="ow">and</span> <span class="n">dim</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\027</span><span class="s2">[2m"</span> <span class="ow">and</span> <span class="n">reset</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\027</span><span class="s2">[0m"</span> <span class="k">in</span>
+    <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="p">(</span><span class="k">fun</span> <span class="n">r</span> <span class="o">-&gt;</span>
+        <span class="nn">Printf</span><span class="p">.</span><span class="n">printf</span> <span class="s2">"%s%s%s  %s%s:%d%s  %s(%s)%s</span><span class="se">\n</span><span class="s2">"</span>
+          <span class="n">bold</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="n">reset</span> <span class="n">dim</span> <span class="n">r</span><span class="o">.</span><span class="n">file</span> <span class="n">r</span><span class="o">.</span><span class="n">line</span> <span class="n">reset</span> <span class="n">dim</span> <span class="n">r</span><span class="o">.</span><span class="n">kind</span> <span class="n">reset</span>
+      <span class="p">)</span> <span class="n">refs</span>
+  <span class="k">end</span>
+</code></pre></div></div>
+
+<p>(<code class="language-plaintext highlighter-rouge">search_combined</code> itself is left untouched — <code class="language-plaintext highlighter-rouge">--callers</code> is a distinct query mode from name/type/doc search, so <code class="language-plaintext highlighter-rouge">cmd_search.ml</code> will call <code class="language-plaintext highlighter-rouge">search_callers</code> directly rather than folding it into <code class="language-plaintext highlighter-rouge">search_combined</code>’s scoring pipeline, which returns a different result shape.)</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 8: Run test to verify it passes</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: PASS for <code class="language-plaintext highlighter-rouge">test_index_references_roundtrip</code>.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 9: Run the full suite</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh -q</code>
+Expected: all passing.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 10: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add lib/search/search.ml <span class="nb">test</span>/test_search.ml
+git commit <span class="nt">-m</span> <span class="s2">"search: add references table to the search index (call/ctor/type)"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="task-6-forge-search---callers-cli-flag">Task 6: <code class="language-plaintext highlighter-rouge">forge search --callers</code> CLI flag</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">forge/lib/cmd_search.ml</code></li>
+  <li>Modify: whichever file parses <code class="language-plaintext highlighter-rouge">forge search</code>’s CLI args and dispatches to <code class="language-plaintext highlighter-rouge">Cmd_search.run</code> (find it with <code class="language-plaintext highlighter-rouge">forge search --type</code> as the anchor: <code class="language-plaintext highlighter-rouge">grep -rn -- '--type' forge/bin forge/lib</code> before editing, since this plan’s investigation didn’t trace the arg-parser file directly — follow the exact pattern already used for <code class="language-plaintext highlighter-rouge">--type</code>/<code class="language-plaintext highlighter-rouge">--doc</code>).</li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>
+    <p>Consumes: <code class="language-plaintext highlighter-rouge">Search.search_callers</code>, <code class="language-plaintext highlighter-rouge">Search.format_references_plain</code>, <code class="language-plaintext highlighter-rouge">Search.format_references_colored</code> (Task 5).</p>
+  </li>
+  <li class="task-list-item">
+    <p><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Locate the CLI arg definition for <code class="language-plaintext highlighter-rouge">--type</code>/<code class="language-plaintext highlighter-rouge">--doc</code></strong></p>
+  </li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">grep -rn -- '"--type"\|"--doc"' forge/ | grep -v _build</code>
+Read the matched file’s arg-parsing block in full before editing, so the new <code class="language-plaintext highlighter-rouge">--callers</code> flag follows the exact same option-definition pattern (flag name, help text, how it’s threaded into <code class="language-plaintext highlighter-rouge">Cmd_search.run</code>’s labeled arguments).</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Add <code class="language-plaintext highlighter-rouge">~callers</code> to <code class="language-plaintext highlighter-rouge">Cmd_search.run</code>’s signature (<code class="language-plaintext highlighter-rouge">forge/lib/cmd_search.ml:127</code>)</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">run</span> <span class="o">~</span><span class="n">query</span> <span class="o">~</span><span class="n">type_sig</span> <span class="o">~</span><span class="n">doc_query</span> <span class="o">~</span><span class="n">callers</span> <span class="o">~</span><span class="n">limit</span> <span class="o">~</span><span class="n">as_json</span> <span class="o">~</span><span class="n">plain</span> <span class="o">~</span><span class="n">rebuild</span> <span class="bp">()</span> <span class="o">=</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Branch on <code class="language-plaintext highlighter-rouge">callers</code> before the existing search dispatch</strong></li>
+</ul>
+
+<p>Replace the body from <code class="language-plaintext highlighter-rouge">match load_or_build_index ...</code> (line 138) onward:</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">match</span> <span class="n">load_or_build_index</span> <span class="o">~</span><span class="n">verbose</span><span class="o">:</span><span class="bp">false</span> <span class="o">~</span><span class="n">root</span> <span class="n">all_deps</span> <span class="k">with</span>
+  <span class="o">|</span> <span class="nc">Error</span> <span class="n">msg</span> <span class="o">-&gt;</span> <span class="nn">Printf</span><span class="p">.</span><span class="n">eprintf</span> <span class="s2">"error: %s</span><span class="se">\n</span><span class="s2">%!"</span> <span class="n">msg</span><span class="p">;</span> <span class="n">exit</span> <span class="mi">1</span>
+  <span class="o">|</span> <span class="nc">Ok</span> <span class="n">idx</span> <span class="o">-&gt;</span>
+    <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">callers</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">then</span> <span class="k">begin</span>
+      <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">search_callers</span> <span class="n">idx</span> <span class="n">callers</span> <span class="k">in</span>
+      <span class="k">if</span> <span class="n">as_json</span> <span class="k">then</span> <span class="k">begin</span>
+        <span class="k">let</span> <span class="n">j</span> <span class="o">:</span> <span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">t</span> <span class="o">=</span> <span class="nt">`List</span> <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">Search</span><span class="p">.</span><span class="n">ref_entry</span><span class="p">)</span> <span class="o">-&gt;</span>
+            <span class="nt">`Assoc</span> <span class="p">[</span> <span class="s2">"caller"</span><span class="o">,</span> <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="nn">Search</span><span class="p">.</span><span class="n">caller</span><span class="p">;</span> <span class="s2">"file"</span><span class="o">,</span> <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="nn">Search</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
+                     <span class="s2">"line"</span><span class="o">,</span> <span class="nt">`Int</span> <span class="n">r</span><span class="o">.</span><span class="nn">Search</span><span class="p">.</span><span class="n">line</span><span class="p">;</span> <span class="s2">"kind"</span><span class="o">,</span> <span class="nt">`String</span> <span class="n">r</span><span class="o">.</span><span class="nn">Search</span><span class="p">.</span><span class="n">kind</span> <span class="p">]</span>
+          <span class="p">)</span> <span class="n">refs</span><span class="p">)</span> <span class="k">in</span>
+        <span class="n">print_string</span> <span class="p">(</span><span class="nn">Yojson</span><span class="p">.</span><span class="nn">Basic</span><span class="p">.</span><span class="n">pretty_to_string</span> <span class="n">j</span><span class="p">);</span> <span class="n">print_newline</span> <span class="bp">()</span>
+      <span class="k">end</span> <span class="k">else</span> <span class="k">if</span> <span class="n">plain</span> <span class="o">||</span> <span class="n">not</span> <span class="p">(</span><span class="nn">Unix</span><span class="p">.</span><span class="n">isatty</span> <span class="nn">Unix</span><span class="p">.</span><span class="n">stdout</span><span class="p">)</span> <span class="k">then</span>
+        <span class="nn">Search</span><span class="p">.</span><span class="n">format_references_plain</span> <span class="n">refs</span>
+      <span class="k">else</span>
+        <span class="nn">Search</span><span class="p">.</span><span class="n">format_references_colored</span> <span class="n">refs</span>
+    <span class="k">end</span> <span class="k">else</span> <span class="k">begin</span>
+      <span class="k">let</span> <span class="n">name_q</span>     <span class="o">=</span> <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">query</span>    <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">then</span> <span class="nc">Some</span> <span class="n">query</span>    <span class="k">else</span> <span class="nc">None</span> <span class="k">in</span>
+      <span class="k">let</span> <span class="n">type_q</span>     <span class="o">=</span> <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">type_sig</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">then</span> <span class="nc">Some</span> <span class="n">type_sig</span> <span class="k">else</span> <span class="nc">None</span> <span class="k">in</span>
+      <span class="k">let</span> <span class="n">doc_q</span>      <span class="o">=</span> <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">doc_query</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">then</span> <span class="nc">Some</span> <span class="n">doc_query</span> <span class="k">else</span> <span class="nc">None</span> <span class="k">in</span>
+      <span class="k">let</span> <span class="n">results</span> <span class="o">=</span>
+        <span class="k">if</span> <span class="n">name_q</span> <span class="o">=</span> <span class="nc">None</span> <span class="o">&amp;&amp;</span> <span class="n">type_q</span> <span class="o">=</span> <span class="nc">None</span> <span class="o">&amp;&amp;</span> <span class="n">doc_q</span> <span class="o">=</span> <span class="nc">None</span> <span class="k">then</span>
+          <span class="p">(</span><span class="nn">Printf</span><span class="p">.</span><span class="n">printf</span> <span class="s2">"index contains %d entries (stdlib + deps)</span><span class="se">\n</span><span class="s2">%!"</span>
+             <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">length</span> <span class="n">idx</span><span class="o">.</span><span class="nn">Search</span><span class="p">.</span><span class="n">entries</span><span class="p">);</span>
+           <span class="bp">[]</span><span class="p">)</span>
+        <span class="k">else</span>
+          <span class="nn">Search</span><span class="p">.</span><span class="n">search_combined</span> <span class="n">idx</span> <span class="o">?</span><span class="n">name</span><span class="o">:</span><span class="n">name_q</span> <span class="o">?</span><span class="n">type_sig</span><span class="o">:</span><span class="n">type_q</span> <span class="o">?</span><span class="n">doc_query</span><span class="o">:</span><span class="n">doc_q</span> <span class="bp">()</span>
+      <span class="k">in</span>
+      <span class="n">print_results</span> <span class="o">~</span><span class="n">as_json</span> <span class="o">~</span><span class="n">plain</span> <span class="o">~</span><span class="n">limit</span> <span class="n">results</span>
+    <span class="k">end</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Update the caller of <code class="language-plaintext highlighter-rouge">Cmd_search.run</code> to pass <code class="language-plaintext highlighter-rouge">~callers</code></strong></li>
+</ul>
+
+<p>In the file found in Step 1, add a <code class="language-plaintext highlighter-rouge">--callers</code> string-arg definition (default <code class="language-plaintext highlighter-rouge">""</code>, same shape as <code class="language-plaintext highlighter-rouge">--type</code>) and pass it through as <code class="language-plaintext highlighter-rouge">~callers</code> in the call to <code class="language-plaintext highlighter-rouge">Cmd_search.run</code>.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Build and smoke-test manually</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build forge/bin/main.exe</code>
+Expected: builds clean.</p>
+
+<p>Run (from a directory with a <code class="language-plaintext highlighter-rouge">forge.toml</code>, or any march project):</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /tmp <span class="o">&amp;&amp;</span> <span class="nb">mkdir</span> <span class="nt">-p</span> callers_smoke <span class="o">&amp;&amp;</span> <span class="nb">cd </span>callers_smoke <span class="o">&amp;&amp;</span> <span class="se">\</span>
+  <span class="nb">echo</span> <span class="s1">'mod A do
+  fn helper() do 1 end
+  fn main() do helper() end
+end'</span> <span class="o">&gt;</span> a.march <span class="o">&amp;&amp;</span> <span class="se">\</span>
+  /Users/80197052/code/march/_build/default/forge/bin/main.exe search <span class="nt">--callers</span> helper <span class="nt">--rebuild</span>
+</code></pre></div></div>
+<p>Expected: prints one reference line for <code class="language-plaintext highlighter-rouge">A.main</code> at <code class="language-plaintext highlighter-rouge">a.march:3</code> (adjust the exact <code class="language-plaintext highlighter-rouge">forge</code> invocation to match whatever <code class="language-plaintext highlighter-rouge">forge/bin/main.exe</code>’s actual entry point/command name is, discovered in Step 1 — this is a manual smoke check, not the automated test, which is Task 7).</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add forge/lib/cmd_search.ml
+git commit <span class="nt">-m</span> <span class="s2">"forge: add --callers flag to forge search"</span>
+</code></pre></div></div>
+
+<p>(Also <code class="language-plaintext highlighter-rouge">git add</code> whichever CLI arg-parser file was modified in Step 4 — its exact path is discovered in Step 1.)</p>
+
+<hr />
+
+<h2 id="task-7-end-to-end-tests--ambiguous-ctor-regression--docschangelog">Task 7: End-to-end tests + ambiguous-ctor regression + docs/changelog</h2>
+
+<p><strong>Files:</strong></p>
+<ul>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">test/test_search.ml</code></li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">specs/todos/</code> / <code class="language-plaintext highlighter-rouge">specs/progress/</code> (per CLAUDE.md: move the filed todo to progress)</li>
+  <li>Modify: <code class="language-plaintext highlighter-rouge">CHANGELOG.md</code></li>
+</ul>
+
+<p><strong>Interfaces:</strong></p>
+<ul class="task-list">
+  <li>
+    <p>Consumes: everything from Tasks 1-6.</p>
+  </li>
+  <li class="task-list-item">
+    <p><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 1: Write the ambiguous-ctor regression test</strong></p>
+  </li>
+</ul>
+
+<p>This directly guards the class of bug on record in project memory (<code class="language-plaintext highlighter-rouge">project_ambiguous_ctor_current_module.md</code> — stdlib ADTs sharing a bare ctor name at different tags miscompiled because <code class="language-plaintext highlighter-rouge">lookup_ctor</code> didn’t prefer the current module; the fix made <code class="language-plaintext highlighter-rouge">lookup_ctor</code> module-aware). This test proves reference-tracking inherits that same current-module preference rather than reintroducing the bug at the reference layer.</p>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">test_ambiguous_ctor_ref_prefers_current_module</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"x.march"</span><span class="o">,</span> <span class="s2">"X"</span><span class="o">,</span> <span class="s2">"mod X do</span><span class="se">\n</span><span class="s2">  type Status = Active | Done</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+    <span class="p">(</span><span class="s2">"y.march"</span><span class="o">,</span> <span class="s2">"Y"</span><span class="o">,</span>
+     <span class="s2">"mod Y do</span><span class="se">\n</span><span class="s2">  type Status = Active | Done</span><span class="se">\n</span><span class="s2">  fn main() do Active end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">ctors</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">filter</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span> <span class="o">=</span> <span class="nt">`Ctor</span><span class="p">)</span> <span class="n">refs</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"Y.main's Active resolves to Y.Active, not X.Active"</span> <span class="bp">true</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"Y.Active"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"Y.main"</span><span class="p">)</span> <span class="n">ctors</span><span class="p">);</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">bool</span><span class="p">)</span> <span class="s2">"no false X.Active reference from Y.main"</span> <span class="bp">false</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">exists</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+         <span class="n">r</span><span class="o">.</span><span class="n">callee</span> <span class="o">=</span> <span class="s2">"X.Active"</span> <span class="o">&amp;&amp;</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span> <span class="o">=</span> <span class="s2">"Y.main"</span><span class="p">)</span> <span class="n">ctors</span><span class="p">)</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 2: Write the “no references” (empty result) test</strong></li>
+</ul>
+
+<div class="language-ocaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">test_no_references_is_empty_not_error</span> <span class="bp">()</span> <span class="o">=</span>
+  <span class="k">let</span> <span class="n">refs</span> <span class="o">=</span> <span class="n">check_refs</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"a.march"</span><span class="o">,</span> <span class="s2">"A"</span><span class="o">,</span> <span class="s2">"mod A do</span><span class="se">\n</span><span class="s2">  fn unused() do 1 end</span><span class="se">\n</span><span class="s2">  fn main() do 2 end</span><span class="se">\n</span><span class="s2">end</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span>
+  <span class="p">]</span> <span class="k">in</span>
+  <span class="k">let</span> <span class="n">tbl</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">references_of_list</span>
+      <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="k">fun</span> <span class="p">(</span><span class="n">r</span> <span class="o">:</span> <span class="nn">TC</span><span class="p">.</span><span class="n">ref_record</span><span class="p">)</span> <span class="o">-&gt;</span>
+           <span class="p">{</span> <span class="nn">Search</span><span class="p">.</span><span class="n">callee</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">callee</span><span class="p">;</span> <span class="n">caller</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">caller</span><span class="p">;</span>
+             <span class="n">kind</span> <span class="o">=</span> <span class="nn">Search</span><span class="p">.</span><span class="n">ref_kind_to_string</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_kind</span><span class="p">;</span>
+             <span class="n">file</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_file</span><span class="p">;</span> <span class="n">line</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">ref_line</span> <span class="p">})</span>
+          <span class="n">refs</span><span class="p">)</span> <span class="k">in</span>
+  <span class="nn">Alcotest</span><span class="p">.(</span><span class="n">check</span> <span class="kt">int</span><span class="p">)</span> <span class="s2">"unused fn has zero recorded callers"</span> <span class="mi">0</span>
+    <span class="p">(</span><span class="nn">List</span><span class="p">.</span><span class="n">length</span> <span class="p">(</span><span class="nn">Search</span><span class="p">.</span><span class="n">callers_of</span> <span class="p">{</span> <span class="p">(</span><span class="n">sample_index</span> <span class="bp">()</span><span class="p">)</span> <span class="k">with</span> <span class="nn">Search</span><span class="p">.</span><span class="n">references</span> <span class="o">=</span> <span class="n">tbl</span> <span class="p">}</span> <span class="s2">"A.unused"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 3: Register all new tests in the Alcotest runner and run them</strong></li>
+</ul>
+
+<p>Add every <code class="language-plaintext highlighter-rouge">test_*</code> function written in Tasks 2-4 and 7 to a <code class="language-plaintext highlighter-rouge">"references"</code> test group at the bottom of <code class="language-plaintext highlighter-rouge">test/test_search.ml</code>, following the file’s existing <code class="language-plaintext highlighter-rouge">Alcotest.run "search" [ "levenshtein", [...]; ...; "references", [...] ]</code> structure.</p>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">dune build @test/test_search.exe &amp;&amp; dune exec test/test_search.exe -- test</code>
+Expected: PASS for all reference tests, including the two new ones in this task.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 4: Run the full project suite</strong></li>
+</ul>
+
+<p>Run: <code class="language-plaintext highlighter-rouge">scripts/run-tests.sh</code> (full, not <code class="language-plaintext highlighter-rouge">-q</code> — this is the pre-merge full run per CLAUDE.md)
+Expected: all passing, no regressions elsewhere.</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 5: Update specs/todos and specs/progress</strong></li>
+</ul>
+
+<p>Check whether a todo file already covers this (search <code class="language-plaintext highlighter-rouge">specs/todos/</code> for “reverse” or “callers” or “search”); if one exists, <code class="language-plaintext highlighter-rouge">git mv</code> it to <code class="language-plaintext highlighter-rouge">specs/progress/</code> with today’s date. If none exists (this feature was designed fresh in this session, not from a pre-filed todo), create <code class="language-plaintext highlighter-rouge">specs/progress/2026-08-01-forge-search-callers-reverse-reference-search.md</code> directly, briefly describing what shipped (per the <code class="language-plaintext highlighter-rouge">specs/progress/README.md</code> convention — read that file’s format before writing, since this plan doesn’t reproduce its exact template).</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 6: Update CHANGELOG.md</strong></li>
+</ul>
+
+<p>Add under <code class="language-plaintext highlighter-rouge">## [Unreleased]</code> → <code class="language-plaintext highlighter-rouge">### Added</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- `forge search --callers NAME`: reverse-reference search — find every resolved call, constructor use, or qualified type reference to a declaration, using the typechecker's own name resolution (not textual matching).
+</code></pre></div></div>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Step 7: Final commit</strong></li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git add <span class="nb">test</span>/test_search.ml specs/progress/ CHANGELOG.md
+git commit <span class="nt">-m</span> <span class="s2">"search: add --callers regression tests, changelog, and progress entry"</span>
+</code></pre></div></div>
+
+<p>(If a <code class="language-plaintext highlighter-rouge">specs/todos/</code> file was moved via <code class="language-plaintext highlighter-rouge">git mv</code> in Step 5, that rename is already staged by the <code class="language-plaintext highlighter-rouge">git mv</code> itself — include it in this same commit rather than a separate one.)</p>
+
+
+        </article>
+      </main>
+
+      <!-- Footer -->
+      <footer id="march-footer" class="py-5 px-6 lg:px-12 text-sm">
+        March Programming Language &mdash;
+        <a href="https://github.com/march-language/march" style="color:#6FE3D6;" target="_blank" rel="noopener">GitHub</a>
+      </footer>
+    </div>
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+    <div class="drawer-side z-40">
+      <label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+
+      <aside id="march-sidebar" class="min-h-full w-64 flex flex-col">
+
+        <!-- Logo -->
+        <div id="march-logo-bar" class="p-5">
+          <a href="/" class="march-logo-link flex items-center gap-3" style="text-decoration:none;">
+            <img src="/assets/logo.webp" width="38" height="38" alt="March logo" onerror="this.src='/assets/logo.svg'"/>
+            <span class="font-bold text-xl" style="color:#D6EEF5;">March</span>
+          </a>
+        </div>
+
+        <!-- Search (renders the ⌘K trigger + the single shared modal for this page) -->
+        <div class="px-4 pt-4 ms-trigger-block"><!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+</div>
+
+        <!-- Nav -->
+        <nav id="march-nav" class="flex-1 overflow-y-auto py-3 px-2">
+          
+
+          <div class="march-nav-section">Start here</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/installation/">Installation</a></li>
+            
+            <li><a href="/docs/getting-started/">Getting Started</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Language</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/tour/">Language Tour</a></li>
+            
+            <li><a href="/docs/build-a-cli/">Build a CLI Tool</a></li>
+            
+            <li><a href="/docs/modules/">Module System</a></li>
+            
+            <li><a href="/docs/types/">Type System</a></li>
+            
+            <li><a href="/docs/pattern-matching/">Pattern Matching</a></li>
+            
+            <li><a href="/docs/interfaces/">Interfaces</a></li>
+            
+            <li><a href="/docs/linear-types/">Linear Types</a></li>
+            
+            <li><a href="/docs/refinement-types/">Refinement Types</a></li>
+            
+            <li><a href="/docs/capabilities/">Capabilities</a></li>
+            
+            <li><a href="/docs/capability-enforcement/">Capability Enforcement</a></li>
+            
+            <li><a href="/docs/safety-by-construction/">Safety by Construction</a></li>
+            
+            <li><a href="/docs/memory-model/">Memory Model</a></li>
+            
+            <li><a href="/docs/sigils/">Sigils & Templating</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Concurrency</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/actors/">Actors</a></li>
+            
+            <li><a href="/docs/parallel-collections/">Parallel Collections</a></li>
+            
+            <li><a href="/docs/supervision/">Supervision Trees</a></li>
+            
+            <li><a href="/docs/clustering/">Clustering & RPC</a></li>
+            
+            <li><a href="/docs/session-types/">Session Types</a></li>
+            
+            <li><a href="/docs/flow/">Flow & Backpressure</a></li>
+            
+            <li><a href="/docs/hot-code-reload/">Hot Code Reload</a></li>
+            
+            <li><a href="/docs/overload-resilience/">Overload & Resilience</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">SIMD</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            
+            <li><a href="/docs/simd/">SIMD & Native Arrays</a></li>
+            
+            <li><a href="/docs/simd-benchmarks/">SIMD Benchmarks</a></li>
+            
+          </ul>
+
+          <div class="march-nav-section">Reference</div>
+          <ul style="list-style:none; margin:0; padding:0;">
+            <li><a href="/docs/stdlib/">Standard Library</a></li>
+            
+            <li><a href="/docs/stdlib-guide/">Stdlib Guide</a></li>
+            
+            <li><a href="/docs/property-testing/">Property Testing</a></li>
+            
+            <li><a href="/docs/repl/">REPL</a></li>
+            
+            <li><a href="/docs/tooling/">Tooling</a></li>
+            
+            <li><a href="/docs/capability-audit/">Capability Audit</a></li>
+            
+            <li><a href="/docs/coding-standards/">Coding Standards</a></li>
+            
+            <li><a href="/docs/lsp/">LSP & Editors</a></li>
+            
+            <li><a href="/docs/examples/">Examples</a></li>
+            
+            <li><a href="/docs/parsing/">Parsing</a></li>
+            
+            <li><a href="/docs/ffi/">Foreign Function Interface</a></li>
+            
+            <li><a href="/docs/value-representation/">Value Representation (compiler internals)</a></li>
+            
+          </ul>
+        </nav>
+
+        <!-- GitHub CTA -->
+        <div id="march-github-bar" class="p-4">
+          <a href="https://github.com/march-language/march" class="march-github-btn" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.38 7.86 10.9.57.1.78-.25.78-.55v-2.1c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.48 3.14-1.17 3.14-1.17.63 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</body>
+</html>
