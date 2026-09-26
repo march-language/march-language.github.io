@@ -1,0 +1,3452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clustering & RPC — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Upgrading</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-4-0/" class="d-sidebar-link">Upgrading to 0.4.0</a>
+        
+      
+        
+      <a href="/docs/tetris-playground/" class="d-sidebar-link">Tetris Playground</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-3-0/" class="d-sidebar-link">Upgrading to 0.3.0</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link active">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/cluster-certificates/" class="d-sidebar-link">Cluster Certificates</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/choreography/" class="d-sidebar-link">Choreography</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      <a href="/docs/topology/" class="d-sidebar-link">Topology</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <!-- GENERATED from specs/lang/clustering.md by scripts/gen-lang-docs.py. Do not edit this file: edit specs/lang/clustering.md and run scripts/gen-lang-docs.py. -->
+
+<h1 id="clustering--rpc">Clustering &amp; RPC</h1>
+
+<p>March’s distributed layer lets multiple nodes form a cluster, discover each other, detect failures, and call functions across node boundaries with type-safety guarantees. The full stack is built from composable pure modules layered on top of the <a href="/docs/actors/">actor runtime</a> and its <a href="/docs/supervision/">supervision trees</a>.</p>
+
+<blockquote>
+  <p><strong>This page is an API reference, not a runnable quickstart.</strong> The code below shows how
+the layers fit together, but the end-to-end examples are <em>skeletons</em>; two things can
+only come from a real build, not from copy-paste: the actual byte transport over each
+socket, and the <code class="language-plaintext highlighter-rouge">sig_hash</code> / <code class="language-plaintext highlighter-rouge">impl_hash</code> values the compiler bakes into your binary for
+the specific functions you enroll (see <a href="#putting-it-together">Putting It Together</a>). For
+a complete executing example, the cluster integration tests under the project’s <code class="language-plaintext highlighter-rouge">test/</code>
+tree run the whole accept → handshake → enroll → call → reply loop.</p>
+
+  <p><strong>New to March concurrency?</strong> Don’t start here. Begin with
+<a href="/docs/actors/">Actors</a> (<code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code>) and
+<a href="/docs/supervision/">Supervision Trees</a>: clustering is the
+distributed generalization of those, and this page assumes them throughout.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="from-one-node-to-a-cluster">From one node to a cluster</h2>
+
+<p>Start from where <a href="/docs/supervision/">Supervision Trees</a> leaves off: a supervised actor app running on a single machine. You <code class="language-plaintext highlighter-rouge">spawn</code> a worker, it gets a <code class="language-plaintext highlighter-rouge">Pid</code>, and locally you might register it under a name so other parts of the program can find it without threading the <code class="language-plaintext highlighter-rouge">Pid</code> around.</p>
+
+<p><strong>Clustering is that exact pattern, stretched across machines.</strong> <code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is <em>the distributed version of spawning and registering an actor</em>: instead of a name → <code class="language-plaintext highlighter-rouge">Pid</code> map living in one process, it’s a cluster-wide, gossip-replicated name → <code class="language-plaintext highlighter-rouge">{node_id, pid}</code> map that every node converges on. Register a worker under a cluster name on Node A, and Node B can look that name up and call it, without holding A’s raw <code class="language-plaintext highlighter-rouge">Pid</code> at any point.</p>
+
+<p>Here’s the whole arc in miniature. On Node A, a supervised worker registers itself under a cluster-wide name:</p>
+
+<pre><code class="language-march">-- Node A: register a local worker under a cluster-wide name.
+-- `my_clock` is this node's VectorClock; `42` is the worker's local Pid as an Int.
+let reg = GlobalRegistry.empty()
+let reg = GlobalRegistry.register(reg, "image-resizer", "a@127.0.0.1", 42, my_clock)
+</code></pre>
+
+<p>That <code class="language-plaintext highlighter-rouge">reg</code> is gossiped to peers (every <code class="language-plaintext highlighter-rouge">merge</code> is idempotent, so re-delivery is safe). On Node B, after the registry has converged, a second node looks the name up and issues a <code class="language-plaintext highlighter-rouge">RemoteCall</code> against it:</p>
+
+<pre><code class="language-march">-- Node B: find the worker by name, then call it across the cluster.
+match GlobalRegistry.lookup(reg, "image-resizer") do
+  None -&gt;
+    -- not registered yet (or tombstoned) — retry later
+    ()
+  Some((node_id, pid)) -&gt;
+    -- Build a type-safe remote reference and a request addressed to that pid.
+    let fref      = RemoteCall.remote_ref("Image", "resize", sig_hash, impl_hash)
+    let reply_to  = GlobalPid.make(my_id.node_id, 1, 1)
+    let args      = Msgpack.encode(Msgpack.int(800))
+    let req       = RemoteCall.request(fref, args, reply_to, 5000, 1)
+    -- `RemoteCall.encode_request(req)` is the frame to send to `node_id`;
+    -- the reply is decoded with `NodeRpc.interpret`. (Full loop below.)
+    ()
+end
+</code></pre>
+
+<p>The rest of this page is the infrastructure that makes those two snippets safe: how nodes authenticate (handshake), how they agree on who’s alive (membership + SWIM), how a name resolves to a node (<code class="language-plaintext highlighter-rouge">GlobalRegistry</code>), and how a call is type-checked before the remote body runs (<code class="language-plaintext highlighter-rouge">RemoteCall</code> / <code class="language-plaintext highlighter-rouge">NodeRpc</code>). Read it top-to-bottom for the layered model, or jump to <a href="#putting-it-together">Putting It Together</a> for an end-to-end two-node skeleton.</p>
+
+<blockquote>
+  <p><code class="language-plaintext highlighter-rouge">GlobalRegistry.lookup</code> returns <code class="language-plaintext highlighter-rouge">Option((String, Int))</code>: the holder’s <code class="language-plaintext highlighter-rouge">node_id</code> and its <strong>local</strong> <code class="language-plaintext highlighter-rouge">pid</code> on that node. You address remote calls with a <code class="language-plaintext highlighter-rouge">GlobalPid</code> (node + local pid + creation counter), which is what remains valid across a restart unambiguously.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="a-running-node-clusternode">A running node: <code class="language-plaintext highlighter-rouge">ClusterNode</code></h2>
+
+<p>Everything below this section is the layer cake: pure modules and socket glue you can
+assemble by hand. <code class="language-plaintext highlighter-rouge">ClusterNode</code> is the assembled node, and most programs should start with it:</p>
+
+<pre><code class="language-march">-- MARCH_NODE_NAME=a MARCH_NODE_PORT=4001 MARCH_CLUSTER_NODES=10.0.0.2:4001 \
+-- MARCH_CLUSTER_SECRET=... MARCH_NODE_ADVERTISE=10.0.0.1:4001
+-- (or, instead of the secret, MARCH_NODE_CERT / MARCH_NODE_KEY /
+--  MARCH_CLUSTER_OPERATOR_PUBKEY: see "Authentication &amp; Handshake")
+-- inside `fn main(io : Cap(IO))`, in a module that declares `needs ClusterNode.Live`
+match ClusterNode.config_from_env() do
+  Err(e) -&gt; panic(e)
+  Ok(cfg) -&gt;
+    match ClusterNode.start(io, cfg) do
+      Err(e) -&gt; panic(e)
+      Ok(node) -&gt;
+        let _ = ClusterNode.subscribe(node, fn ev -&gt; println(ClusterNode.event_text(ev)))
+        let _ = ClusterNode.register(node, "image-resizer", worker)   -- a local Pid
+        match ClusterNode.lookup(node, "image-resizer") do
+          Some(gpid) -&gt; ()          -- a GlobalPid: node_id, local pid, creation
+          None -&gt; ()
+        end
+    end
+end
+</code></pre>
+
+<p>What <code class="language-plaintext highlighter-rouge">start</code> gives you:</p>
+
+<ul>
+  <li><strong>Joining.</strong> The node listens, dials its seeds, and exchanges member lists with every
+peer it links to. Each member carries its <em>advertised</em> address, so a node reaches peers it
+was never configured with. Set <code class="language-plaintext highlighter-rouge">MARCH_NODE_ADVERTISE</code> to an address other machines can
+reach; it defaults to <code class="language-plaintext highlighter-rouge">127.0.0.1:&lt;port&gt;</code>. A node that reaches no seed runs alone and keeps
+retrying.</li>
+  <li><strong>One connection pair per peer.</strong> Everything (failure detection, the registry, remote
+monitors, actor messages) shares one authenticated control connection and one data
+connection per peer.</li>
+  <li><strong>Failure detection.</strong> SWIM runs continuously. <code class="language-plaintext highlighter-rouge">subscribe</code> reports <code class="language-plaintext highlighter-rouge">NodeUp</code>,
+<code class="language-plaintext highlighter-rouge">NodeSuspect</code>, <code class="language-plaintext highlighter-rouge">NodeDead(info, cause)</code> and <code class="language-plaintext highlighter-rouge">NodeRejoined</code>. A connection that closes only
+makes a peer <em>suspect</em> and triggers a reconnect; a refused reconnect (nothing listening)
+or SWIM’s timeout makes it <em>dead</em>. A dead peer is reconnected on a backoff and rejoins when
+it proves it is alive. A peer that restarted is a new <em>creation</em>: the old one is reported
+dead and the new one as rejoined.</li>
+  <li><strong>Names.</strong> <code class="language-plaintext highlighter-rouge">register(node, name, pid)</code>, <code class="language-plaintext highlighter-rouge">unregister</code>, <code class="language-plaintext highlighter-rouge">lookup</code>, and <code class="language-plaintext highlighter-rouge">watch(node, name, f)</code>,
+which reports <code class="language-plaintext highlighter-rouge">Bound</code>, <code class="language-plaintext highlighter-rouge">Unbound</code> and <code class="language-plaintext highlighter-rouge">Lost</code>. A registration is pushed to every peer at
+once and repaired by periodic anti-entropy. <code class="language-plaintext highlighter-rouge">lookup</code> hides a binding whose holder is dead,
+or has restarted since it registered. The registered process is monitored, and its death
+unregisters the name.</li>
+</ul>
+
+<p><strong>Messages and monitors over the node.</strong> Every actor message, remote monitor and flow-control
+frame between two nodes shares the node’s one connection pair.</p>
+
+<pre><code class="language-march">-- receiving side: deliveries for a local process arrive through a route
+let _ = ClusterNode.route(node, pid_to_int(worker), fn d -&gt; do
+  send(worker, Job(Node.payload(d)))
+  Ok(())
+end)
+-- sending side: through the peer's data queue (credit flow control)
+let _ = ClusterNode.send_msg(node, gpid, "Jobs.Job", bytes, NodeQueue.BlockSender(5000))
+-- or typed: Node.enqueue(q, gpid, msg, policy) with q = ClusterNode.queue_for(node, gpid.node_id)
+let _ = ClusterNode.monitor_remote(node, gpid, fn reason -&gt; send(me, WorkerDown(reason)))
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">on_peer_closed(node, f)</code> tells you when a peer’s data connection ends, after its last
+delivery, and says why (<code class="language-plaintext highlighter-rouge">"node b dead: suspect timeout"</code>, <code class="language-plaintext highlighter-rouge">"connection lost"</code>).
+<code class="language-plaintext highlighter-rouge">on_delivery_failed</code> reports messages the peer refused. Use <code class="language-plaintext highlighter-rouge">send_msg</code> or <code class="language-plaintext highlighter-rouge">Node.enqueue</code>,
+never <code class="language-plaintext highlighter-rouge">Node.send(peer, ...)</code>, on a node’s connections: <code class="language-plaintext highlighter-rouge">Node.send</code> writes the socket directly
+and would interleave with the queue.</p>
+
+<p><strong>A global name is not a lock.</strong> During a network partition, each side can register the same
+name. When the partition heals, one binding wins everywhere: a registration made after seeing
+the other is causally newer and wins; otherwise a deterministic tiebreak picks. The node
+whose binding lost gets <code class="language-plaintext highlighter-rouge">Lost(name, winner)</code> on its watchers. It should stop acting as the
+holder and must not unregister (the name is not its own any more). Use a global name for
+discovery, where a brief duplicate is harmless, and never for mutual exclusion.</p>
+
+<p><strong>The node is a capability.</strong> <code class="language-plaintext highlighter-rouge">start(io, cfg)</code> returns a <code class="language-plaintext highlighter-rouge">Cap(ClusterNode.Live)</code>, minted
+from the program’s <code class="language-plaintext highlighter-rouge">Cap(IO)</code>: code that holds it can use the cluster, and code that does not
+cannot. A module whose signatures name it declares <code class="language-plaintext highlighter-rouge">needs ClusterNode.Live</code>, as for any
+capability. Like every proof capability, only <code class="language-plaintext highlighter-rouge">ClusterNode</code> can create one, so your own
+function cannot return a node it started. Start the node in <code class="language-plaintext highlighter-rouge">main</code> (or wherever you hold
+<code class="language-plaintext highlighter-rouge">Cap(IO)</code>) and pass the capability down; a helper that waits for peers takes it as a
+parameter:</p>
+
+<pre><code class="language-march">fn main(io : Cap(IO)) do
+  let node = match ClusterNode.start(io, cfg) do
+    Ok(n) -&gt; n
+    Err(e) -&gt; panic(e)
+  end
+  joined(node)          -- pfn joined(n : Cap(ClusterNode.Live)) : () do ... end
+  ...
+end
+</code></pre>
+
+<p><strong>Testing without a network.</strong> Every operation above goes through the capability’s
+dictionary, a record of functions (<code class="language-plaintext highlighter-rouge">ClusterNode.ClusterOps</code>, one field per operation). <code class="language-plaintext highlighter-rouge">start</code>
+attaches the real one. A test attaches its own with <code class="language-plaintext highlighter-rouge">ClusterNode.attach(io, ops)</code>, and code
+written against a real node then runs against it. <code class="language-plaintext highlighter-rouge">ClusterNode.ops_stub(node_id)</code> is a
+dictionary whose every operation panics with its own name; override the ones the code under
+test uses:</p>
+
+<pre><code class="language-march">let ops = { ClusterNode.ops_stub("n0") with
+  members: fn _ -&gt; fake_members(fake),
+  subscribe: fn f -&gt; fake_subscribe(fake, f) }
+let node = ClusterNode.attach(io, ops)
+-- the test now calls the subscribers itself: NodeDead(info, "suspect timeout"), ...
+</code></pre>
+
+<p>A zero-argument operation takes <code class="language-plaintext highlighter-rouge">()</code>: <code class="language-plaintext highlighter-rouge">members: fn _ -&gt; ...</code>. This is how membership
+reactions are tested with no sockets: <code class="language-plaintext highlighter-rouge">test/session/cluster_placement.march</code> injects
+<code class="language-plaintext highlighter-rouge">NodeDead</code> into a placement that moves roles off dead nodes.</p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>A March cluster is a set of named nodes connected by authenticated TCP links. The stack is organized in layers:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Module(s)</th>
+      <th>Responsibility</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>L1</td>
+      <td><code class="language-plaintext highlighter-rouge">NetFrame</code>, <code class="language-plaintext highlighter-rouge">Socket</code></td>
+      <td>Length-prefixed framing over TCP</td>
+    </tr>
+    <tr>
+      <td>L2</td>
+      <td><code class="language-plaintext highlighter-rouge">NetKernel</code>, <code class="language-plaintext highlighter-rouge">ClusterConn</code></td>
+      <td>Node-to-node channels, authenticated handshake</td>
+    </tr>
+    <tr>
+      <td>L3</td>
+      <td><code class="language-plaintext highlighter-rouge">Membership</code>, <code class="language-plaintext highlighter-rouge">Swim</code>, <code class="language-plaintext highlighter-rouge">PeerRegistry</code></td>
+      <td>Failure detection, live member set</td>
+    </tr>
+    <tr>
+      <td>L4</td>
+      <td><code class="language-plaintext highlighter-rouge">RemoteCall</code>, <code class="language-plaintext highlighter-rouge">NodeRpc</code>, <code class="language-plaintext highlighter-rouge">GlobalPid</code></td>
+      <td>Safe cross-node function calls</td>
+    </tr>
+    <tr>
+      <td>L5</td>
+      <td><code class="language-plaintext highlighter-rouge">GlobalRegistry</code></td>
+      <td>Cluster-wide name → pid registry (CRDT)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="node-identity">Node Identity</h2>
+
+<p>Every node has a stable identity captured in a <code class="language-plaintext highlighter-rouge">NodeIdentity.Identity</code> record:</p>
+
+<pre><code class="language-march">let id = NodeIdentity.make("alice@host", "alice-public-key", 1)
+-- { name: "alice@host", node_id: &lt;sha256 of pubkey&gt;, incarnation: 1 }
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">make(name, pubkey, incarnation)</code> derives the <code class="language-plaintext highlighter-rouge">node_id</code> by hashing the public key (<code class="language-plaintext highlighter-rouge">Crypto.sha256(pubkey)</code>). The resulting <code class="language-plaintext highlighter-rouge">node_id</code> is the primary key used in every distributed data structure, and it must be unique across the cluster. <code class="language-plaintext highlighter-rouge">incarnation</code> increments each time the node restarts, so peers can tell a fresh start from a stale one.</p>
+
+<h3 id="serialisation">Serialisation</h3>
+
+<p>Node identities are serialised to MessagePack for transport:</p>
+
+<pre><code class="language-march">let bytes = NodeIdentity.encode(id)   -- List(Int)
+match NodeIdentity.decode(bytes) do
+  Ok(id2) -&gt; id2
+  Err(e)  -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="authentication--handshake">Authentication &amp; Handshake</h2>
+
+<p>Before any cluster traffic flows, two nodes run a challenge-response handshake.
+A node authenticates in one of two modes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>mode</th>
+      <th>a node holds</th>
+      <th>set with</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>shared secret (default)</td>
+      <td>one secret every node shares</td>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_CLUSTER_SECRET</code></td>
+    </tr>
+    <tr>
+      <td>certificate</td>
+      <td>its own ed25519 key and a certificate for it, signed by the cluster’s operator key</td>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_NODE_CERT</code>, <code class="language-plaintext highlighter-rouge">MARCH_NODE_KEY</code>, <code class="language-plaintext highlighter-rouge">MARCH_CLUSTER_OPERATOR_PUBKEY</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">ClusterNode.config_from_env</code> picks the mode: with <code class="language-plaintext highlighter-rouge">MARCH_NODE_CERT</code> set it
+uses certificate mode and ignores <code class="language-plaintext highlighter-rouge">MARCH_CLUSTER_SECRET</code>, otherwise shared-secret
+mode. Each certificate-mode variable holds the value itself or names a file
+holding it. The two modes do not mix: a certificate node refuses a
+shared-secret peer and the other way round, and each says which variables the
+other side needs. Operator setup (keys, issuing, renewal, revocation) is in
+<a href="/docs/cluster-certificates/">Cluster Certificates</a>.</p>
+
+<h3 id="shared-secret-mode">Shared-secret mode</h3>
+
+<pre><code class="language-march">let secret = Crypto.random_hex(32)   -- random hex String shared by all nodes
+</code></pre>
+
+<p>Each side sends a hello with a fresh nonce and answers the peer’s nonce with
+<code class="language-plaintext highlighter-rouge">ClusterAuth.prove(secret, nonce)</code>, which is <code class="language-plaintext highlighter-rouge">HMAC-SHA256(secret, nonce)</code>. The
+secret never goes on the wire. Every node must hold the same secret. Any holder
+can join as any node, so this mode cannot limit what a node may do (see the
+threat model below).</p>
+
+<h3 id="certificate-mode">Certificate mode</h3>
+
+<p>A certificate (<code class="language-plaintext highlighter-rouge">NodeCert</code>) names one node, what it may do, and when it expires:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>field</th>
+      <th>example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">node</code></td>
+      <td><code class="language-plaintext highlighter-rouge">spiffe://prod.example/pool/web/node/web-1</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">roles</code></td>
+      <td><code class="language-plaintext highlighter-rouge">["Checkout.Ledger:offer", "Checkout.Client:initiate"]</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">flags</code></td>
+      <td><code class="language-plaintext highlighter-rouge">["raw_send"]</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">not_after</code></td>
+      <td>unix seconds, inclusive</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">issuer</code></td>
+      <td><code class="language-plaintext highlighter-rouge">spiffe://prod.example/operator/&lt;16 hex digits of the operator key&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pubkey</code></td>
+      <td>the node’s ed25519 public key, hex</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">serial</code></td>
+      <td>what a revocation names</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Names are SPIFFE-style URIs so that a service mesh can carry the same
+identities later; March does not implement SPIFFE itself. In the handshake each
+hello carries the sender’s certificate and a fresh X25519 key. Each side checks
+the peer’s certificate: the operator’s signature, <code class="language-plaintext highlighter-rouge">not_after</code>, the node’s
+revocation list, and that it names the node the hello claims to be. Then each
+side signs the peer’s nonce together with a hash of both hellos, and checks the
+peer’s signature under the key its certificate names. <code class="language-plaintext highlighter-rouge">NodeCert.verify(cert,
+operator_pubkey, now)</code> is the certificate check on its own.</p>
+
+<p>A verified certificate stays with its peer: <code class="language-plaintext highlighter-rouge">ClusterNode.peer_cert(c, node_id)</code>
+returns it (<code class="language-plaintext highlighter-rouge">ClusterConn.peer_cert</code> for direct connections), and
+<code class="language-plaintext highlighter-rouge">ClusterNode.own_cert(c)</code> returns the node’s own. What a node may do with its
+roles and flags is in <a href="#authorization">Authorization</a> below.</p>
+
+<h3 id="per-frame-mac">Per-frame MAC</h3>
+
+<p>After the handshake every frame on the connection is sealed: it carries a
+sequence number and an HMAC-SHA256 tag under a key for that connection and
+direction. The key comes from HKDF over a hash of the two hellos. In
+certificate mode its input is an X25519 agreement between the two ephemeral
+keys, which the signed handshake binds to the two certificates. In shared-secret
+mode its input is the secret. The length prefix covers the 40 bytes this adds.</p>
+
+<p>The receiver accepts each sequence number once, within a window of 32. A
+frame whose tag fails, or whose number was seen already, is dropped and
+counted (<code class="language-plaintext highlighter-rouge">ClusterNode.frames_rejected</code>), and on-security-event subscribers get
+<code class="language-plaintext highlighter-rouge">FrameRejected(node_id, n)</code>. After three such frames on one connection it is
+closed, and the peer is handled like any lost connection. A shared-secret node
+offers the MAC in its hello, so a node from before the MAC still connects,
+unsealed.</p>
+
+<p><strong>This is integrity, not confidentiality.</strong> Frames are not encrypted, and
+anyone on the network path can read them. The MAC stops a party without the
+connection’s key from changing, injecting or replaying frames. It does not
+detect a frame that is dropped in transit, since an attacker who can drop
+frames can drop the connection too. Encryption is deferred (decision D4 of the
+distributed-deploys plan); run the cluster on a private network or under a
+mesh that encrypts.</p>
+
+<h3 id="expiry-and-revocation">Expiry and revocation</h3>
+
+<p>A node rechecks each peer’s certificate every tick. When it has expired, or a
+revocation names it, the node closes the peer’s connections and reports
+<code class="language-plaintext highlighter-rouge">NodeDead(info, "certificate expired")</code> or <code class="language-plaintext highlighter-rouge">NodeDead(info, "certificate
+revoked")</code>, so sessions with the peer are cancelled as for any dead node. The
+peer’s handshakes are refused from then on, until it presents a valid
+certificate.</p>
+
+<p>A revocation is signed by the operator key and names a certificate’s serial,
+or a whole node. <code class="language-plaintext highlighter-rouge">ClusterNode.revoke(c, token)</code> takes the token <code class="language-plaintext highlighter-rouge">forge cluster
+revoke</code> prints; <code class="language-plaintext highlighter-rouge">MARCH_CLUSTER_REVOCATIONS</code> gives a node its list at start
+(tokens separated by commas or whitespace, or a file of them). Nodes pass
+revocations on to every peer, and a revocation counts only if the operator
+signed it, so a member cannot revoke another.</p>
+
+<p><code class="language-plaintext highlighter-rouge">ClusterNode.on_security_event(c, f)</code> reports refused handshakes
+(<code class="language-plaintext highlighter-rouge">HandshakeRejected(who, why)</code>) and rejected frames (<code class="language-plaintext highlighter-rouge">FrameRejected(node_id,
+n)</code>).</p>
+
+<h3 id="threat-model">Threat model</h3>
+
+<p>Certificates limit what a misbehaving <em>member</em> can do on a trusted network:
+who may join, and which conversations each node may take part in (see
+<a href="#authorization">Authorization</a>). They do not provide confidentiality, availability against a
+member that lies in SWIM gossip, or protection inside a node that runs foreign
+code.</p>
+
+<h3 id="the-handshake-in-code">The handshake in code</h3>
+
+<p><code class="language-plaintext highlighter-rouge">ClusterNode</code> runs all of this itself. At the connection level:</p>
+
+<pre><code class="language-march">-- Either mode: ClusterAuth.Secret(secret) or ClusterAuth.Certified(credentials)
+match NetKernel.handshake_auth(fd, my_id, auth, NetKernel.fresh_nonce(), Handshake.role_control(), "", 5000) do
+  Ok(peer) -&gt; -- peer.identity, peer.cert (certificate mode), peer.mac
+  Err(e)   -&gt; -- reject and close fd
+end
+
+-- The shared-secret spelling, unchanged
+match NetKernel.handshake(fd, my_id, secret, NetKernel.fresh_nonce()) do
+  Ok(peer_id) -&gt; -- connection authenticated; peer_id is their NodeIdentity
+  Err(e)      -&gt; -- reject and close fd
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">ClusterConn.connect_split_auth</code> and <code class="language-plaintext highlighter-rouge">accept_split_auth</code> open a peer’s control
+and data connections in either mode and return its certificate.
+<code class="language-plaintext highlighter-rouge">ClusterConn.accept_one</code> wraps accept, handshake and enrolment for the
+listening side in shared-secret mode:</p>
+
+<pre><code class="language-march">match ClusterConn.listen(9000) do
+  Ok(listen_fd) -&gt;
+    let loop = fn _ -&gt;
+      match ClusterConn.accept_one(registry, listen_fd, my_id, secret) do
+        Ok(peer_id) -&gt; log("connected: " ++ peer_id.node_id)
+        Err(e)      -&gt; log("rejected: " ++ e)
+      end
+      loop(Nil)
+    loop(Nil)
+  Err(e) -&gt; ...
+end
+</code></pre>
+
+<hr />
+
+<h2 id="authorization">Authorization</h2>
+
+<p>In certificate mode a node checks what each peer’s certificate lets it do, not
+only who the peer is. Every check below applies <strong>in certificate mode only</strong>. A
+shared-secret cluster has no certificates: any node holding the secret may
+offer or initiate any role, so a shared-secret cluster should be one where
+every node is equally trusted.</p>
+
+<h3 id="roles-who-may-form-a-session">Roles: who may form a session</h3>
+
+<p>A certificate names the protocol roles its node may play, as
+<code class="language-plaintext highlighter-rouge">Proto.Role:offer</code> (it may offer the role at an access point) and
+<code class="language-plaintext highlighter-rouge">Proto.Role:initiate</code> (it may start a session in the role). When a session
+forms at access points, both sides check
+(<a href="/docs/choreography/#access-points-many-sessions-and-starting-again">Choreography: access points</a>):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>who checks</th>
+      <th>what</th>
+      <th>on failure</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>the initiator, before inviting</td>
+      <td>the certificate of the node that <strong>holds</strong> each offer names <code class="language-plaintext highlighter-rouge">Proto.Role:offer</code></td>
+      <td>the offer is skipped; <code class="language-plaintext highlighter-rouge">NoOffer</code>’s reasons say <code class="language-plaintext highlighter-rouge">node-b not authorized for Checkout.Ledger, not invited</code></td>
+    </tr>
+    <tr>
+      <td>the offer, on each invitation</td>
+      <td>the certificate of the node the invitation came from names <code class="language-plaintext highlighter-rouge">Proto.Role:initiate</code> for the role it plays</td>
+      <td>the offer refuses: <code class="language-plaintext highlighter-rouge">initiator node-a not authorized for Checkout.Client</code></td>
+    </tr>
+    <tr>
+      <td>each party, once the session forms</td>
+      <td>every role’s endpoint is on a node whose certificate allows that role</td>
+      <td><code class="language-plaintext highlighter-rouge">Connect(role, "... is held by node-c: not authorized for ...")</code></td>
+    </tr>
+    <tr>
+      <td>a node, opening an offer</td>
+      <td>its own certificate names <code class="language-plaintext highlighter-rouge">Proto.Role:offer</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Err(Unauthorized(role, why))</code></td>
+    </tr>
+    <tr>
+      <td>each side of a direct session (<code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code>), when it connects</td>
+      <td>the peer’s certificate names the role it announces, as <code class="language-plaintext highlighter-rouge">:offer</code> or <code class="language-plaintext highlighter-rouge">:initiate</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Connect(role, "role P.R is played by node-a: not authorized for P.R")</code> or <code class="language-plaintext highlighter-rouge">Accept(...)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The direct runner (<code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code>, <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code>) uses certificate mode when
+<code class="language-plaintext highlighter-rouge">MARCH_NODE_CERT</code> is set, read by <code class="language-plaintext highlighter-rouge">ClusterNode.auth_from_env(name, secret)</code> from
+the same variables a cluster node reads.</p>
+
+<p>The checks read the certificate the node verified in its handshake with that
+peer. They never trust the registry: offer names and session names are
+registry names that any member can write, and the node an invitation came from
+is the link it arrived on (<code class="language-plaintext highlighter-rouge">NodeSend.Delivery.from_node</code>), not anything in the
+frame. The pure check is <code class="language-plaintext highlighter-rouge">SessionAP.authorize(cert, proto, role, mode)</code>, and
+<code class="language-plaintext highlighter-rouge">ClusterNode.authorize_peer(c, node_id, proto, role, mode)</code> applies it to a
+peer (always <code class="language-plaintext highlighter-rouge">Ok</code> in shared-secret mode).</p>
+
+<h3 id="raw-sends">Raw sends</h3>
+
+<p>Raw primitives are the ways to reach a process outside any session:
+<code class="language-plaintext highlighter-rouge">ClusterNode.send_msg</code>, <code class="language-plaintext highlighter-rouge">ClusterNode.queue_for</code> (what <code class="language-plaintext highlighter-rouge">Node.enqueue</code> sends
+through), the receivers installed with <code class="language-plaintext highlighter-rouge">ClusterNode.route</code> / <code class="language-plaintext highlighter-rouge">route_type</code>
+(<code class="language-plaintext highlighter-rouge">@[remote]</code> and user code), <code class="language-plaintext highlighter-rouge">Node.send</code>, and <code class="language-plaintext highlighter-rouge">RemoteCall</code>. They sit outside
+the protocol boundary, so a certificate grants them with a flag,
+<code class="language-plaintext highlighter-rouge">raw_send</code>. In certificate mode <strong>a raw frame crosses a link only when the
+certificates at both ends carry <code class="language-plaintext highlighter-rouge">raw_send</code></strong>. A node’s frames to itself (the
+loopback) are never raw sends.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>where</th>
+      <th>refused how</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ClusterNode.send_msg</code> to a peer</td>
+      <td><code class="language-plaintext highlighter-rouge">Err(NodeQueue.NotAuthorized)</code>, never queued</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ClusterNode.queue_for(c, peer)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">None</code></td>
+    </tr>
+    <tr>
+      <td>an inbound raw frame from a peer</td>
+      <td>dropped before any route, and answered <code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code> (“not authorized: …”), so the sender’s <code class="language-plaintext highlighter-rouge">on_delivery_failed</code> hears it</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NodeSend.cast</code> / <code class="language-plaintext highlighter-rouge">Node.send</code> on a connection a program opened with <code class="language-plaintext highlighter-rouge">ClusterConn.connect_split_auth</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Err(Refused(seq, "not authorized: ..."))</code>; an inbound raw frame is answered <code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NodeCall.call</code> (<code class="language-plaintext highlighter-rouge">RemoteCall</code>) on such a connection</td>
+      <td><code class="language-plaintext highlighter-rouge">Err(Forbidden)</code>; the serving side answers <code class="language-plaintext highlighter-rouge">Forbidden</code> without dispatching</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Every refusal is counted. <code class="language-plaintext highlighter-rouge">ClusterNode.raw_refused(c)</code> counts a node’s own
+links, and <code class="language-plaintext highlighter-rouge">NetKernel.raw_refused()</code> counts direct connections. On-security-event
+subscribers get <code class="language-plaintext highlighter-rouge">RawSendRefused(node_id, what)</code>, where <code class="language-plaintext highlighter-rouge">what</code> is
+<code class="language-plaintext highlighter-rouge">"outbound &lt;type&gt;"</code>, <code class="language-plaintext highlighter-rouge">"outbound queue"</code> or <code class="language-plaintext highlighter-rouge">"inbound &lt;type&gt;"</code>.</p>
+
+<p>Two kinds of traffic are exempt, and nothing else is:</p>
+
+<ul>
+  <li><strong>Session traffic.</strong> An ACTOR_MSG whose type tag is one of
+<code class="language-plaintext highlighter-rouge">ClusterNode.session_tags()</code> (<code class="language-plaintext highlighter-rouge">SessionAP.Invite</code>, <code class="language-plaintext highlighter-rouge">.Withdraw</code> and <code class="language-plaintext highlighter-rouge">.Answer</code>,
+and <code class="language-plaintext highlighter-rouge">SessionNode.Hello</code>, <code class="language-plaintext highlighter-rouge">.Deliver</code>, <code class="language-plaintext highlighter-rouge">.Bye</code>, <code class="language-plaintext highlighter-rouge">.Cancel</code>, <code class="language-plaintext highlighter-rouge">.Ping</code>,
+<code class="language-plaintext highlighter-rouge">.Undelivered</code> and <code class="language-plaintext highlighter-rouge">.Drained</code>, before any <code class="language-plaintext highlighter-rouge">#&lt;session id&gt;</code> suffix) is exempt
+when it reaches a <strong>session route</strong>, one a session opened with
+<code class="language-plaintext highlighter-rouge">ClusterNode.route_session</code>. A session tag sent to an ordinary route, or any
+other tag sent to a session route, is refused. What a session may say is
+bounded by its protocol and checked by the receiver, and who may join one is
+checked against the certificates’ roles (above).</li>
+  <li><strong>ClusterNode’s own control frames.</strong> Everything on a peer’s control
+connection is written by ClusterNode itself and never reaches a route:
+SWIM (tags 0-3), registry sync (5-6), remote monitors (7, 8, 12),
+<code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code> (10), <code class="language-plaintext highlighter-rouge">CREDIT</code> (11), member gossip and sync (13-14), and
+revocations (15). <code class="language-plaintext highlighter-rouge">ClusterNode.control_tags()</code> lists them.</li>
+</ul>
+
+<p>A node without <code class="language-plaintext highlighter-rouge">raw_send</code> is the right certificate for code isolated on its own
+node because it needs <code class="language-plaintext highlighter-rouge">IO.Foreign</code>. Its reach is the sessions its roles let it
+form, and nothing it sends outside them is delivered.</p>
+
+<h3 id="cross-node-references">Cross-node references</h3>
+
+<p>A reference to a process on another node is handed out, not computed. The
+global registry is where they are handed out, so in certificate mode it
+follows the raw-send rule:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">ClusterNode.lookup</code> (and <code class="language-plaintext highlighter-rouge">names</code>) hides a binding unless a raw send to its
+holder would be allowed</strong>: this node’s certificate and the holder’s verified
+certificate must both carry <code class="language-plaintext highlighter-rouge">raw_send</code>. A name you cannot raw-send to is not
+a reference you should hold. This node’s own bindings always show. A binding
+whose holder this node has not verified yet (no link to it) stays hidden
+until the link forms.</li>
+  <li><strong>The coordination namespaces are exempt</strong>
+(<code class="language-plaintext highlighter-rouge">ClusterNode.reference_namespaces()</code>): access-point offers (<code class="language-plaintext highlighter-rouge">ap:</code>), session
+endpoints (<code class="language-plaintext highlighter-rouge">session:</code>) and topology markers (<code class="language-plaintext highlighter-rouge">topo:</code>) show whatever the
+holder’s flags. Access points check the holder’s certificate by role when
+they use one (<a href="#roles-who-may-form-a-session">Roles</a>).</li>
+  <li><strong>Registrations record who made them.</strong> Each replica records the certificate
+identity of the registering node: its own for its own bindings, the link’s
+verified peer for bindings that peer holds, and the holder’s certificate if
+it has one for bindings relayed through a third node.
+<code class="language-plaintext highlighter-rouge">ClusterNode.registrant(c, name)</code> returns it, and it is not hidden.
+The identity is local bookkeeping. It is not sent on the wire and not
+covered by the registry’s Merkle hash, so replicas that recorded it
+differently still converge.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">GlobalPid.make</code> stays pure.</strong> A pid built by hand is only a value. Sending
+to it is a raw send, and that is what is checked.</li>
+</ul>
+
+<p>Registry writes themselves are not refused: a node without <code class="language-plaintext highlighter-rouge">raw_send</code> can
+still register a name, which no certificate-mode reader will then see outside
+the exempt namespaces. Registrations are not signed, so a member could claim
+another node’s pid in a relayed binding. That binding would be attributed to
+the claimed holder, and any send to it would still be checked.</p>
+
+<h3 id="what-authorization-does-not-cover">What authorization does not cover</h3>
+
+<p>Authorization is about <strong>authority</strong>: which conversations a misbehaving member
+can join, and so, since every message in a session is checked against the
+protocol, what it can say. It is not about availability or confidentiality:</p>
+
+<ul>
+  <li>A member can still lie in SWIM gossip, refuse to answer, or drop what it
+receives.</li>
+  <li>Frames are not encrypted. The per-frame MAC stops a party without the
+connection’s key from changing or injecting frames, but anyone on the path can
+read them.</li>
+  <li>Nothing constrains what code inside a node does, including foreign code
+(<code class="language-plaintext highlighter-rouge">IO.Foreign</code>). Isolate such code on its own node, whose certificate names
+only the roles it needs.</li>
+  <li>A node’s messages are untrusted input. Payload refinements on message types
+are checked by the receiver, and are a security boundary as well as a
+correctness one.</li>
+</ul>
+
+<hr />
+
+<h2 id="membership--failure-detection">Membership &amp; Failure Detection</h2>
+
+<h3 id="membership-crdt">Membership CRDT</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Membership</code> maintains the set of known cluster members as a last-write-wins CRDT. Each member includes a <code class="language-plaintext highlighter-rouge">MemberStatus</code> (<code class="language-plaintext highlighter-rouge">Alive</code>, <code class="language-plaintext highlighter-rouge">Suspect</code>, or <code class="language-plaintext highlighter-rouge">Dead</code>) and an <code class="language-plaintext highlighter-rouge">incarnation</code> counter for causal ordering. You build a <code class="language-plaintext highlighter-rouge">Member</code> value with <code class="language-plaintext highlighter-rouge">alive</code>/<code class="language-plaintext highlighter-rouge">suspect</code>/<code class="language-plaintext highlighter-rouge">dead</code>, then fold it into the view with <code class="language-plaintext highlighter-rouge">observe</code>.</p>
+
+<pre><code class="language-march">let members = Membership.empty()
+let members = Membership.observe(members, Membership.alive("alice@192.168.1.10", 1))
+-- Mark a member dead by observing a Dead status at its current incarnation
+let members = Membership.observe(members, Membership.dead("bob@192.168.1.11", 1))
+
+-- Merge two views (safe to call repeatedly — idempotent)
+let merged = Membership.merge(local_view, remote_view)
+
+-- Query
+let alive  = Membership.alive_members(members)   -- List(Member)
+let member = Membership.get(members, "alice@192.168.1.10")   -- Option(Member)
+</code></pre>
+
+<h3 id="swim-failure-detection">SWIM failure detection</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Swim</code> implements the SWIM gossip protocol as a pure state machine. It produces <code class="language-plaintext highlighter-rouge">Action</code> values that tell the runtime what to send; no sockets inside.</p>
+
+<pre><code class="language-march">let cfg   = Swim.config(200, 2000, 3)   -- ack_timeout_ms, suspect_timeout_ms, indirect_k
+let state = Swim.make("alice@192.168.1.10", 1, members, cfg)
+
+-- Tick: begin a probe period by directly pinging a (caller-chosen) target
+let (state, action) = Swim.begin_period(state, now_ms, "bob@192.168.1.11")
+-- action is SendPing(target)
+
+-- Process an incoming ack
+let state = Swim.on_ack(state, "bob@192.168.1.11")
+
+-- Escalate an overdue direct ping to indirect ping-reqs via helper nodes
+let (state, actions) = Swim.escalate_indirect(state, now_ms, helpers)
+
+-- End the period: an unacked probe marks its target Suspect and gossips it
+let (state, actions) = Swim.end_period(state, now_ms)
+
+-- Advance suspect timeouts: promote expired Suspects to Dead
+let (state, actions) = Swim.expire_suspects(state, now_ms)
+</code></pre>
+
+<p>Each <code class="language-plaintext highlighter-rouge">Action</code> maps to a message to send over the cluster connection:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SendPing(target)</code></td>
+      <td>Direct probe to <code class="language-plaintext highlighter-rouge">target</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SendPingReq(target, intermediary)</code></td>
+      <td>Indirect probe via <code class="language-plaintext highlighter-rouge">intermediary</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Gossip(member)</code></td>
+      <td>Piggyback member state on next message</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="global-registry">Global Registry</h2>
+
+<p><code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is a cluster-wide name → <code class="language-plaintext highlighter-rouge">{node_id, pid}</code> mapping that merges correctly under concurrent updates (CRDT with vector-clock causal ordering and deterministic tiebreak).</p>
+
+<pre><code class="language-march">let reg = GlobalRegistry.empty()
+
+-- Register a name on this node
+let reg = GlobalRegistry.register(reg, "worker-1", "alice@192.168.1.10", 42, my_clock)
+
+-- Look up a name — returns Option((node_id, pid))
+match GlobalRegistry.lookup(reg, "worker-1") do
+  Some((node_id, pid)) -&gt; pid      -- Int (local pid on node_id)
+  None                 -&gt; ...
+end
+
+-- Remove a name (tombstone — converges with concurrent registrations)
+let reg = GlobalRegistry.unregister(reg, "worker-1", my_clock)
+
+-- Merge two registry views (idempotent)
+let reg = GlobalRegistry.merge(local_reg, remote_reg)
+
+-- Enumerate
+let names = GlobalRegistry.names(reg)   -- List(String)
+let n     = GlobalRegistry.size(reg)
+</code></pre>
+
+<p>Merge is idempotent: applying the same remote view twice produces the same result. This makes gossip-based propagation safe: broadcast to all peers and let them forward.</p>
+
+<hr />
+
+<h2 id="remote-calls">Remote Calls</h2>
+
+<h3 id="globalpid-cluster-wide-process-identifiers">GlobalPid: cluster-wide process identifiers</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">GlobalPid</code> uniquely identifies a process across the cluster:</p>
+
+<pre><code class="language-march">let pid = GlobalPid.make("alice@192.168.1.10", 42, 1)
+-- { node_id: "alice@192.168.1.10", local_pid: 42, creation: 1 }
+
+-- Serialise / deserialise (for inclusion in RPC messages)
+let v    = GlobalPid.to_value(pid)
+let pid2 = GlobalPid.of_value(v)   -- Result(GlobalPid.Pid, String)
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">creation</code> counter lets the runtime distinguish a new process at the same local pid from a restarted one.</p>
+
+<h3 id="remoteref-type-safe-function-references">RemoteRef: type-safe function references</h3>
+
+<p>A <code class="language-plaintext highlighter-rouge">RemoteRef</code> pins a remote function by both its type signature hash and its implementation hash:</p>
+
+<pre><code class="language-march">let fref = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+-- { module_name: "Math", fn_name: "add", sig_hash: ..., impl_hash: ... }
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Hash of</th>
+      <th>Guards against</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code></td>
+      <td>Public type signature</td>
+      <td>Calling a function with a different type</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">impl_hash</code></td>
+      <td>Function body (Merkle root)</td>
+      <td>Calling a different version of the same function</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The hashes are recorded in the compiled binary. The responder node’s RPC dispatcher rejects any call where they don’t match its local copy.</p>
+
+<h3 id="making-a-call">Making a call</h3>
+
+<p>Build a <code class="language-plaintext highlighter-rouge">CallRequest</code>, encode it, send it over the connection, then decode the reply:</p>
+
+<pre><code class="language-march">let reply_pid = GlobalPid.make(my_node_id, my_local_pid, 1)
+let fref      = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+let args      = Msgpack.encode(Msgpack.array(Cons(Msgpack.int(2), Cons(Msgpack.int(3), Nil))))
+let req       = RemoteCall.request(fref, args, reply_pid, deadline_ms, correlation_id)
+
+-- Encode to bytes for transport
+let frame = RemoteCall.encode_request(req)
+
+-- On the caller side, when a reply arrives:
+match NodeRpc.interpret(reply) do
+  Ok(payload) -&gt;
+    -- payload is raw Msgpack bytes; decode them
+    match Msgpack.decode(payload) do
+      Ok(Msgpack.Int(n)) -&gt; n
+      _                  -&gt; ...
+    end
+  Err(err) -&gt;
+    -- err is a CallError — see below
+    ...
+end
+</code></pre>
+
+<h3 id="callerror-taxonomy">CallError taxonomy</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Error</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DeadlineExceeded</code></td>
+      <td>No reply before the deadline</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NoConnection</code></td>
+      <td>The peer is unreachable or has disconnected</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">RemoteExit(msg)</code></td>
+      <td>The target function raised an error</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TypeMismatch</code></td>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code> did not match; type API changed</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">VersionSkew</code></td>
+      <td><code class="language-plaintext highlighter-rouge">sig_hash</code> matched but <code class="language-plaintext highlighter-rouge">impl_hash</code> did not; different body version</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NoTarget</code></td>
+      <td>No function enrolled under that module/function name</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">TypeMismatch</code> and <code class="language-plaintext highlighter-rouge">VersionSkew</code> are safe: the remote body was <strong>never invoked</strong>.</p>
+
+<h3 id="caller-side-helpers">Caller-side helpers</h3>
+
+<pre><code class="language-march">-- Check whether a reply belongs to a given request (by correlation id)
+NodeRpc.matches(req, reply)    -- Bool
+
+-- Timeout check (compare current time to request deadline)
+NodeRpc.timed_out(now_ms, req.deadline)   -- Bool
+
+-- Synthesise a peer-down error reply
+NodeRpc.peer_down_error()   -- CallError
+</code></pre>
+
+<hr />
+
+<h2 id="responder-side-noderpc">Responder Side (NodeRpc)</h2>
+
+<p>Each node runs an RPC dispatcher that maps <code class="language-plaintext highlighter-rouge">(module, function)</code> keys to local stubs. The stubs decode MessagePack arguments, call the local function, and encode the result.</p>
+
+<h3 id="enrolling-a-function">Enrolling a function</h3>
+
+<pre><code class="language-march">-- A stub: decode args, call the real function, encode the result
+fn add_stub(args : List(Int)) : Result(List(Int), String) do
+  match Msgpack.decode(args) do
+    Err(e) -&gt; Err(e)
+    Ok(v)  -&gt;
+      match v do
+        Msgpack.Array(Cons(Msgpack.Int(a), Cons(Msgpack.Int(b), Nil))) -&gt;
+          Ok(Msgpack.encode(Msgpack.int(a + b)))
+        _ -&gt; Err("add: bad args")
+      end
+  end
+end
+
+let targets = NodeRpc.empty()
+let target  = { sig_hash: sig_hash, impl_hash: impl_hash, invoke: add_stub }
+let targets = NodeRpc.enroll(targets, "Math", "add", target)
+</code></pre>
+
+<h3 id="dispatching-incoming-frames">Dispatching incoming frames</h3>
+
+<pre><code class="language-march">-- Given raw bytes from the network:
+match NodeRpc.handle_frame(targets, frame) do
+  Some(reply) -&gt;
+    -- Encode the reply and send it back
+    let reply_bytes = RemoteCall.encode_reply(reply)
+    -- ... write reply_bytes to the peer's socket ...
+  None -&gt;
+    -- Malformed frame — log and discard
+    ()
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">handle_frame</code> decodes the request, verifies <code class="language-plaintext highlighter-rouge">sig_hash</code> and <code class="language-plaintext highlighter-rouge">impl_hash</code> against the enrolled stub, invokes it (if both match), and returns a <code class="language-plaintext highlighter-rouge">CallReply</code>. The verification logic is:</p>
+
+<ol>
+  <li>No stub for <code class="language-plaintext highlighter-rouge">(module, fn)</code> → <code class="language-plaintext highlighter-rouge">NoTarget</code></li>
+  <li><code class="language-plaintext highlighter-rouge">sig_hash</code> mismatch → <code class="language-plaintext highlighter-rouge">TypeMismatch</code> (stub never called)</li>
+  <li><code class="language-plaintext highlighter-rouge">impl_hash</code> mismatch → <code class="language-plaintext highlighter-rouge">VersionSkew</code> (stub never called)</li>
+  <li>Stub returns <code class="language-plaintext highlighter-rouge">Err(msg)</code> → <code class="language-plaintext highlighter-rouge">RemoteExit(msg)</code></li>
+  <li>Stub returns <code class="language-plaintext highlighter-rouge">Ok(bytes)</code> → <code class="language-plaintext highlighter-rouge">Returned(bytes)</code></li>
+</ol>
+
+<hr />
+
+<h2 id="remote-actor-messages-nodesend">Remote actor messages: <code class="language-plaintext highlighter-rouge">NodeSend</code></h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">NodeCall</code> is a synchronous call to a <em>function</em>. To send a one-way
+<em>message</em> to an actor on another node, the way <code class="language-plaintext highlighter-rouge">send(pid, msg)</code> does locally,
+use <code class="language-plaintext highlighter-rouge">NodeSend</code>:</p>
+
+<pre><code class="language-march">-- sender: a frame on the peer connection, addressed by GlobalPid
+let target = GlobalPid.make("node-b", their_local_pid, their_creation)
+let _ = NodeSend.cast(conn_fd, seq, target, "App.Ping", payload_bytes)
+
+-- receiver: decode one frame and hand it to a dispatch that knows which
+-- local actor hosts which message type
+let _ = NodeSend.serve_one(conn_fd, my_creation, fn d -&gt;
+  match d.type_tag do
+    "App.Ping" -&gt; let _ = send(ping_actor, Ping(d.payload))
+                  Ok(())
+    other      -&gt; Err("unknown type " ++ other)
+  end)
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">cast</code> (not <code class="language-plaintext highlighter-rouge">send</code>, which is the local primitive’s name) writes an
+<code class="language-plaintext highlighter-rouge">ACTOR_MSG</code> frame <code class="language-plaintext highlighter-rouge">[9, seq, local_pid, creation, type_tag, payload]</code> and
+returns once it is written. The receiving node checks the <code class="language-plaintext highlighter-rouge">creation</code> against
+its own before dispatching, so a message addressed to a pid from before that
+node restarted is refused rather than delivered to whatever now owns the
+number. Any refusal — stale creation, a type the dispatch does not host, a
+pid that is not alive, a payload it cannot decode — goes <strong>back to the
+sender</strong> as a <code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code> frame <code class="language-plaintext highlighter-rouge">[10, seq, reason]</code>, read with
+<code class="language-plaintext highlighter-rouge">NodeSend.recv_failure</code>. A remote send is not fire-and-forget.</p>
+
+<p>Two things are the caller’s, by design: the dispatch (a constructor is minted
+by the actor that declares it, so a library cannot wrap the payload), and the
+payload codec (encode the message with its <code class="language-plaintext highlighter-rouge">derive</code>d codec into bytes; the
+frame carries bytes). Pids never travel: a message that must name an actor
+carries a <code class="language-plaintext highlighter-rouge">GlobalPid</code>. <code class="language-plaintext highlighter-rouge">test/native/node_send_loopback.march</code> runs the whole
+exchange over TCP loopback, including all three failure replies.</p>
+
+<h2 id="typed-remote-messages-nodesend-and-remote">Typed remote messages: <code class="language-plaintext highlighter-rouge">Node.send</code> and <code class="language-plaintext highlighter-rouge">@[remote]</code></h2>
+
+<p><code class="language-plaintext highlighter-rouge">NodeSend.cast</code> carries bytes under a string tag you keep in step by hand. The typed layer
+checks and generates both halves.</p>
+
+<p><strong>Sending.</strong> <code class="language-plaintext highlighter-rouge">msg</code>’s type must <code class="language-plaintext highlighter-rouge">derive Json</code>; a missing codec is a compile error at the call.
+The wire tag is the type’s declared name, minted by the compiler. It is module-qualified
+below the entry module (<code class="language-plaintext highlighter-rouge">Msgs.Ping</code> for <code class="language-plaintext highlighter-rouge">mod Msgs</code> inside the entry file), so the sender and
+the receiver agree when both programs declare the type in the same module path.</p>
+
+<pre><code class="language-march">mod Msgs do
+  type Ping = { n : Int, who : String }
+  derive Json for Ping
+end
+
+let _ = Node.send(peer, target, ping)                       -- straight to the connection
+let _ = Node.enqueue(q, target, ping, NodeQueue.DropNew)    -- through the peer's NodeQueue
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Node.send</code> writes the message to the connection immediately. <code class="language-plaintext highlighter-rouge">Node.enqueue</code> adds it to the
+peer’s credit-based <code class="language-plaintext highlighter-rouge">NodeQueue</code>. Both return <code class="language-plaintext highlighter-rouge">Ok(seq)</code>; a later <code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code> echoes
+that seq. The queue’s policy decides what happens when the peer’s budget is full:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">DropNew</code> refuses the new message with <code class="language-plaintext highlighter-rouge">Err(Backpressure)</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">DropOld</code> evicts the oldest queued messages to make room.</li>
+  <li><code class="language-plaintext highlighter-rouge">BlockSender(timeout_ms)</code> makes the caller wait for credit. Inside an actor’s handler
+this is safe, but the actor handles nothing else while it waits: messages sent to it in
+the meantime stay in its mailbox, in order, and are handled after the handler returns.</li>
+  <li><code class="language-plaintext highlighter-rouge">Unbounded</code> never refuses and never waits: the message queues past the budget and goes out
+as credit arrives. The choreography runner sends this way.</li>
+</ul>
+
+<p>A message larger than the whole budget is accepted when the queue is empty and sent on its
+own, so no message is too big to send.</p>
+
+<p><strong>Receiving.</strong> Mark the actor <code class="language-plaintext highlighter-rouge">@[remote]</code>. Every handler that takes one parameter of a
+declared type becomes a routing target, and the compiler generates <code class="language-plaintext highlighter-rouge">&lt;Actor&gt;_Remote.dispatch</code>:</p>
+
+<pre><code class="language-march">@[remote]
+actor Inbox do
+  state { n : Int }
+  init  { n: 0 }
+  on GotPing(p : Ping) do ... end
+end
+
+-- in the node's reader, per ACTOR_MSG delivery `d`:
+match Inbox_Remote.dispatch(inbox_pid, d) do
+  Ok(true)  -&gt; ()                          -- decoded and sent to the actor's mailbox
+  Ok(false) -&gt; ...                         -- no handler of Inbox takes this type
+  Err(e)    -&gt; ...                         -- not JSON, or not the type its tag names
+end
+</code></pre>
+
+<p>The dispatch compares the delivery’s tag with the tag the sender’s compiler minted for each
+handler’s type, so the two sides cannot drift. A handler whose type has no codec is a
+compile error, and so is a <code class="language-plaintext highlighter-rouge">@[remote]</code> actor with no routable handler.</p>
+
+<p><strong>Schema hashes: a type that kept its name but changed its shape.</strong> Beside the tag, a typed
+send carries the message type’s <em>schema hash</em>, a digest of its structure: a record’s fields
+(names and types, in order), a variant’s constructors with their argument types, and every
+declared type they mention, expanded the same way. The name is not part of it. The
+dispatch accepts a delivery whose tag and schema both match, or whose sender sent no schema
+(a program built before schema hashes). When the tag matches but the schema does not, the
+sender was built from another version of the type:</p>
+
+<ul>
+  <li>If the actor has an <code class="language-plaintext highlighter-rouge">&lt;actor&gt;_migrate_msg</code> (the hot-reload message migration), and the
+old message type it takes has a one-argument constructor whose argument has the delivered
+schema, the payload is decoded as that argument, wrapped in that constructor, converted by
+<code class="language-plaintext highlighter-rouge">migrate_msg</code>, and delivered. A <code class="language-plaintext highlighter-rouge">None</code> from <code class="language-plaintext highlighter-rouge">migrate_msg</code> is refused.</li>
+  <li>Otherwise the dispatch returns <code class="language-plaintext highlighter-rouge">Err</code>, and the transport answers the sender with
+<code class="language-plaintext highlighter-rouge">DELIVERY_FAILED</code>.</li>
+</ul>
+
+<pre><code class="language-march">mod V1 do
+  type OldHit = { n : Int }          -- what an older build sent as `Msgs.Hit`
+  derive Json for OldHit
+  type Msg = OldBump(V1.OldHit)
+end
+
+fn counter_migrate_msg(m : V1.Msg) : Option(Counter.Msg) do
+  match m do
+    V1.OldBump(h) -&gt; Some(Bump({ n: h.n, who: "migrated" }))
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Node.schema_of(fn (_ : T) -&gt; ())</code> is <code class="language-plaintext highlighter-rouge">T</code>’s schema hash as a string. The schema rides the
+<code class="language-plaintext highlighter-rouge">ACTOR_MSG</code> frame as an optional seventh element; a node built before it refuses a
+seven-element frame, so upgrade receivers before senders.</p>
+
+<p><strong>Session protocols across nodes.</strong> <code class="language-plaintext highlighter-rouge">SessionNode</code> is the <code class="language-plaintext highlighter-rouge">Session.Ops</code> transport for an
+<code class="language-plaintext highlighter-rouge">@[endpoints]</code> protocol whose roles run on different nodes, over split peer connections
+(<code class="language-plaintext highlighter-rouge">ClusterConn.connect_split</code> / <code class="language-plaintext highlighter-rouge">accept_split</code>). Two roles:</p>
+
+<pre><code class="language-march">let p = SessionNode.open(conn, "node-a", false, fn ep -&gt; ())
+let s = Session.attach(io, SessionNode.ops(p))
+let _ = run_role(s, Stream_Prod.register(s, 0))
+SessionNode.serve(p)
+SessionNode.finish(p)
+</code></pre>
+
+<p>Three or more: start a party in your role, then add one connection per peer. The side
+that ACCEPTS learns the peer’s role from its hello (a listener does not know which role
+connects next); the side that connects names it. Connect so that, for roles <code class="language-plaintext highlighter-rouge">i &lt; j</code>, <code class="language-plaintext highlighter-rouge">i</code>
+listens and <code class="language-plaintext highlighter-rouge">j</code> connects — then no configuration is needed and nothing deadlocks.</p>
+
+<pre><code class="language-march">let p0 = SessionNode.party(Relay_Msg.role_Server(), "node-b", fn ep -&gt; ())
+let p1 = SessionNode.accept_from(p0, conn_from_client)        -- role learned from its hello
+let p  = SessionNode.connect_to(p1, Relay_Msg.role_Logger(), conn_to_logger)
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">emit</code> picks the connection from the message’s destination role, and <code class="language-plaintext highlighter-rouge">serve</code> reads every
+peer at once. <code class="language-plaintext highlighter-rouge">SessionNode.require(p, Relay_Msg.peers_Server())</code> checks, before the session
+starts, that the party has a connection to every role the projection says <code class="language-plaintext highlighter-rouge">Server</code>
+exchanges messages with — the generated <code class="language-plaintext highlighter-rouge">peers_&lt;Role&gt;()</code> — and names the missing ones.
+A wiring mistake fails at startup, not at the first message to an unreachable role. Messages from different peers race — each connection is FIFO, but two are
+not ordered against each other — so a delivery that arrives before the continuation that
+wants it is parked and replayed when that continuation is installed. The generated code
+tells the transport which role each receive expects, so this needs nothing from you.</p>
+
+<p><strong>The role runner.</strong> <code class="language-plaintext highlighter-rouge">SessionNode.run</code> does all of the above from a role, its peer set and
+a role→address table, in the one order that cannot deadlock (connect to every lower role,
+ascending, then accept every higher one), and the generator emits its typed front,
+<code class="language-plaintext highlighter-rouge">&lt;P&gt;_Run.run_&lt;Role&gt;(io, node_id, secret, addrs, body)</code>, where <code class="language-plaintext highlighter-rouge">body</code> takes the session
+capability and the role’s entry state — a body written for another role, or for another
+point of this one, is a type error. A node is then its role’s line and a match on the
+result:</p>
+
+<pre><code class="language-march">fn main(c : Cap(IO)) do
+  match Relay_Run.run_Server(c, "node-b", secret, Relay_Run.addrs_from_env(), fn (s, st) -&gt; server(s, st)) do
+    Ok(_) -&gt; ()
+    Err(SessionNode.Cancelled(role, _)) -&gt; ...   -- this role was waiting on a role that failed
+    Err(SessionNode.Protocol(role, why)) -&gt; ...  -- a peer sent what the protocol cannot receive
+    Err(e) -&gt; panic(SessionNode.run_error_message(e))
+  end
+end
+</code></pre>
+
+<p>A message the generated code cannot decode, or one the current state does not receive, is
+not a panic: the handler hands it to the transport (<code class="language-plaintext highlighter-rouge">Session.fail</code>), <code class="language-plaintext highlighter-rouge">SessionNode</code> ends the
+session without a Bye, and <code class="language-plaintext highlighter-rouge">run</code> returns <code class="language-plaintext highlighter-rouge">Err(Protocol(role, why))</code> naming the sender. (A
+same-thread transport panics there, as the handler itself used to.)</p>
+
+<p><code class="language-plaintext highlighter-rouge">Relay_Run.addrs_from_env()</code> reads <code class="language-plaintext highlighter-rouge">RELAY_&lt;ROLE&gt;_ADDR = host:port</code> for each role. Addresses
+are a runtime value, but their shape is compile-time knowledge: a role needs its own entry
+iff some peer is above it and an entry for every peer below it, and a missing one panics by
+role at startup, before any socket opens. When a role fails it is cancelled, and a role
+that was waiting on it with nothing from it still queued is cancelled in turn
+(<code class="language-plaintext highlighter-rouge">Err(Cancelled(role, cause))</code>); a role that no longer needs it carries on and can finish.
+A heartbeat catches a peer that stops without closing. A session is not resumable: what to
+do next (<code class="language-plaintext highlighter-rouge">run</code> again, which is a fresh session) is the caller’s decision. The rules, and the
+<code class="language-plaintext highlighter-rouge">_or</code> receives that take a cancel handler, are in the choreography guide.</p>
+
+<p><strong>A role hosted in an actor.</strong> The same party can drive the event API instead of a body —
+the session state in an actor’s own state (<code class="language-plaintext highlighter-rouge">Parked_&lt;Role&gt;</code>), every step in a handler with
+<code class="language-plaintext highlighter-rouge">state</code> in scope — through <code class="language-plaintext highlighter-rouge">&lt;P&gt;_Run.host_&lt;Role&gt;(io, node_id, secret, addrs, host, start,
+deliver)</code>: <code class="language-plaintext highlighter-rouge">start</code> gets the session capability once the party is connected (send it to the
+actor, whose start handler registers and parks), and <code class="language-plaintext highlighter-rouge">deliver</code> gets every delivery the
+parked endpoint awaits, <code class="language-plaintext highlighter-rouge">(s, from, msg, ep)</code>, which is what its resume handler takes:</p>
+
+<pre><code class="language-march">let pc = spawn(ConsActor)
+Stream_Run.host_Cons(c, "node-b", secret, Stream_Run.addrs_from_env(), pc,
+  fn s -&gt; send(pc, StartC(s)),
+  fn (s, from, msg, ep) -&gt; send(pc, DeliverC(s, from, msg, ep)))
+</code></pre>
+
+<p>Deliveries are one per suspension, in mailbox order; one that arrives before the actor has
+re-parked is held for it. The host is monitored: its <code class="language-plaintext highlighter-rouge">Down</code> — a crash, a kill, a supervisor’s
+restart — cancels its role with <code class="language-plaintext highlighter-rouge">Err(HostGone(ep))</code>, and the peers are sent a Cancel;
+<code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;_or</code> also tells the actor itself. A restarted actor starts <code class="language-plaintext highlighter-rouge">Idle</code> and cannot continue a
+session its predecessor parked; run again for a new one. (That is the event API’s trade,
+the same as in-process: the step can read the actor’s state because the session state <em>is</em>
+actor state, and actor state does not survive a restart.)</p>
+
+<h2 id="putting-it-together">Putting It Together</h2>
+
+<blockquote>
+  <p><strong>This is a layered API-reference skeleton, not a runnable program.</strong> It shows how the pieces connect (identity, listen/connect, handshake, then a <code class="language-plaintext highlighter-rouge">RemoteCall</code>) but elides two things you must supply for real: (1) the actual byte transport over the socket <code class="language-plaintext highlighter-rouge">fd</code>, and (2) concrete <code class="language-plaintext highlighter-rouge">sig_hash</code> / <code class="language-plaintext highlighter-rouge">impl_hash</code> values, which the compiler bakes into your binary for the specific functions you enroll. The send/recv framing is <code class="language-plaintext highlighter-rouge">NetFrame</code>’s job (length-prefixed frames); see the <em>Wiring up the transport</em> note after the skeleton for how to close the loop.</p>
+</blockquote>
+
+<p>A minimal two-node cluster:</p>
+
+<p><strong>Node A (listener)</strong></p>
+
+<pre><code class="language-march">mod NodeA do
+  fn main() do
+    let my_id = NodeIdentity.make("a@127.0.0.1", "node-a-pubkey", 1)
+    let secret = Crypto.random_hex(32)
+    let reg    = PeerRegistry.empty()
+
+    match ClusterConn.listen(9000) do
+      Err(e) -&gt; Env.exit(1)
+      Ok(listen_fd) -&gt;
+        -- Accept one peer (in practice, loop in an actor)
+        match ClusterConn.accept_one(reg, listen_fd, my_id, secret) do
+          Ok(peer_id) -&gt; run_rpc_loop(peer_id)
+          Err(e)      -&gt; Env.exit(1)
+        end
+    end
+  end
+end
+</code></pre>
+
+<p><strong>Node B (connector)</strong></p>
+
+<pre><code class="language-march">mod NodeB do
+  fn main() do
+    let my_id = NodeIdentity.make("b@127.0.0.1", "node-b-pubkey", 1)
+    let secret = -- same secret as Node A
+
+    match Socket.connect("127.0.0.1", 9000) do
+      Err(e) -&gt; Env.exit(1)
+      Ok(fd) -&gt;
+        let nonce = NetKernel.fresh_nonce()
+        match NetKernel.handshake(fd, my_id, secret, nonce) do
+          Err(e)       -&gt; Env.exit(1)
+          Ok(peer_id)  -&gt;
+            -- Now call Math.add on Node A
+            let fref = RemoteCall.remote_ref("Math", "add", sig_hash, impl_hash)
+            let args = Msgpack.encode(
+              Msgpack.array(Cons(Msgpack.int(2), Cons(Msgpack.int(3), Nil))))
+            let reply_pid = GlobalPid.make(my_id.node_id, 1, 1)
+            let req  = RemoteCall.request(fref, args, reply_pid, 5000, 1)
+            -- send RemoteCall.encode_request(req) over fd, read reply ...
+        end
+    end
+  end
+end
+</code></pre>
+
+<h3 id="wiring-up-the-transport">Wiring up the transport</h3>
+
+<p>To turn the skeleton into a running program, close the two gaps the note above flagged:</p>
+
+<ol>
+  <li><strong>Framing.</strong> <code class="language-plaintext highlighter-rouge">RemoteCall.encode_request(req)</code> gives you a <code class="language-plaintext highlighter-rouge">List(Int)</code> of bytes. Wrap it in a length prefix with <code class="language-plaintext highlighter-rouge">NetFrame</code> and write it to the socket <code class="language-plaintext highlighter-rouge">fd</code>; on the other end, read a length-prefixed frame back and hand the bytes to <code class="language-plaintext highlighter-rouge">RemoteCall.decode_reply</code> (caller side) or <code class="language-plaintext highlighter-rouge">NodeRpc.handle_frame</code> (responder side). The accept/recv loop is the same shape as the <code class="language-plaintext highlighter-rouge">ClusterConn.listen</code> example in <a href="#starting-the-listener">Starting the listener</a>: receive a frame, dispatch, write the reply.</li>
+  <li><strong>Hashes.</strong> <code class="language-plaintext highlighter-rouge">sig_hash</code> and <code class="language-plaintext highlighter-rouge">impl_hash</code> are produced by the compiler for the enrolled function (<code class="language-plaintext highlighter-rouge">Image.resize</code>, <code class="language-plaintext highlighter-rouge">Math.add</code>, …) and recorded in the binary; you reference the compiler-provided values rather than inventing them. A mismatch is caught <em>before</em> the remote body runs (<code class="language-plaintext highlighter-rouge">TypeMismatch</code> / <code class="language-plaintext highlighter-rouge">VersionSkew</code>), which is the whole point of the type-safe call path.</li>
+</ol>
+
+<p>For a complete, executing example, see the cluster integration tests under the project’s <code class="language-plaintext highlighter-rouge">test/</code> tree (search with <code class="language-plaintext highlighter-rouge">forge search</code> for <code class="language-plaintext highlighter-rouge">ClusterConn</code>, <code class="language-plaintext highlighter-rouge">NodeRpc</code>, and <code class="language-plaintext highlighter-rouge">GlobalRegistry</code>), which exercise the full accept → handshake → enroll → call → reply loop end to end.</p>
+
+<hr />
+
+<h2 id="conformance-status">Conformance status</h2>
+
+<p>This stack splits into two conformance planes (widening slice 10; reference
+in <code class="language-plaintext highlighter-rouge">core-march.md</code> §4.15, typing in <code class="language-plaintext highlighter-rouge">core-march-types.md</code> §2.12; the
+distributed surface adds no new typing rules, it’s ordinary ADTs).</p>
+
+<p><strong>Single-process, mechanically tested.</strong> The CRDT / lattice core (<code class="language-plaintext highlighter-rouge">CRDT</code>
+with GCounter/PNCounter/LWWRegister/ORSet, <code class="language-plaintext highlighter-rouge">Membership</code>, <code class="language-plaintext highlighter-rouge">GlobalRegistry.merge</code>,
+<code class="language-plaintext highlighter-rouge">VectorClock</code> causality, <code class="language-plaintext highlighter-rouge">Merkle</code>, <code class="language-plaintext highlighter-rouge">ConsistentHash</code>, <code class="language-plaintext highlighter-rouge">RingBuf</code>) plus the wire
+codecs (<code class="language-plaintext highlighter-rouge">NetFrame</code>, <code class="language-plaintext highlighter-rouge">NodeIdentity</code>, <code class="language-plaintext highlighter-rouge">GlobalPid</code>, <code class="language-plaintext highlighter-rouge">Handshake</code>, <code class="language-plaintext highlighter-rouge">RemoteCall</code>,
+<code class="language-plaintext highlighter-rouge">SwimDriver</code>) and <code class="language-plaintext highlighter-rouge">ClusterAuth</code>/<code class="language-plaintext highlighter-rouge">RemoteCall.verify</code> are pure functions over
+data structures, evaluated identically on both backends. Golden
+<code class="language-plaintext highlighter-rouge">g44_crdt_convergence</code> witnesses the GCounter/PNCounter/ORSet merge laws
+(commutative, associative, idempotent) and <code class="language-plaintext highlighter-rouge">VectorClock.happens_before</code> on
+causally-ordered clocks.</p>
+
+<p><strong>Live-network layers stay prose-only.</strong> The actual socket handshake
+(<code class="language-plaintext highlighter-rouge">NetKernel.handshake</code>, <code class="language-plaintext highlighter-rouge">ClusterConn</code>), synchronous RPC transport
+(<code class="language-plaintext highlighter-rouge">NodeCall.call</code>/<code class="language-plaintext highlighter-rouge">serve_loop</code>), SWIM gossip <em>dispatch</em> to peer fds, and
+cross-node monitor firing require two real nodes and are exercised only by
+the native TCP-loopback tests under <code class="language-plaintext highlighter-rouge">test/native/</code>, never by a
+single-process golden. True multi-<em>process</em> failure semantics are exercised
+by <code class="language-plaintext highlighter-rouge">scripts/two-node.sh</code> (two compiled binaries as two OS processes, a fault
+script applied from outside, per-node sorted goldens under
+<code class="language-plaintext highlighter-rouge">test/two_node/&lt;scenario&gt;/</code>): the <code class="language-plaintext highlighter-rouge">restart</code> scenario SIGKILLs a node holding
+an actor, restarts it with a new creation at the same local pid, and pins
+that a send to the held <code class="language-plaintext highlighter-rouge">GlobalPid</code> is refused as stale while a send to the
+re-announced one is delivered; the <code class="language-plaintext highlighter-rouge">stream</code> scenario runs the Stream
+session protocol’s two endpoints on the two nodes over the <code class="language-plaintext highlighter-rouge">Session.Ops</code>
+network transport, each node’s trace its projection of the in-process
+one; the <code class="language-plaintext highlighter-rouge">stall</code> scenario SIGSTOPs a node running SWIM and pins
+Suspect → Dead on the observer and the incarnation refutation on resume;
+the <code class="language-plaintext highlighter-rouge">skew</code> scenario runs one node 30 s ahead and pins that its load report is
+aged on the receiver’s clock (a received <code class="language-plaintext highlighter-rouge">NodeLoad</code>’s <code class="language-plaintext highlighter-rouge">sampled_at</code> is its
+receipt time, so peer clocks need not agree for <code class="language-plaintext highlighter-rouge">SwimDriver.peer_load</code>’s
+10 s staleness). <code class="language-plaintext highlighter-rouge">VectorClock</code> ordering takes no wall-clock input and is
+unaffected by skew by construction; the <code class="language-plaintext highlighter-rouge">partition</code> scenario drops every
+packet between two nodes running SWIM until each marks the other Dead, lets
+each bind the same <code class="language-plaintext highlighter-rouge">GlobalRegistry</code> name in its own half, and pins that the
+post-heal sync picks the same winner on both sides (a <code class="language-plaintext highlighter-rouge">REGISTRY_SYNC_RESP</code>
+leaf carries the entry’s <code class="language-plaintext highlighter-rouge">VectorClock</code>; the merge orders by it). <code class="language-plaintext highlighter-rouge">partition</code>
+needs Linux and root for iptables; <code class="language-plaintext highlighter-rouge">scripts/two-node-docker.sh</code> runs it from
+any host (<code class="language-plaintext highlighter-rouge">specs/progress/2026-09-14-two-node-failure-semantics-harness.md</code>).
+Node certificates are covered by <code class="language-plaintext highlighter-rouge">cert_ok</code> (two certificate-mode nodes link, see
+each other’s certificates and carry actor messages over sealed connections),
+<code class="language-plaintext highlighter-rouge">cert_wrong_operator</code>, <code class="language-plaintext highlighter-rouge">cert_expired</code> and <code class="language-plaintext highlighter-rouge">cert_revoked</code> (each refusal or drop
+and its reason), and <code class="language-plaintext highlighter-rouge">frame_tampered</code> (a proxy flips one byte of one sealed data
+frame; the receiver drops and counts that frame and keeps the link). All of
+these run on one host over loopback; failure semantics across real
+machines and networks aren’t covered by an automated test, so treat them as
+less battle-tested than the single-process core.</p>
+
+<p><strong>A compiled memory-safety gap, FIXED (finding C1, <code class="language-plaintext highlighter-rouge">specs/todos/</code>, 2026-07-11).</strong>
+<code class="language-plaintext highlighter-rouge">VectorClock.compare</code> (and, transitively, <code class="language-plaintext highlighter-rouge">.concurrent</code>/<code class="language-plaintext highlighter-rouge">.happens_before</code> on
+clocks with disjoint or partial actor-id sets) used to <strong>crash when compiled</strong>
+(a use-after-free freeing a <code class="language-plaintext highlighter-rouge">String</code> map key, SIGSEGV) while running
+correctly interpreted. The root cause was the read-then-update idiom
+<code class="language-plaintext highlighter-rouge">Map.insert(m, k, f(Map.get_or(m, k, ...)), cmp)</code>, which both
+<code class="language-plaintext highlighter-rouge">VectorClock.increment</code> and the <code class="language-plaintext highlighter-rouge">CRDT</code> counter updates use: a compiler
+Perceus/borrow refcount bug (<code class="language-plaintext highlighter-rouge">lib/tir/llvm_case.ml</code>’s <code class="language-plaintext highlighter-rouge">strip_scrut_decrc</code>
+only recognized a match arm’s own scrutinee-dying dec_rc as the literal head
+of the branch body, missing it, and silently skipping the shared-path field
+refcount protection, whenever another cross-branch-dead variable’s dec_rc
+was emitted first), not a bug in this module’s logic. Comparing vector
+clocks built by different actors in compiled code is now safe; <code class="language-plaintext highlighter-rouge">g44</code>
+includes the disjoint-key case unconditionally.</p>
+
+<hr />
+
+<h2 id="see-also">See also</h2>
+
+<ul>
+  <li><a href="/docs/actors/">Actors</a>: <code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code> and the mailbox model the cluster layers on; <code class="language-plaintext highlighter-rouge">GlobalRegistry</code> is the distributed counterpart of registering a <code class="language-plaintext highlighter-rouge">Pid</code> under a name.</li>
+  <li><a href="/docs/supervision/">Supervision Trees</a>: start from a supervised actor app on one node, then register its workers in the cluster as shown in <a href="#from-one-node-to-a-cluster">From one node to a cluster</a>.</li>
+  <li><a href="/docs/session-types/">Session Types</a>: typed two-party protocols, the in-process analogue of a type-safe <code class="language-plaintext highlighter-rouge">RemoteCall</code>.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1790383577"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

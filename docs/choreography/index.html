@@ -1,0 +1,3557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Choreography — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Upgrading</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-4-0/" class="d-sidebar-link">Upgrading to 0.4.0</a>
+        
+      
+        
+      <a href="/docs/tetris-playground/" class="d-sidebar-link">Tetris Playground</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-3-0/" class="d-sidebar-link">Upgrading to 0.3.0</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/cluster-certificates/" class="d-sidebar-link">Cluster Certificates</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/choreography/" class="d-sidebar-link active">Choreography</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      <a href="/docs/topology/" class="d-sidebar-link">Topology</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <!-- GENERATED from specs/lang/choreography.md by scripts/gen-lang-docs.py. Do not edit this file: edit specs/lang/choreography.md and run scripts/gen-lang-docs.py. -->
+
+<h1 id="choreography">Choreography</h1>
+
+<p>A choreography is one description of a conversation between several parties. You write
+down every message once, from the point of view of the whole system: who sends what to
+whom, and in what order. The compiler turns that into code for each party. Each party then
+runs as its own program, usually on its own machine, and the compiler has already checked
+that the programs agree with each other.</p>
+
+<p>In March you write the choreography as a <code class="language-plaintext highlighter-rouge">protocol</code> marked <code class="language-plaintext highlighter-rouge">@[endpoints]</code>. The compiler
+generates a typed module for each role, and a runner that connects the roles over the
+network. This page walks through one complete example, from the protocol to three
+processes talking over TCP.</p>
+
+<p>The network runner needs the compiled backend (<code class="language-plaintext highlighter-rouge">march --compile</code>). The interpreter cannot
+run socket code yet. The generated types and the same-process transports work on both
+backends; see <a href="/docs/session-types/">Session Types</a> for those.</p>
+
+<h2 id="the-example">The example</h2>
+
+<p>Three roles. A and B each send a number to C. C adds them and tells A whether the sum is 16.</p>
+
+<pre><code class="language-march">@[endpoints]
+protocol Fan do
+  number: A -&gt; C : Int
+  second: B -&gt; C : Int
+  verdict: C -&gt; A : Bool
+end
+</code></pre>
+
+<p>This is the whole protocol. Nothing else in the program says who talks to whom. The word
+before each step is the message’s name; the functions the compiler generates are called
+after it. The same example runs in CI as <code class="language-plaintext highlighter-rouge">test/two_node/fan</code>, with each role in its own OS
+process.</p>
+
+<h2 id="writing-a-protocol">Writing a protocol</h2>
+
+<p>A protocol is a list of steps. There are three kinds.</p>
+
+<p>A message step names the sender, the receiver and the type of the value, and may name the
+message itself with a lowercase label in front:</p>
+
+<pre><code class="language-march">number: A -&gt; C : Int
+</code></pre>
+
+<p>The label is what the generated functions are called after (<code class="language-plaintext highlighter-rouge">send_Number</code>, <code class="language-plaintext highlighter-rouge">recv_Number</code>).
+A step without one gets a name made up from its endpoints; see the table in the next
+section. Two steps may share a label when they carry the same type and no single role takes
+both of them.</p>
+
+<p>A loop repeats its body until a branch says <code class="language-plaintext highlighter-rouge">stop</code>:</p>
+
+<pre><code class="language-march">loop do
+  item: Prod -&gt; Cons : Int
+  choose by Cons:
+    more -&gt; Cons -&gt; Prod : Bool
+    done -&gt; Cons -&gt; Prod : Bool
+            stop
+  end
+end
+</code></pre>
+
+<p>A choice lets one role decide which branch the conversation takes. <code class="language-plaintext highlighter-rouge">choose by Cons</code> means
+Cons picks. Each branch starts with a label (<code class="language-plaintext highlighter-rouge">more</code>, <code class="language-plaintext highlighter-rouge">done</code>) and must begin with a message
+from the chooser. That first message is how the other side learns which branch was
+picked. The compiler rejects a branch that starts any other way.</p>
+
+<p>After its first message a branch can go on for as many steps as it needs, one per line,
+labelled or not. A new line starting <code class="language-plaintext highlighter-rouge">name -&gt;</code> begins the next branch; anything else
+(<code class="language-plaintext highlighter-rouge">A -&gt; B : T</code>, <code class="language-plaintext highlighter-rouge">tick: A -&gt; B : T</code>, <code class="language-plaintext highlighter-rouge">stop</code>, a nested <code class="language-plaintext highlighter-rouge">loop</code> or <code class="language-plaintext highlighter-rouge">choose</code>) continues the
+current one:</p>
+
+<pre><code class="language-march">choose by A:
+  go -&gt; A -&gt; B : Int
+        tick: A -&gt; B : Int
+        B -&gt; A : String
+  no -&gt; A -&gt; B : Bool
+end
+</code></pre>
+
+<p>A protocol may also say what each role’s code is allowed to do:</p>
+
+<pre><code class="language-march">@[endpoints]
+protocol Checkout do
+  role Client needs IO.NetConnect
+  role Ledger needs IO.FileWrite, IO.NetConnect
+  ...
+end
+</code></pre>
+
+<p>These grant lines come before the first message step, one per role, and take the same
+capability paths as a module’s <code class="language-plaintext highlighter-rouge">needs</code> (a misspelt one gets the same did-you-mean). A grant
+is a claim about the role’s code, not about the conversation, so it is not part of the
+protocol’s fingerprint: two nodes built with different grants still talk. What a grant
+does is the subject of <a href="#per-role-grants">Per-role grants</a> below.</p>
+
+<h2 id="what-the-compiler-generates">What the compiler generates</h2>
+
+<p>For a protocol <code class="language-plaintext highlighter-rouge">P</code> you get one module of shared definitions, one module per role, and one
+module that runs roles on the network. For <code class="language-plaintext highlighter-rouge">Fan</code>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Module</th>
+      <th>Contents</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Fan_Msg</code></td>
+      <td>The message type and its JSON codec (<code class="language-plaintext highlighter-rouge">encode</code>, <code class="language-plaintext highlighter-rouge">decode</code>, <code class="language-plaintext highlighter-rouge">try_decode</code>); the role numbers <code class="language-plaintext highlighter-rouge">role_A()</code>, <code class="language-plaintext highlighter-rouge">role_C()</code>, <code class="language-plaintext highlighter-rouge">role_B()</code> and <code class="language-plaintext highlighter-rouge">role_name(n)</code> back; <code class="language-plaintext highlighter-rouge">peers_A()</code> and <code class="language-plaintext highlighter-rouge">others_A()</code> (the roles A talks to, and every role but A); <code class="language-plaintext highlighter-rouge">role_names()</code>; <code class="language-plaintext highlighter-rouge">fingerprint()</code>, a digest of the protocol</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Fan_A</code>, <code class="language-plaintext highlighter-rouge">Fan_B</code>, <code class="language-plaintext highlighter-rouge">Fan_C</code></td>
+      <td>One type per point in the conversation, and one function per step that role takes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Fan_Run</code></td>
+      <td>The entry points that run a role on a node (see <a href="#running-a-role-on-a-node">Running a role on a node</a>), <code class="language-plaintext highlighter-rouge">addrs_from_env()</code>, and <code class="language-plaintext highlighter-rouge">error_message(e)</code>, which spells a <code class="language-plaintext highlighter-rouge">RunError</code> with role names</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Names <code class="language-plaintext highlighter-rouge">P</code> reserves.</strong> The generated modules are <code class="language-plaintext highlighter-rouge">P_Msg</code>, <code class="language-plaintext highlighter-rouge">P_&lt;Role&gt;</code> and <code class="language-plaintext highlighter-rouge">P_Run</code>, and the
+message type inside <code class="language-plaintext highlighter-rouge">P_Msg</code> is <code class="language-plaintext highlighter-rouge">P_Message</code>. Those names are yours to avoid: a type of your
+own called <code class="language-plaintext highlighter-rouge">P_Message</code> that also derives an interface the generated codec derives is
+rejected as an overlapping implementation. Two protocols in one module is fine: each one’s
+message type is named after its own protocol, which is what keeps their <code class="language-plaintext highlighter-rouge">Json</code> codecs apart
+(before 2026-09-22 both were called <code class="language-plaintext highlighter-rouge">Msg</code>, and the first protocol’s sends encoded through the
+second’s codec).</p>
+
+<p>Roles are numbered in the order they first appear in the protocol. In <code class="language-plaintext highlighter-rouge">Fan</code> that is A = 1,
+C = 2, B = 3. You never need to write these numbers; use the generated functions.</p>
+
+<p>Every message has a name, and every generated function and state carries it. Where the
+name comes from:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step in the protocol</th>
+      <th>Message name</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>a labelled step, <code class="language-plaintext highlighter-rouge">number: A -&gt; C : Int</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Number</code>, the label capitalised</td>
+    </tr>
+    <tr>
+      <td>an unlabelled step, <code class="language-plaintext highlighter-rouge">A -&gt; C : Int</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Msg_A_C_1</code>: sender, receiver, and its position among the messages from A to C (<code class="language-plaintext highlighter-rouge">Msg_A_C_2</code> for the second)</td>
+    </tr>
+    <tr>
+      <td>the first message of a <code class="language-plaintext highlighter-rouge">choose</code> branch, <code class="language-plaintext highlighter-rouge">more -&gt; Cons -&gt; Prod : Bool</code></td>
+      <td><code class="language-plaintext highlighter-rouge">More</code>, the branch label; the step takes no label of its own</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A label that would spell a made-up name (<code class="language-plaintext highlighter-rouge">msg_a_c_1</code>) is an error, so the two cannot
+collide. Two steps may share a label when their types agree and no single role takes both
+steps; the message type then has one constructor for both.</p>
+
+<p>Each role module has a type for every state the role can be in, and a function for every
+step out of that state:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step in the protocol</th>
+      <th>Function in the role module</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>this role sends <code class="language-plaintext highlighter-rouge">Msg</code></td>
+      <td><code class="language-plaintext highlighter-rouge">send_Msg(s, state, value)</code> returns the next state</td>
+    </tr>
+    <tr>
+      <td>this role receives <code class="language-plaintext highlighter-rouge">Msg</code></td>
+      <td><code class="language-plaintext highlighter-rouge">recv_Msg(s, state, fn (value, next) -&gt; ...)</code></td>
+    </tr>
+    <tr>
+      <td>this role picks <code class="language-plaintext highlighter-rouge">label</code></td>
+      <td><code class="language-plaintext highlighter-rouge">choose_label(s, state, value)</code> returns the next state</td>
+    </tr>
+    <tr>
+      <td>another role picks</td>
+      <td><code class="language-plaintext highlighter-rouge">offer_l1_l2(s, state, on_l1, on_l2)</code>, one callback per branch</td>
+    </tr>
+    <tr>
+      <td>the conversation ends</td>
+      <td><code class="language-plaintext highlighter-rouge">close(s, state)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">register(s, 0)</code> gives a role its first state. Each role module names that state
+<code class="language-plaintext highlighter-rouge">Entry</code>, so <code class="language-plaintext highlighter-rouge">Fan_C.Entry</code> is C’s first state and you never have to work out which
+<code class="language-plaintext highlighter-rouge">S_</code> name it is.</p>
+
+<h2 id="writing-a-role">Writing a role</h2>
+
+<p>A role is a function from its first state to <code class="language-plaintext highlighter-rouge">Yield</code>. Here is C:</p>
+
+<pre><code class="language-march">pfn role_c(s : Cap(Session.Live), st : Fan_C.Entry) : Fan_C.Yield do
+  Fan_C.recv_Number(s, st, fn (a, st1) -&gt;
+    println("C: got " ++ int_to_string(a) ++ " from A")
+    Fan_C.recv_Second(s, st1, fn (b, st2) -&gt;
+      println("C: got " ++ int_to_string(b) ++ " from B")
+      Fan_C.close(s, Fan_C.send_Verdict(s, st2, a + b == 16))))
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Yield</code> is the type of a finished role. Only <code class="language-plaintext highlighter-rouge">close</code> (and, later, <code class="language-plaintext highlighter-rouge">cancelled</code>) produce one,
+so a callback cannot return without either finishing the conversation or handing it on.</p>
+
+<p>The state types are what make this safe. Each one is linear: you must use it exactly once.
+<code class="language-plaintext highlighter-rouge">recv_Number</code> accepts only the state C is in before hearing from A, and it hands the
+callback the only value that lets C take the next step. So the compiler rejects a program
+that sends before it has received, receives twice, sends a <code class="language-plaintext highlighter-rouge">String</code> where the protocol says
+<code class="language-plaintext highlighter-rouge">Int</code>, or stops halfway through. The return type <code class="language-plaintext highlighter-rouge">Yield</code> can only be produced by a generated
+step function, so a callback cannot quietly drop the conversation either.</p>
+
+<p>And A:</p>
+
+<pre><code class="language-march">pfn role_a(s : Cap(Session.Live), st : Fan_A.Entry) : Fan_A.Yield do
+  let st1 = Fan_A.send_Number(s, st, 7)
+  Fan_A.recv_Verdict(s, st1, fn (ok, st2) -&gt;
+    println("A: got " ++ bool_to_string(ok))
+    Fan_A.close(s, st2))
+end
+</code></pre>
+
+<p>Sends, choices and <code class="language-plaintext highlighter-rouge">close</code> are ordinary calls that return the next state, so only a receive
+nests. A role with several receives reads better as one function per receive than as one
+pyramid of closures:</p>
+
+<pre><code class="language-march">pfn role_c(s : Cap(Session.Live), st : Fan_C.Entry) : Fan_C.Yield do
+  Fan_C.recv_Number(s, st, fn (a, st1) -&gt; after_a(s, a, st1))
+end
+
+pfn after_a(s : Cap(Session.Live), a : Int, st : Fan_C.S_recv_Second) : Fan_C.Yield do
+  Fan_C.recv_Second(s, st, fn (b, st2) -&gt;
+    Fan_C.close(s, Fan_C.send_Verdict(s, st2, a + b == 16)))
+end
+</code></pre>
+
+<p>If a step is called in the wrong state, the error names both states and says so: the
+state types are <code class="language-plaintext highlighter-rouge">S_</code> followed by the step the role takes next, so <code class="language-plaintext highlighter-rouge">S_recv_Number</code> is
+“about to receive <code class="language-plaintext highlighter-rouge">Number</code>”. <code class="language-plaintext highlighter-rouge">Entry</code> is the same type as whichever of them a role
+starts in, so an error about one may name the <code class="language-plaintext highlighter-rouge">S_</code> spelling where you wrote <code class="language-plaintext highlighter-rouge">Entry</code>.</p>
+
+<p>Every callback has to return. The runner calls it when its message arrives, and until it
+returns, that node handles nothing else for the session: no other message, no failure, not
+even the end of the session. A callback can compute for as long as it needs to. What it must
+not do is wait on something that only the session can bring about, such as a reply the peer
+sends only after it hears from this role, or a task that is itself waiting on the session.
+That would stop the conversation for good. The same holds for cancel handlers. The promise
+that a correct protocol cannot deadlock assumes every callback returns.</p>
+
+<h2 id="running-a-role-on-a-node">Running a role on a node</h2>
+
+<p>Each role becomes a program whose <code class="language-plaintext highlighter-rouge">main</code> calls its runner:</p>
+
+<pre><code class="language-march">fn main(c : Cap(IO)) do
+  match Fan_Run.run_C(c, "node-c", "fan-secret", Fan_Run.addrs_from_env(), fn (s, st) -&gt; role_c(s, st)) do
+    Ok(_) -&gt; println("C: closed")
+    Err(e) -&gt; panic(SessionNode.run_error_message(e))
+  end
+end
+</code></pre>
+
+<p>The arguments are:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">c</code>: the program’s IO capability.</li>
+  <li><code class="language-plaintext highlighter-rouge">"node-c"</code>: this node’s name, used in the handshake.</li>
+  <li><code class="language-plaintext highlighter-rouge">"fan-secret"</code>: a secret every node in the session shares. A node with a different secret
+is refused. With <code class="language-plaintext highlighter-rouge">MARCH_NODE_CERT</code> set (and <code class="language-plaintext highlighter-rouge">MARCH_NODE_KEY</code>,
+<code class="language-plaintext highlighter-rouge">MARCH_CLUSTER_OPERATOR_PUBKEY</code>, as for a cluster node) the node runs in
+<a href="/docs/clustering/#authorization">certificate mode</a> instead and the
+secret is unused. Each side then checks that the peer’s certificate lets it play the
+role it announces (<code class="language-plaintext highlighter-rouge">Proto.Role:offer</code> or <code class="language-plaintext highlighter-rouge">:initiate</code>), and refuses with
+<code class="language-plaintext highlighter-rouge">Connect</code>/<code class="language-plaintext highlighter-rouge">Accept</code>: <code class="language-plaintext highlighter-rouge">role Audit.A is played by node-a: not authorized for Audit.A</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">Fan_Run.addrs_from_env()</code>: where the roles are, read from the environment (next section).</li>
+  <li>The body: a function from the session and C’s first state to <code class="language-plaintext highlighter-rouge">Yield</code>. Its type comes from
+the protocol, so passing A’s body to <code class="language-plaintext highlighter-rouge">run_C</code> does not compile.</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">run_C</code> connects to the other roles, runs the body, delivers messages until every role has
+closed, and disconnects. It returns <code class="language-plaintext highlighter-rouge">Ok</code> when the conversation finished, or an <code class="language-plaintext highlighter-rouge">Err</code> that
+says why it did not.</p>
+
+<h3 id="the-entry-points">The entry points</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Transport</th>
+      <th>Body</th>
+      <th>Returns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;(io, node_id, secret, addrs, body)</code></td>
+      <td>its own connections, from an address table</td>
+      <td>callbacks</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Session.Outcome, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;(io, node_id, secret, addrs, actor, start, deliver)</code> and <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;_or(…, cancel)</code></td>
+      <td>its own connections</td>
+      <td>an actor (see <a href="#hosting-a-role-in-an-actor">Hosting a role in an actor</a>)</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Session.Outcome, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">cluster_&lt;Role&gt;(io, node, session, body)</code></td>
+      <td>a running <code class="language-plaintext highlighter-rouge">ClusterNode</code>, one session under a given id</td>
+      <td>callbacks</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Session.Outcome, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">offer_&lt;Role&gt;(io, node, capacity, body)</code></td>
+      <td>a running <code class="language-plaintext highlighter-rouge">ClusterNode</code>, any number of sessions</td>
+      <td>callbacks</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Offer, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">initiate_&lt;Role&gt;(io, node, body)</code></td>
+      <td>a running <code class="language-plaintext highlighter-rouge">ClusterNode</code>, one session it starts</td>
+      <td>callbacks</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Session.Outcome, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">offer_hosted_&lt;Role&gt;(io, node, capacity, actor, start, deliver, cancel)</code></td>
+      <td>a running <code class="language-plaintext highlighter-rouge">ClusterNode</code>, any number of sessions</td>
+      <td>one actor for all of them (see <a href="#many-sessions-in-one-actor">Many sessions in one actor</a>)</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Offer, RunError)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">cluster_hosted_&lt;Role&gt;(io, node, session, actor, start, deliver, cancel)</code></td>
+      <td>a running <code class="language-plaintext highlighter-rouge">ClusterNode</code>, one session under a given id</td>
+      <td>an actor, with the same callbacks</td>
+      <td><code class="language-plaintext highlighter-rouge">Result(Session.Outcome, RunError)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">&lt;P&gt;_Run.error_message(e)</code> turns any <code class="language-plaintext highlighter-rouge">RunError</code> into a line that names the roles.</p>
+
+<h2 id="per-role-grants">Per-role grants</h2>
+
+<p>A protocol’s grant lines (see <a href="#writing-a-protocol">Writing a protocol</a>) become parameters
+of the role’s body. For</p>
+
+<pre><code class="language-march">@[endpoints]
+protocol Checkout do
+  role Ledger needs IO.FileWrite, IO.NetConnect
+  ...
+end
+</code></pre>
+
+<p>the body <code class="language-plaintext highlighter-rouge">run_Ledger</code> and every other front takes is</p>
+
+<pre><code class="language-march">(Cap(Session.Live), Cap(IO.FileWrite), Cap(IO.NetConnect), Checkout_Ledger.Entry) -&gt; Checkout_Ledger.Yield
+</code></pre>
+
+<p>one capability per path, in the order the line lists them, after the session and before
+the entry state. The runner narrows them from the <code class="language-plaintext highlighter-rouge">Cap(IO)</code> it was given and passes them,
+so a body is written as</p>
+
+<pre><code class="language-march">pfn ledger(s : Cap(Session.Live), fw : Cap(IO.FileWrite), nc : Cap(IO.NetConnect), st : Checkout_Ledger.Entry) : Checkout_Ledger.Yield do
+  ...
+end
+
+Checkout_Run.run_Ledger(c, "ledger-1", secret, addrs, fn (s, fw, nc, st) -&gt; ledger(s, fw, nc, st))
+</code></pre>
+
+<p>and a body with a different parameter list does not compile against the runner. For a role
+hosted in an actor, the grant arrives through <code class="language-plaintext highlighter-rouge">start</code>: <code class="language-plaintext highlighter-rouge">start(s, fw, nc)</code>, or
+<code class="language-plaintext highlighter-rouge">start(sid, s, fw, nc)</code> for the many-session fronts. A role with no grant line keeps the
+plain <code class="language-plaintext highlighter-rouge">(s, st)</code> body.</p>
+
+<p>Because the grant is a value, the composition root is explicit from <code class="language-plaintext highlighter-rouge">main</code> to every role,
+and a test can hand a body any dictionary it likes in place of the runner’s (the
+<a href="/docs/capabilities/">Capabilities</a> page, “Mocking an IO capability in
+tests”). It is also checked: what a body reaches must fit under its grant.</p>
+
+<h3 id="what-the-grant-checks">What the grant checks</h3>
+
+<p>Two things stop a role from doing more than its line says. The first is the type: a
+granted body holds <code class="language-plaintext highlighter-rouge">Cap(IO.FileWrite)</code>, not <code class="language-plaintext highlighter-rouge">Cap(IO)</code>, and <code class="language-plaintext highlighter-rouge">Cap(IO.FileWrite)</code> does not
+unify with <code class="language-plaintext highlighter-rouge">Cap(IO)</code>, so it cannot hand its capability to anything that wants the wider
+one. The second is a walk, because a body that never touches its capability value can
+still call <code class="language-plaintext highlighter-rouge">file_write</code> through any helper. At every call of a runner front the compiler
+walks everything the callback reaches (helpers, functions passed as values, local closures
+it captures, actors it spawns; for a hosted role, <code class="language-plaintext highlighter-rouge">start</code>, <code class="language-plaintext highlighter-rouge">deliver</code>, <code class="language-plaintext highlighter-rouge">cancel</code> and the
+actor behind <code class="language-plaintext highlighter-rouge">host</code>) and requires every capability in that reach to sit under the role’s
+grant, exactly as <code class="language-plaintext highlighter-rouge">main</code>’s grant bounds the program:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Role `Stream.Cons` is granted `Cap(IO.Console)` (`role Cons needs IO.Console`), but the
+body passed to `Stream_Run.run_Cons` reaches `IO.FileWrite` (reached from the body:
+body → cons → save). A role's grant bounds everything its code reaches, as `main`'s
+grant bounds the program.
+help: add `IO.FileWrite` to `role Cons needs ...` in protocol `Stream`, or remove the use.
+</code></pre></div></div>
+
+<p>The root of the walk is the <em>value</em> that reaches the body parameter, not the expression
+at the call. A body bound with <code class="language-plaintext highlighter-rouge">let</code> in the calling function, a body passed in through a
+parameter (resolved at each call site), an alias such as <code class="language-plaintext highlighter-rouge">let sv = save</code>, a local closure
+the body calls, and a body returned by a function (charged that function’s reach) are all
+walked; the chain names a local closure by its name (<code class="language-plaintext highlighter-rouge">body → sv → save</code>). When the value
+has no static origin, because it was read from a record field or a data structure or
+received in a message, the compiler cannot walk it. A closure received as a value is its
+creator’s authority, so this is reported, not refused:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>warning: cannot verify role grant for the body passed to `Stream_Run.run_Cons` at
+app.march:28: value not statically known (it is read from a data structure, a record
+field or a message, not bound in this function). ...
+help: pass a lambda or a named function here, or bind the body with `let` in this
+function, to have it checked.
+</code></pre></div></div>
+
+<p>A role’s grant must also fit within <code class="language-plaintext highlighter-rouge">main</code>’s: the runner narrows the role’s capabilities
+from what <code class="language-plaintext highlighter-rouge">main</code> holds, so <code class="language-plaintext highlighter-rouge">role Cons needs IO.FileWrite</code> under <code class="language-plaintext highlighter-rouge">fn main(c :
+Cap(IO.Console))</code> is an error at the grant line. And a grant names IO capabilities only:
+<code class="language-plaintext highlighter-rouge">role Cons needs Session.Live</code> (or <code class="language-plaintext highlighter-rouge">ClusterNode.Live</code>, or <code class="language-plaintext highlighter-rouge">LibC</code>) is one error at the
+grant line, because the runner narrows each path from <code class="language-plaintext highlighter-rouge">main</code>’s <code class="language-plaintext highlighter-rouge">Cap(IO)</code> and no narrowing
+produces a proof or foreign capability. The session capability is passed to every body
+already.</p>
+
+<p>The grant bounds the role’s <em>code</em>, not its <em>authority</em>. A body handed a pid to an actor
+with wider capabilities can message it, and a closure it receives can do whatever its
+creator could; both are delegation, charged to whoever created the reference, and the
+walk does not refuse them. So the compiler can also show what a role can reach that way:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march <span class="nt">--dump-role-authority</span> app.march
+</code></pre></div></div>
+
+<p>prints, per runner call, the role’s grant, what its code reaches, the functions it
+references as values, the local closures it captures (with the function that made them
+and the line), the pids it holds without having spawned them (<code class="language-plaintext highlighter-rouge">holds: h -&gt; Keeper -&gt;
+IO.FileWrite</code>) and the actors it spawns or hosts, each with the capabilities behind it. It
+is a report, not a check; it exists so that a narrow grant is never mistaken for narrow
+authority.</p>
+
+<h2 id="telling-the-nodes-where-to-find-each-other">Telling the nodes where to find each other</h2>
+
+<p>Every pair of roles that exchange a message needs a connection, and one side of each pair
+has to listen. The rule: <strong>of any two roles, the one with the lower number listens and the
+higher one connects.</strong> The runner connects to every lower-numbered role first, in order,
+and then accepts one connection from each higher-numbered role. Because every role only
+ever waits on roles below it, the startup cannot deadlock.</p>
+
+<p>Addresses come from environment variables named <code class="language-plaintext highlighter-rouge">&lt;PROTOCOL&gt;_&lt;ROLE&gt;_ADDR</code>, set to
+<code class="language-plaintext highlighter-rouge">host:port</code>. A role needs its own address if any role above it will connect to it, and the
+address of every role below it that it talks to.</p>
+
+<p>For <code class="language-plaintext highlighter-rouge">Fan</code> (A = 1, C = 2, B = 3):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>Listens for</th>
+      <th>Connects to</th>
+      <th>Needs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A</td>
+      <td>C</td>
+      <td>nobody</td>
+      <td><code class="language-plaintext highlighter-rouge">FAN_A_ADDR</code></td>
+    </tr>
+    <tr>
+      <td>C</td>
+      <td>B</td>
+      <td>A</td>
+      <td><code class="language-plaintext highlighter-rouge">FAN_A_ADDR</code>, <code class="language-plaintext highlighter-rouge">FAN_C_ADDR</code></td>
+    </tr>
+    <tr>
+      <td>B</td>
+      <td>nobody</td>
+      <td>C</td>
+      <td><code class="language-plaintext highlighter-rouge">FAN_C_ADDR</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">FAN_A_ADDR</span><span class="o">=</span>10.0.0.1:7001 ./node_a
+<span class="nv">FAN_A_ADDR</span><span class="o">=</span>10.0.0.1:7001 <span class="nv">FAN_C_ADDR</span><span class="o">=</span>10.0.0.2:7002 ./node_c
+<span class="nv">FAN_C_ADDR</span><span class="o">=</span>10.0.0.2:7002 ./node_b
+</code></pre></div></div>
+
+<p>The nodes can start in any order, but they all have to be up within 20 seconds of each
+other. A node that connects before its peer is listening retries for up to 20 seconds, and
+a listening node waits up to 20 seconds for the next role to connect. If one never does,
+setup fails instead of waiting for ever: <code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code> returns <code class="language-plaintext highlighter-rouge">Err(Accept(why))</code>, whose text
+names the roles still missing, or <code class="language-plaintext highlighter-rouge">Err(Connect(role, why))</code>, and closes the connections it already made,
+so the roles it did reach fail too instead of waiting on it. Set
+<code class="language-plaintext highlighter-rouge">MARCH_SESSION_CONNECT_MS</code> to change the 20 seconds; 0 waits for ever. If a required variable is missing, the node stops at startup with a
+message that names the role, for example
+<code class="language-plaintext highlighter-rouge">session_node: role 2 needs an address for role(s) 1</code>, before it opens any socket.
+<code class="language-plaintext highlighter-rouge">addrs_from_env()</code> itself does not fail on a missing variable: it leaves that role out, and
+the runner reports it.</p>
+
+<p>Two nodes that run with different secrets do not connect: the listening side reports
+<code class="language-plaintext highlighter-rouge">accept: Handshake: peer failed authentication</code> and the dialing side
+<code class="language-plaintext highlighter-rouge">connect to role A: Handshake: peer failed authentication (do both nodes run with the same
+secret?)</code>, at once rather than after the setup time.</p>
+
+<p>You can also build the list yourself instead of reading the environment. It is a
+<code class="language-plaintext highlighter-rouge">List(SessionNode.Addr)</code>, one <code class="language-plaintext highlighter-rouge">{ role, host, port }</code> per role.
+<code class="language-plaintext highlighter-rouge">SessionNode.parse_addr(role, "host:port")</code> parses one entry and returns a <code class="language-plaintext highlighter-rouge">Result</code>.</p>
+
+<h2 id="running-over-a-cluster-node">Running over a cluster node</h2>
+
+<p>If your nodes already run a <a href="/docs/clustering/#a-running-node-clusternode"><code class="language-plaintext highlighter-rouge">ClusterNode</code></a>,
+a role can use it instead of opening connections of its own. The generated
+<code class="language-plaintext highlighter-rouge">&lt;P&gt;_Run.cluster_&lt;Role&gt;(io, node, session, body)</code> takes the running node (the
+<code class="language-plaintext highlighter-rouge">Cap(ClusterNode.Live)</code> that <code class="language-plaintext highlighter-rouge">ClusterNode.start</code> returned) and a session id, which is any
+string the roles agree on, fresh for each session:</p>
+
+<pre><code class="language-march">match Fan_Run.cluster_C(c, node, "fan-" ++ int_to_string(round), fn (s, st) -&gt; role_c(s, st)) do
+  Ok(_) -&gt; println("C: closed")
+  Err(SessionNode.Cancelled(role, cause)) -&gt; println("C: cancelled: " ++ cause)
+  Err(e) -&gt; println(SessionNode.run_error_message(e))
+end
+</code></pre>
+
+<ul>
+  <li><strong>No addresses.</strong> Each role registers its endpoint under the session’s name and finds the
+others by name (waiting up to 30 seconds, a fixed limit), so there are no
+<code class="language-plaintext highlighter-rouge">&lt;P&gt;_&lt;ROLE&gt;_ADDR</code> variables and no listen/connect rule.</li>
+  <li><strong>Shared connections.</strong> Frames ride the node’s one connection pair to each peer node,
+alongside every other session between those nodes. Every frame carries the session id, so
+a frame from another session is refused rather than delivered.</li>
+  <li><strong>The node is the failure detector.</strong> There is no session heartbeat. A peer is gone when it
+closes or is cancelled, or when its node’s connection ends: the node declared it dead
+(<code class="language-plaintext highlighter-rouge">node node-b dead: suspect timeout</code>, <code class="language-plaintext highlighter-rouge">... connection refused</code>), or the connection was
+lost. The drain rule still holds: the node reports the death only after the last message
+that arrived from that peer.</li>
+  <li>Roles may share a node, even two roles of one session: frames between parties on the
+same node go over the node’s loopback link (<code class="language-plaintext highlighter-rouge">ClusterNode.queue_for(node, own_id)</code>),
+in order and without flow control.</li>
+</ul>
+
+<h2 id="access-points-many-sessions-and-starting-again">Access points: many sessions, and starting again</h2>
+
+<p><code class="language-plaintext highlighter-rouge">cluster_&lt;Role&gt;</code> runs one session whose id the nodes agree on beforehand. An <strong>access
+point</strong> is the other way round: a node offers a role for any number of sessions, and a
+session forms when some other node invites it.</p>
+
+<p>A node that plays a role for others <strong>offers</strong> it:</p>
+
+<pre><code class="language-march">match Echo_Run.offer_Server(c, node, 64, fn (s, st) -&gt; serve_one(s, st)) do
+  Ok(offer) -&gt; ...        -- offering now; each session runs in its own task
+  Err(why)  -&gt; panic(why) -- this role of this protocol is already offered on this node
+end
+</code></pre>
+
+<p>A node that wants a conversation <strong>initiates</strong> one:</p>
+
+<pre><code class="language-march">match Echo_Run.initiate_Client(c, node, fn (s, st) -&gt; ask(s, st)) do
+  Ok(_) -&gt; println("done")
+  Err(SessionNode.NoOffer(role, why)) -&gt; println("nobody would take role " ++ int_to_string(role) ++ ": " ++ why)
+  Err(e) -&gt; println(SessionNode.run_error_message(e))
+end
+</code></pre>
+
+<p>Every role gets both functions, so a protocol needs no annotation saying which side
+starts: the client initiates and the server offers, and a pipeline’s first stage can
+initiate just as well.</p>
+
+<p><strong>How a session forms.</strong> The initiator mints a fresh session id (its node, that node’s
+incarnation, a counter: never reused, so a restarted or partitioned node can never be
+addressed by an old session), then invites one offer of each other role, trying an offer on
+its own node first. An offer refuses when it is full, when it is closing, when the initiator’s
+certificate does not allow its role (certificate mode, below), or when it was
+built from a version of the protocol this one cannot form a session with: each protocol has
+a fingerprint, so two nodes built from incompatible versions refuse each other instead of
+exchanging messages the other cannot read (see <a href="#changing-a-protocol">Changing a protocol</a>
+for the versions that can mix). On a refusal, or no answer, the initiator tries the next offer, all
+within the setup time (<code class="language-plaintext highlighter-rouge">MARCH_SESSION_CONNECT_MS</code>, 20 seconds). If a role cannot be
+filled, <code class="language-plaintext highlighter-rouge">Err(NoOffer(role, why))</code> says what each offer said, and the offers that had
+already accepted are released.</p>
+
+<p><strong>What the fingerprint covers.</strong> A protocol’s fingerprint digests its roles, its steps,
+and, since 2026-09-21, what each payload type is MADE OF, not only its name: two nodes
+whose <code class="language-plaintext highlighter-rouge">Thing</code> is <code class="language-plaintext highlighter-rouge">{ x : Int }</code> on one and <code class="language-plaintext highlighter-rouge">{ x : String }</code> on the other no longer agree,
+so the skew is refused when the session is set up instead of surfacing mid-session as an
+undecodable message. A payload type declared in ANOTHER module is out of reach when the
+digest is computed and is recorded by name alone, so a change below such a type’s name is
+still invisible to the check. The direct runner (<code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code>) exchanges the fingerprint
+in its handshake too, not only the access points, and a peer built before that change –
+which sends no fingerprint – is refused with a message saying so rather than joining
+unchecked. Every fingerprint changed when the digest widened: a node built before the
+change and one built after will refuse each other, which is the check working.</p>
+
+<p><strong>Who may take part (certificate mode).</strong> When the cluster runs in
+<a href="/docs/clustering/#authorization">certificate mode</a>, each node’s
+certificate names the roles it may play, as <code class="language-plaintext highlighter-rouge">Proto.Role:offer</code> and
+<code class="language-plaintext highlighter-rouge">Proto.Role:initiate</code>, and a session forms only between nodes whose certificates allow
+it. Both sides check:</p>
+
+<ul>
+  <li><strong>The initiator checks every offer before inviting it.</strong> Offer names are registry names
+that any member can write, so the initiator checks the certificate of the node that
+holds the offer, not the registry entry. An offer on a node whose certificate does not
+name <code class="language-plaintext highlighter-rouge">Checkout.Ledger:offer</code> is skipped, and <code class="language-plaintext highlighter-rouge">NoOffer</code>’s reasons list it:
+<code class="language-plaintext highlighter-rouge">node-b not authorized for Checkout.Ledger, not invited</code>.</li>
+  <li><strong>The offer checks the initiator.</strong> An invitation says which role its initiator plays,
+and the offer refuses it unless the certificate of the node it came from names
+<code class="language-plaintext highlighter-rouge">Proto.Role:initiate</code> for that role. The initiator’s <code class="language-plaintext highlighter-rouge">NoOffer</code> then reads
+<code class="language-plaintext highlighter-rouge">node-b refused: initiator node-a not authorized for Checkout.Client</code>.</li>
+  <li><strong>Each party checks the others once the session forms.</strong> Parties find each other by
+session names in the registry, and a member could bind one of those names first. Each
+party checks that every role’s endpoint is on a node whose certificate allows that
+role, and ends with <code class="language-plaintext highlighter-rouge">Connect(role, "... is held by node-c: not authorized for ...")</code>
+otherwise.</li>
+  <li><strong>A node does not offer what its own certificate does not allow.</strong> <code class="language-plaintext highlighter-rouge">offer_&lt;Role&gt;</code>
+returns <code class="language-plaintext highlighter-rouge">Err(Unauthorized(role, why))</code>, and a topology app reports it as “could not
+offer”. This is a courtesy check. The initiator’s check is the one that holds against
+a node that skips it.</li>
+</ul>
+
+<p>A shared-secret cluster has no certificates and checks none of this, as before.</p>
+
+<p><strong>Capacity</strong> is the second argument to <code class="language-plaintext highlighter-rouge">offer_&lt;Role&gt;</code>: how many sessions it will run at
+once. Past that it answers “full” and the initiator looks elsewhere.</p>
+
+<p><strong>Starting again after a failure.</strong> A failed session is cancelled and discarded (see
+<a href="#when-a-role-fails">When a role fails</a>); nothing resumes it. What the access point adds
+is that the next session forms by itself: a supervisor restarts the actor or the program,
+it offers again, and the next invitation finds it. No node coordinates the restart with
+any other.</p>
+
+<p><code class="language-plaintext highlighter-rouge">SessionNode.close_offer(offer)</code> stops offering: new invitations are refused and the name
+is released, while sessions already running finish.</p>
+
+<p>The <a href="#running-over-a-cluster-node">cluster limits</a> still apply: every role on a different
+node, and one offer per role and protocol version per node.</p>
+
+<h2 id="messages-from-different-peers">Messages from different peers</h2>
+
+<p>Each connection delivers its messages in order, but two connections are not ordered against
+each other. In <code class="language-plaintext highlighter-rouge">Fan</code>, C expects A’s number first. If B is faster, B’s message arrives first.
+The runner holds it until C has received from A and asked for B. You do not need to write
+anything for this; the generated code tells the runner which role each receive is waiting
+for.</p>
+
+<h2 id="large-messages-and-slow-peers">Large messages and slow peers</h2>
+
+<p>A message can be any size, and a role can send as many messages in a row as it likes without
+waiting for the receiver. Whatever the receiving node has not taken yet waits on the sending
+node and goes out as the receiver catches up. Nothing is dropped while the peer keeps
+reading. A peer that stops reading altogether is caught by the heartbeat (see <a href="#when-a-role-fails">When a role
+fails</a>), or, over a cluster node, once <code class="language-plaintext highlighter-rouge">MARCH_SESSION_QUEUE_MAX_BYTES</code>
+(64 MiB) is queued for it unread; either way it is treated as gone and whatever was waiting
+for it is thrown away.</p>
+
+<h2 id="how-a-session-ends">How a session ends</h2>
+
+<p><code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code> returns one of these:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Result</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Ok(Session.Finished)</code></td>
+      <td>This role reached the end of the protocol.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Ok(Session.Drained(n))</code></td>
+      <td>The session was ended at a loop boundary because a node it runs on is draining (see <a href="#draining-a-session">Draining a session</a>). <code class="language-plaintext highlighter-rouge">n</code> is how many of this role’s own messages came back undelivered. A clean end, like <code class="language-plaintext highlighter-rouge">Finished</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Err(Cancelled(role, cause))</code></td>
+      <td>This role was waiting on <code class="language-plaintext highlighter-rouge">role</code>, that role failed, and nothing it had sent was still waiting to be read. <code class="language-plaintext highlighter-rouge">cause</code> says what went wrong: <code class="language-plaintext highlighter-rouge">"connection lost"</code>, <code class="language-plaintext highlighter-rouge">"no heartbeat"</code>, or a chain such as <code class="language-plaintext highlighter-rouge">"role 3: connection lost"</code> when the failure reached this role through another one.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Err(Protocol(role, why))</code></td>
+      <td>That role sent something this role cannot accept: a message that does not decode, or one the protocol does not allow at this point.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Err(HostGone(ep))</code></td>
+      <td>Only for a role hosted in an actor (below): the actor died.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Err(Left(why))</code></td>
+      <td>This role left the session on purpose (below).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Err(Listen(port, why))</code>, <code class="language-plaintext highlighter-rouge">Err(Accept(why))</code>, <code class="language-plaintext highlighter-rouge">Err(Connect(role, why))</code></td>
+      <td>Startup failed: the port was taken, a handshake was refused, a peer never came up.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">SessionNode.run_error_message(e)</code> turns any of these into a readable line. The <code class="language-plaintext highlighter-rouge">Ok</code> value
+is a <code class="language-plaintext highlighter-rouge">Session.Outcome</code> (<code class="language-plaintext highlighter-rouge">Finished | Drained(Int)</code>); code that matches <code class="language-plaintext highlighter-rouge">Ok(_)</code> needs no change.</p>
+
+<h2 id="draining-a-session">Draining a session</h2>
+
+<p>A node that is being upgraded or shut down <em>drains</em>: its old code has to stop running, but a
+session in the middle of an exchange cannot just be cut. A session drains at a <strong>loop
+boundary</strong>: the point where one iteration of a <code class="language-plaintext highlighter-rouge">loop</code> in the protocol has finished and the
+next has not begun. Every <code class="language-plaintext highlighter-rouge">loop</code> is a drain point unless it is written <code class="language-plaintext highlighter-rouge">loop atomic</code>.</p>
+
+<p>What happens, for any number of roles:</p>
+
+<ol>
+  <li><strong>The role that would receive the first message of the next iteration does not take it.</strong>
+When that message arrives and the receiving role’s node is draining, or the sender’s node
+was draining when it sent it, the message goes back to its sender, marked undelivered.
+The receiving role <em>drains</em>: it ends there.</li>
+  <li><strong>A drained role returns everything sent to it that it has not taken</strong>, whenever it
+arrives, so no message is silently lost.</li>
+  <li><strong>The other roles are told.</strong> A message sent to a drained role comes straight back to its
+sender.</li>
+  <li><strong>A role waiting for a message from a drained role drains too</strong>, at that receive. So a
+role in the middle of an iteration finishes the iteration’s work up to its next receive
+from a drained role, and ends there.</li>
+</ol>
+
+<p><code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code> then returns <code class="language-plaintext highlighter-rouge">Ok(Session.Drained(n))</code> on every role, where <code class="language-plaintext highlighter-rouge">n</code> counts the
+role’s own messages that came back. Between them, the roles’ <code class="language-plaintext highlighter-rouge">n</code>s add up to exactly the
+messages that were in flight. A role whose messages came back but that finished the
+protocol anyway (it never had to receive from the drained role again) also returns
+<code class="language-plaintext highlighter-rouge">Drained(n)</code>.</p>
+
+<p>A drained role does not run any more of its session code. Every receive has a third form,
+ending in <code class="language-plaintext highlighter-rouge">_or_drain</code>, that takes a <strong>drain handler</strong>:</p>
+
+<pre><code class="language-march">Stream_Prod.offer_more_done_or_drain(s, st1,
+  fn (_b, st2) -&gt; prod(s, st2, next + 1),
+  fn (_b, st2) -&gt; Stream_Prod.close(s, st2),
+  fn (role, undelivered, d) -&gt;
+    requeue(undelivered)          -- the messages that came back, decoded
+    Stream_Prod.drained(s, d))
+</code></pre>
+
+<p>Like a cancel handler it gets no session state: the drained role it was waiting on (0 when
+this role drained at its own loop boundary), the messages this role sent that came back,
+and a token whose only use is <code class="language-plaintext highlighter-rouge">&lt;Role&gt;.drained(s, token)</code>. A receive without <code class="language-plaintext highlighter-rouge">_or_drain</code>
+simply ends. A role hosted in an actor hears of a drain through its cancel callback, with
+the cause <code class="language-plaintext highlighter-rouge">"drained"</code>.</p>
+
+<p><strong>Why a loop boundary, and not a <code class="language-plaintext highlighter-rouge">choose</code>.</strong> The runner only has control when it delivers a
+message, so a receive is the one place it can end a session without handing your code a
+state it did not expect. A <code class="language-plaintext highlighter-rouge">choose_*</code> returns the next state and your code carries on with
+it; ending the session there would mean returning a state the types cannot express.</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">loop atomic do ... end</code></strong> is a loop whose iterations must not be split from each other:
+its head is not a drain point, so its sessions run until they end on their own, or until the
+drain’s hard deadline stops them (<code class="language-plaintext highlighter-rouge">Err(Left("draining"))</code>). It changes no message, so it
+does not change the protocol’s fingerprint.</p>
+
+<p><code class="language-plaintext highlighter-rouge">SessionNode.drain_epochs(io, soft_ms, hard_ms)</code> drains every session on the node (and every
+actor still on old code; see <a href="/docs/hot-code-reload/">hot reload</a>).
+<code class="language-plaintext highlighter-rouge">Topology.drain_on_signal</code> calls it on SIGTERM, and a hot deploy’s <code class="language-plaintext highlighter-rouge">DRAIN</code> does the same for
+the epochs it retires.</p>
+
+<h2 id="when-a-role-fails">When a role fails</h2>
+
+<p>A role that crashes, is killed, or stops responding is <em>cancelled</em>. Three rules decide what
+happens to the others:</p>
+
+<ul>
+  <li><strong>A role fails only if it needs the failed role.</strong> If it is waiting for a message from the
+failed role, and nothing that role sent is still waiting to be read, it is cancelled too.
+Messages the failed role sent before it went are always delivered first.</li>
+  <li><strong>A role that no longer needs the failed role carries on.</strong> In <code class="language-plaintext highlighter-rouge">Fan</code>, if B sends its
+number and then crashes, C already has B’s number, so C answers A and the session
+finishes: A and C both return <code class="language-plaintext highlighter-rouge">Ok</code>.</li>
+  <li><strong>Messages sent to a cancelled role are dropped.</strong></li>
+</ul>
+
+<p>A cancelled role tells its own peers, so a failure goes only as far as it has to. In <code class="language-plaintext highlighter-rouge">Fan</code>,
+if B crashes before it sends, C is cancelled because it was waiting on B, and then A is
+cancelled because it was waiting on C, even though A never talks to B. A gets
+<code class="language-plaintext highlighter-rouge">Cancelled(2, "role 3: connection lost")</code>.</p>
+
+<p>A crashed process is noticed when its connection closes. A process that is still running
+but has stopped answering (hung, paused, or cut off by the network) is noticed by a
+heartbeat: each connection is pinged every second, and a peer that sends nothing for 10
+seconds is treated as failed. <code class="language-plaintext highlighter-rouge">MARCH_SESSION_HEARTBEAT_MS</code> and <code class="language-plaintext highlighter-rouge">MARCH_SESSION_TIMEOUT_MS</code>
+change the two numbers. The heartbeat runs from the moment two nodes connect, so a role can
+work for as long as it likes before its first send or receive. The heartbeat can mistake a
+very slow peer for a dead one. That
+cancels a session that could have finished, which costs a retry but never corrupts
+anything.</p>
+
+<h3 id="handling-a-failure">Handling a failure</h3>
+
+<p>Every receive has a second form, ending in <code class="language-plaintext highlighter-rouge">_or</code>, that takes a cancel handler. Offers have
+the same (<code class="language-plaintext highlighter-rouge">offer_more_done_or</code>):</p>
+
+<pre><code class="language-march">Fan_C.recv_Second_or(s, st1,
+  fn (b, st2) -&gt;
+    Fan_C.close(s, Fan_C.send_Verdict(s, st2, b &gt; 0)),
+  fn (role, cause, cancel) -&gt;
+    println("gave up on role " ++ int_to_string(role) ++ ": " ++ cause)
+    Fan_C.cancelled(s, cancel))
+</code></pre>
+
+<p>The handler runs if this receive’s sender fails with nothing queued. It gets the failed
+role, the cause and a token, but no session state, so it cannot send or receive in the
+failed session. The only way for it to finish is <code class="language-plaintext highlighter-rouge">Fan_C.cancelled(s, cancel)</code>. Use it to
+record the failure, release a resource, or report what happened somewhere else. A receive
+without <code class="language-plaintext highlighter-rouge">_or</code> behaves the same way, with no handler.</p>
+
+<p>To leave a session on purpose, call the <code class="language-plaintext highlighter-rouge">leave_</code> function for the state you are in:
+<code class="language-plaintext highlighter-rouge">Fan_C.leave_recv_Number(s, st, "shutting down")</code> for C before it has heard from A. The
+other roles are told, and <code class="language-plaintext highlighter-rouge">run</code> returns <code class="language-plaintext highlighter-rouge">Err(Left(why))</code>.</p>
+
+<p>The names, in one place:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">recv_&lt;Msg&gt;_or(s, st, on_msg, on_cancel)</code></td>
+      <td>a receive with a cancel handler; <code class="language-plaintext highlighter-rouge">offer_&lt;labels&gt;_or</code> likewise</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">on_cancel : (Int, String, Cancelled_&lt;Role&gt;) -&gt; Yield</code></td>
+      <td>the failed role’s number, the cause, and the token</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;Role&gt;.cancelled(s, token)</code></td>
+      <td>the only way a cancel handler can finish</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">leave_&lt;state&gt;(s, st, why)</code></td>
+      <td>leave on purpose from that state (<code class="language-plaintext highlighter-rouge">leave_recv_Number</code> from <code class="language-plaintext highlighter-rouge">S_recv_Number</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">recv_&lt;Msg&gt;_or_drain(s, st, on_msg, on_drain)</code></td>
+      <td>a receive with a drain handler; <code class="language-plaintext highlighter-rouge">offer_&lt;labels&gt;_or_drain</code> likewise (<a href="#draining-a-session">Draining a session</a>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">on_drain : (Int, List(&lt;P&gt;_Msg.&lt;P&gt;_Message), Drained_&lt;Role&gt;) -&gt; Yield</code></td>
+      <td>the drained role (0: this one), the messages that came back, and the token</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;Role&gt;.drained(s, token)</code></td>
+      <td>the only way a drain handler can finish</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="starting-again">Starting again</h3>
+
+<p>A session cannot be resumed. To try again, call <code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code> again on every node, which
+starts a new session with new connections. Deciding when to do that, and making sure every
+node does, is up to whatever runs the nodes, for example a supervisor around
+<code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code>. The runner does not restart anything by itself.</p>
+
+<h2 id="when-a-role-may-crash">When a role may crash</h2>
+
+<p>The rules above cancel a session when a role it needs has failed. Sometimes that is more
+than you want: a protocol may need to carry on without the failed role, if only to tell the
+others that it is gone. For that, a protocol can name the roles that may crash, and say at
+each receive from such a role what happens if it crashes instead of sending.</p>
+
+<pre><code class="language-march">@[endpoints]
+protocol Logging do
+  may crash C
+  L -&gt; I : Int
+  C -&gt; I : String
+    or crash do
+      I -&gt; L : String
+    end
+  I -&gt; L : String
+  L -&gt; I : Bool
+  I -&gt; C : Bool
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">may crash C</code> says that C may crash. Every other role is reliable, as every role is without
+the declaration, so a protocol that does not say <code class="language-plaintext highlighter-rouge">may crash</code> means exactly what it meant
+before. The <code class="language-plaintext highlighter-rouge">or crash do ... end</code> after <code class="language-plaintext highlighter-rouge">C -&gt; I : String</code> is the crash branch: what happens
+if C crashes before sending. I is the role that detects the crash, because it is the one
+waiting for the message. The crash branch is the rest of the conversation in that case; it
+does not rejoin the normal continuation, which usually involves the crashed role. Inside a
+<code class="language-plaintext highlighter-rouge">loop</code>, a crash branch ends the loop. In a <code class="language-plaintext highlighter-rouge">choose by C</code> where C may crash, a branch labelled
+<code class="language-plaintext highlighter-rouge">crash</code> is the crash branch: <code class="language-plaintext highlighter-rouge">choose by C: read -&gt; ... done -&gt; ... crash -&gt; ... end</code>.</p>
+
+<p>The compiler checks the protocol:</p>
+
+<ul>
+  <li>every receive from a role that may crash has a crash branch;</li>
+  <li>a crash branch is only on a step whose sender may crash;</li>
+  <li>the crashed role takes no part in its own crash branch;</li>
+  <li>any other role that takes part in the normal continuation or the crash branch is told
+which one it is in: its first interaction in each must be a message from the detector,
+and the two messages must differ. In <code class="language-plaintext highlighter-rouge">Logging</code>, L hears from I either way, a <code class="language-plaintext highlighter-rouge">Read</code> or a
+<code class="language-plaintext highlighter-rouge">Fatal</code>. Without that, L could not know whether to wait for anything;</li>
+  <li>in a <code class="language-plaintext highlighter-rouge">choose</code> with a <code class="language-plaintext highlighter-rouge">crash</code> branch, every other branch begins with a message to the same
+role, the detector.</li>
+</ul>
+
+<p>The runtime takes the crash branch by the same rule that decides a cancellation: the crashed
+role is gone, and nothing it sent is still waiting to be read. Messages sent before the crash
+are still delivered, so a role that crashes after its last send is no different from one that
+finished. The other roles learn of the crash only from the messages in the crash branch,
+just as they learn which branch of a <code class="language-plaintext highlighter-rouge">choose</code> was taken. Messages sent to the crashed role
+are dropped. A reliable role that fails anyway is cancelled, as above.</p>
+
+<p>For the detector, a receive with a crash branch takes a second callback in place of the
+<code class="language-plaintext highlighter-rouge">_or</code> form’s cancel handler:</p>
+
+<pre><code class="language-march">Logging_I.recv_Msg_C_I_1(s, st1,
+  fn (read, st2) -&gt; ...,             -- the message arrived
+  fn (crashed, st2) -&gt; ...)          -- C crashed: st2 is the crash branch's first state
+</code></pre>
+
+<p>Unlike a cancel handler, the second callback gets a live state, and the conversation goes
+on. <code class="language-plaintext highlighter-rouge">crashed</code> is a <code class="language-plaintext highlighter-rouge">Crashed_I</code> record with the crashed role’s number (<code class="language-plaintext highlighter-rouge">crashed.role</code>) and
+the cause (<code class="language-plaintext highlighter-rouge">crashed.cause</code>), the same information a cancel handler gets. A receive with a
+crash branch has no <code class="language-plaintext highlighter-rouge">_or</code> form: the sender may crash, and that is what the second callback
+is for. The two messages I can send L are named in reading order, <code class="language-plaintext highlighter-rouge">Msg_I_L_1</code> for the
+<code class="language-plaintext highlighter-rouge">Fatal</code> in the crash branch and <code class="language-plaintext highlighter-rouge">Msg_I_L_2</code> for the <code class="language-plaintext highlighter-rouge">Read</code> after it, and L, which can be
+sent either, gets an offer over the two, <code class="language-plaintext highlighter-rouge">offer_Msg_I_L_2_Msg_I_L_1</code>, with one callback per
+message, exactly as for a <code class="language-plaintext highlighter-rouge">choose</code>. C’s module has no trace of the crash branch. In
+<code class="language-plaintext highlighter-rouge">test/two_node/crash_before_send</code> and <code class="language-plaintext highlighter-rouge">crash_after_send</code> this protocol runs over three
+processes, with C killed before and after its send: in the first, I takes the crash branch
+and L gets the <code class="language-plaintext highlighter-rouge">Fatal</code>; in the second, the <code class="language-plaintext highlighter-rouge">Read</code> is delivered and the conversation completes
+without C. In both, every surviving role returns <code class="language-plaintext highlighter-rouge">Ok</code>.</p>
+
+<p>A role <a href="#hosting-a-role-in-an-actor">hosted in an actor</a> takes its crash branch too, through
+the event API. The <code class="language-plaintext highlighter-rouge">await_</code> function of a receive with a crash branch tells the transport
+there is a branch to take, and <code class="language-plaintext highlighter-rouge">resume</code> then returns a <code class="language-plaintext highlighter-rouge">Crashed_</code> event beside the <code class="language-plaintext highlighter-rouge">Got_</code>
+ones, carrying the same <code class="language-plaintext highlighter-rouge">Crashed_&lt;Role&gt;</code> record and the crash branch’s first state:</p>
+
+<pre><code class="language-march">match Logging_I.resume(state.parked, from, msg, ep) do
+  Got_Msg_C_I_1(read, st) -&gt;
+    { state with parked: Logging_I.await_Msg_L_I_2(s, Logging_I.send_Msg_I_L_2(s, st, read)) }
+  Crashed_Msg_C_I_1(crashed, st) -&gt;
+    { state with parked: Logging_I.finish(s, Logging_I.send_Msg_I_L_1(s, st, crashed.cause)) }
+  ...
+end
+</code></pre>
+
+<p>The crash reaches the actor through the delivery callback it already has, so nothing in the
+runner changes: <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code>, <code class="language-plaintext highlighter-rouge">offer_hosted_&lt;Role&gt;</code> and <code class="language-plaintext highlighter-rouge">cluster_hosted_&lt;Role&gt;</code> all take
+crash branches. The event is named after the receive, so for a <code class="language-plaintext highlighter-rouge">choose</code> with a <code class="language-plaintext highlighter-rouge">crash</code>
+branch it is <code class="language-plaintext highlighter-rouge">Crashed_read_done_crash</code>, as the <code class="language-plaintext highlighter-rouge">await_</code> function is.
+<code class="language-plaintext highlighter-rouge">test/two_node/crash_hosted</code> is <code class="language-plaintext highlighter-rouge">crash_before_send</code> with I in an actor, and it ends the same
+way. The two-party <code class="language-plaintext highlighter-rouge">Chan</code> API does not run a protocol with crash branches at all: the
+compiler refuses to give one a channel type.</p>
+
+<h2 id="hosting-a-role-in-an-actor">Hosting a role in an actor</h2>
+
+<p>The body in the examples above is a chain of callbacks. The session state lives inside those
+callbacks, so they cannot read an actor’s state. If a role needs to consult state it keeps
+between messages (a counter, a cache, a database handle), host the role in an actor instead.</p>
+
+<p>The role module has a second set of functions for this. The actor keeps a
+<code class="language-plaintext highlighter-rouge">Parked_&lt;Role&gt;</code> value in its state. It starts idle, the actor parks it by calling an
+<code class="language-plaintext highlighter-rouge">await_</code> function, and each delivery wakes it with <code class="language-plaintext highlighter-rouge">resume</code>, which returns the message and
+the next state. Here is the consumer of the <code class="language-plaintext highlighter-rouge">Stream</code> protocol from earlier, deciding from its
+own <code class="language-plaintext highlighter-rouge">budget</code> whether to ask for more:</p>
+
+<pre><code class="language-march">actor ConsActor do
+  state { budget : Int, parked : Stream_Cons.Parked_Cons }
+  init  { budget: 2, parked: Stream_Cons.idle() }
+  on StartC(s : Cap(Session.Live)) do
+    Stream_Cons.take_idle(state.parked)
+    { state with parked: Stream_Cons.await_Item(s, Stream_Cons.register(s, 0)) }
+  end
+  on DeliverC(s : Cap(Session.Live), from : Int, msg : Bytes, ep : Int) do
+    match Stream_Cons.resume(state.parked, from, msg, ep) do
+      Got_Item(n, st) -&gt;
+        if state.budget &gt; 1 do
+          let st2 = Stream_Cons.choose_more(s, st, true)
+          { state with budget: state.budget - 1,
+                       parked: Stream_Cons.await_Item(s, st2) }
+        else
+          let st2 = Stream_Cons.choose_done(s, st, true)
+          { state with parked: Stream_Cons.finish(s, st2) }
+        end
+    end
+  end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">Parked_Cons</code> is linear too, so every handler must consume the parked value and store a new
+one. A handler that forgets to park again does not compile.</p>
+
+<p>To run it, use <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code> in place of <code class="language-plaintext highlighter-rouge">run_&lt;Role&gt;</code>. It takes the actor, a function that
+starts it, and a function that hands it each delivery:</p>
+
+<pre><code class="language-march">fn main(c : Cap(IO)) do
+  let pc = spawn(ConsActor)
+  let start = fn s -&gt;
+    let _ = send(pc, StartC(s))
+    ()
+  let deliver = fn (s, from, msg, ep) -&gt;
+    let _ = send(pc, DeliverC(s, from, msg, ep))
+    ()
+  match Stream_Run.host_Cons(c, "node-b", "stream-secret", Stream_Run.addrs_from_env(), pc, start, deliver) do
+    Ok(_) -&gt; println("Cons: closed")
+    Err(e) -&gt; panic(SessionNode.run_error_message(e))
+  end
+end
+</code></pre>
+
+<p>The actor gets one delivery at a time. A message that arrives while it is still handling
+the previous one waits until it has parked again.</p>
+
+<p>Call <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code> from <code class="language-plaintext highlighter-rouge">main</code> or a task, as above, and never from one of the actor’s own
+handlers. It returns only when the session is over, and every delivery for the role goes to
+the actor’s mailbox, where it would wait behind the handler that is still inside
+<code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code>. The session would never move.</p>
+
+<p>The runner watches the actor. If it crashes, or is killed, or its supervisor restarts it,
+its role is cancelled: <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code> returns <code class="language-plaintext highlighter-rouge">Err(HostGone(ep))</code>, and the other roles are
+cancelled or carry on by the rules in <a href="#when-a-role-fails">When a role fails</a>. A restarted
+actor starts idle and cannot pick up the old conversation; start a new session instead.</p>
+
+<p>For the actor to hear that its role was cancelled, use <code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;_or</code>, which takes a
+fourth function after <code class="language-plaintext highlighter-rouge">deliver</code>. It is called with the session, the failed role, the cause
+and the endpoint. Send those to the actor; its handler stores
+<code class="language-plaintext highlighter-rouge">Stream_Cons.cancel(s, state.parked)</code>, which gives back a closed value, and can update the rest
+of its state. Like a cancel handler, it cannot send in the failed session. This is the cost of keeping the session in the actor’s state. The
+callback style does not have it, because there the session state lives in the runner.</p>
+
+<p>Different nodes can make different choices. In <code class="language-plaintext highlighter-rouge">test/two_node/hosted</code>, Prod is a plain body
+on one node and Cons is an actor on the other.</p>
+
+<h3 id="many-sessions-in-one-actor">Many sessions in one actor</h3>
+
+<p>An <a href="#access-points-many-sessions-and-starting-again">access point</a> hosted in an actor
+serves every session it accepts from that one actor, so the actor keeps one parked
+endpoint per session. <code class="language-plaintext highlighter-rouge">Parked_&lt;Role&gt;</code> is linear and a <code class="language-plaintext highlighter-rouge">Map</code> cannot hold a linear value,
+so the sessions live in a <code class="language-plaintext highlighter-rouge">LinearMap</code> keyed by the session id, and every callback carries
+the session id: <code class="language-plaintext highlighter-rouge">start(sid, s)</code>, <code class="language-plaintext highlighter-rouge">deliver(sid, s, from, msg, ep)</code> and
+<code class="language-plaintext highlighter-rouge">cancel(sid, s, role, cause, ep)</code>. Here is a server for a protocol <code class="language-plaintext highlighter-rouge">Echo</code> in which the
+client sends twice and the server answers each time:</p>
+
+<pre><code class="language-march">actor ServerActor do
+  state { done : Int, sessions : LinearMap(String, Echo_Server.Parked_Server) }
+  init  { done: 0, sessions: LinearMap.empty_string() }
+  on Start(sid : String, s : Cap(Session.Live)) do
+    let parked = Echo_Server.await_Msg_Client_Server_1(s, Echo_Server.register(s, 0))
+    match LinearMap.put(state.sessions, sid, parked) do
+      (None, m) -&gt; { state with sessions: m }
+      (Some(old), m) -&gt;
+        Echo_Server.take_closed(Echo_Server.cancel(s, old))
+        panic("session " ++ sid ++ " is already hosted")
+    end
+  end
+  on Deliver(sid : String, s : Cap(Session.Live), from : Int, msg : Bytes, ep : Int) do
+    match LinearMap.take_slot(state.sessions, sid) do
+      (None, slot) -&gt; { state with sessions: LinearMap.vacate(slot) }
+      (Some(parked), slot) -&gt;
+        match Echo_Server.resume(parked, from, msg, ep) do
+          Got_Msg_Client_Server_1(n, st) -&gt;
+            let st2 = Echo_Server.send_Msg_Server_Client_1(s, st, n * 10)
+            { state with sessions: LinearMap.fill(slot, Echo_Server.await_Msg_Client_Server_2(s, st2)) }
+          Got_Msg_Client_Server_2(n, st) -&gt;
+            Echo_Server.take_closed(Echo_Server.finish(s, Echo_Server.send_Msg_Server_Client_2(s, st, n * 10)))
+            { state with done: state.done + 1, sessions: LinearMap.vacate(slot) }
+        end
+    end
+  end
+  on Cancel(sid : String, s : Cap(Session.Live), _role : Int, _cause : String, _ep : Int) do
+    match LinearMap.take(state.sessions, sid) do
+      (None, m) -&gt; { state with sessions: m }
+      (Some(parked), m) -&gt;
+        Echo_Server.take_closed(Echo_Server.cancel(s, parked))
+        { state with sessions: m }
+    end
+  end
+end
+</code></pre>
+
+<p>Each handler takes the session’s parked value out of the map by its id, resumes it,
+and puts the next parked value back with <code class="language-plaintext highlighter-rouge">fill</code>, or <code class="language-plaintext highlighter-rouge">vacate</code>s the slot once the
+session is over. A delivery for an id that is no longer in the map (a session that was
+cancelled while it had a message in flight) is dropped. The <code class="language-plaintext highlighter-rouge">Cancel</code> handler is the
+<code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;_or</code> cancel function with the id in front, and runs for that one session.
+Any other state the actor keeps per session, such as a counter, goes in an ordinary
+<code class="language-plaintext highlighter-rouge">Map</code> keyed by the same id.</p>
+
+<p>A finished or cancelled session leaves a <code class="language-plaintext highlighter-rouge">Closed_Server</code> value, which nothing can
+resume. <code class="language-plaintext highlighter-rouge">Echo_Server.take_closed(p)</code> is what consumes one: it takes the closed value and
+returns <code class="language-plaintext highlighter-rouge">()</code>. It panics on an endpoint that has not finished, so it cannot be used to drop
+a session that is still live.</p>
+
+<p>To offer the role, spawn the actor and pass it with the three callbacks:</p>
+
+<pre><code class="language-march">let srv = spawn(ServerActor)
+let start = fn (sid, s) -&gt;
+  let _ = send(srv, Start(sid, s))
+  ()
+let deliver = fn (sid, s, from, msg, ep) -&gt;
+  let _ = send(srv, Deliver(sid, s, from, msg, ep))
+  ()
+let cancel = fn (sid, s, role, cause, ep) -&gt;
+  let _ = send(srv, Cancel(sid, s, role, cause, ep))
+  ()
+match Echo_Run.offer_hosted_Server(c, node, 64, srv, start, deliver, cancel) do
+  Ok(offer) -&gt; ...        -- offering now; every session goes to srv
+  Err(e) -&gt; panic(Echo_Run.error_message(e))
+end
+</code></pre>
+
+<p>The runner watches the actor once per session (one small watcher actor each). If the
+actor crashes or is restarted, every session it hosts ends with <code class="language-plaintext highlighter-rouge">HostGone</code>, as for
+<code class="language-plaintext highlighter-rouge">host_&lt;Role&gt;</code>. <code class="language-plaintext highlighter-rouge">cluster_hosted_&lt;Role&gt;(io, node, session, actor, start, deliver, cancel)</code>
+is the same for one session under an id the nodes agreed on, with the same callbacks,
+so one actor can serve both.</p>
+
+<p><code class="language-plaintext highlighter-rouge">test/two_node/cluster_ap_hosted</code> runs three sessions at once through one actor, then a
+fourth; <code class="language-plaintext highlighter-rouge">test/two_node/cluster_ap_hosted_cancel</code> kills one of three clients half way
+through its session, and only that session is cancelled.</p>
+
+<h2 id="testing-without-a-network">Testing without a network</h2>
+
+<p>The generated role modules do not know about sockets. They talk to whatever transport the
+session was created with. For unit tests, attach the standard library’s in-process transport
+and run every role in one program:</p>
+
+<pre><code class="language-march">let t = Session.in_process()
+let s = Session.attach(io, t.ops)
+let _ = cons(s, Stream_Cons.register(s, 0), 2)
+let _ = prod(s, Stream_Prod.register(s, 0), 1)
+t.drain(())
+</code></pre>
+
+<p>Failure paths are testable in-process too. A role that leaves or is cancelled cancels the
+peers waiting on it, a message the receiver cannot decode cancels the receiver, and
+<code class="language-plaintext highlighter-rouge">t.crash(role, cause)</code> makes a role crash without running it, so a peer’s <code class="language-plaintext highlighter-rouge">or crash</code>
+branch runs. <code class="language-plaintext highlighter-rouge">Session.in_process_with(print_line)</code> prints what the transport itself does.
+The <a href="/docs/session-types/#swapping-the-transport-session">Session Types</a>
+page has the details, and <code class="language-plaintext highlighter-rouge">test/session/in_process.march</code> in the compiler repository runs
+each case. The same role functions then run unchanged on the network.</p>
+
+<h3 id="scripted-and-chaos-peers">Scripted and chaos peers</h3>
+
+<p>You do not have to write the other side of a conversation to test one role. Every role
+module carries two bodies of the role’s own type, derived from its projection, so the
+protocol is its own test oracle:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Stream_Cons.script(s, st, steps)</code> runs a list of <code class="language-plaintext highlighter-rouge">Stream_Cons.Step</code>: <code class="language-plaintext highlighter-rouge">Send_&lt;Msg&gt;(v)</code>
+and <code class="language-plaintext highlighter-rouge">Choose_&lt;label&gt;(v)</code> send, <code class="language-plaintext highlighter-rouge">Expect_&lt;Msg&gt;(fn v -&gt; ...)</code> receives and hands the payload
+to the callback, and <code class="language-plaintext highlighter-rouge">Expect_crash_&lt;Msg&gt;(fn c -&gt; ...)</code> takes a crash branch. Each step is
+checked against the state the role is in when it runs. A step the state cannot take, a
+message the peer sent that the script did not expect, a script that runs out before the
+protocol ends or that has steps left after it: each panics, naming the state, what was
+expected and what came. That fails the test, not the session.</li>
+  <li><code class="language-plaintext highlighter-rouge">Stream_Cons.chaos(s, st, seed)</code> walks the projection by a seeded generator: every
+choice is taken by the seed, every payload is generated, and at every point the role
+<code class="language-plaintext highlighter-rouge">may crash</code> (a send with an <code class="language-plaintext highlighter-rouge">or crash</code> branch, a <code class="language-plaintext highlighter-rouge">choose</code> with a <code class="language-plaintext highlighter-rouge">crash</code> branch) the
+seed decides, one time in four, to leave the session instead. Run the real role against
+<code class="language-plaintext highlighter-rouge">chaos</code> peers for fifty seeds and you have a property test of its protocol handling,
+crash branches included. Payloads of built-in types are generated for you; for each of
+your own types a role sends, <code class="language-plaintext highlighter-rouge">chaos</code> takes one more argument, a <code class="language-plaintext highlighter-rouge">Gen.Generator</code> for it,
+in order of first appearance and named after the type (<code class="language-plaintext highlighter-rouge">gen_Thing</code>).</li>
+</ul>
+
+<pre><code class="language-march">let t = Session.in_process()
+let s = Session.attach(io, t.ops)
+let _ = Stream_Cons.script(s, Stream_Cons.register(s, 0), [
+  Stream_Cons.Expect_Msg_Prod_Cons_1(fn n -&gt; assert(n == 1)),
+  Stream_Cons.Choose_done(true)
+])
+let _ = prod(s, Stream_Prod.register(s, 0), 1)
+t.drain(())
+
+let t2 = Session.in_process()
+let s2 = Session.attach(io, t2.ops)
+let _ = cons(s2, Stream_Cons.register(s2, 0), 2)
+let _ = Stream_Prod.chaos(s2, Stream_Prod.register(s2, 0), seed)
+t2.drain(())
+</code></pre>
+
+<p>A granted role’s peers take its capabilities too, after the session:
+<code class="language-plaintext highlighter-rouge">Checkout_Ledger.script(s, fw, nc, st, steps)</code>. Both peers are ordinary bodies, so they
+also run over the network; a chaos “crash” is a <code class="language-plaintext highlighter-rouge">leave</code> there, which cancels the peers,
+while the in-process transport treats a role that has left as gone, so a peer waiting on
+it takes its crash branch. <code class="language-plaintext highlighter-rouge">test/session/stream_peers.march</code> in the compiler repository
+runs the real Stream, Fan and Logging roles against both kinds of peer.</p>
+
+<h2 id="changing-a-protocol">Changing a protocol</h2>
+
+<p>A protocol is a contract between binaries that are deployed separately, so changing one
+is a deploy question, not only a source edit. There are three kinds of change.</p>
+
+<ol>
+  <li><strong>Same fingerprint.</strong> Nothing any peer can see changed: a handler body, a role’s
+<code class="language-plaintext highlighter-rouge">needs</code> line (grants are about the role’s code, not the wire, and are left out of the
+fingerprint on purpose). Deploy in any order.</li>
+  <li><strong>Compatible.</strong> A session may mix the two versions. One change qualifies so far:
+<strong>a <code class="language-plaintext highlighter-rouge">choose</code> gains a branch</strong>, and nothing else changes.</li>
+  <li><strong>Breaking.</strong> Anything else: a new message, a changed payload type, a removed branch,
+a renamed label, a new role. Old and new binaries refuse each other when a session
+forms, so both versions have to be offered while the deploy rolls through.</li>
+</ol>
+
+<p><strong>Compatibility is about the wire.</strong> Every message crosses the network as JSON tagged
+with its constructor name. A labelled step (<code class="language-plaintext highlighter-rouge">item: Buyer -&gt; Shop : Int</code>) is named after
+its label, and a <code class="language-plaintext highlighter-rouge">choose</code> branch’s first message after the branch label. An unlabelled
+step is named by its position among the messages between the same two roles,
+<code class="language-plaintext highlighter-rouge">Msg_&lt;From&gt;_&lt;To&gt;_&lt;k&gt;</code>. A new branch that contains an unlabelled <code class="language-plaintext highlighter-rouge">A -&gt; C</code> message
+therefore renumbers every later <code class="language-plaintext highlighter-rouge">A -&gt; C</code> message, and an old peer can no longer decode
+them. The compiler compares the two versions’ tags, not only their shapes: that change
+is breaking, and the explanation names the tags that moved (<code class="language-plaintext highlighter-rouge">Msg_A_C_1 is now
+Msg_A_C_2</code>). Label the steps and it becomes compatible.</p>
+
+<p><strong>Label the steps of any protocol a topology app uses.</strong> When <code class="language-plaintext highlighter-rouge">topology.toml</code> names a
+protocol (in <code class="language-plaintext highlighter-rouge">[roles]</code>, or in a pool’s <code class="language-plaintext highlighter-rouge">initiates</code>), each unlabelled step is a warning at
+the step, in the compiler’s output and in the editor, with a suggested label. A branch’s
+first message needs no label of its own: the branch label names it.</p>
+
+<p><strong>Rollout order: receivers of a choice before its chooser.</strong> An old chooser never picks
+the new branch, so a new receiver is safe beside it. A new chooser may pick the new
+branch towards a receiver that cannot handle it. So the compatible change is safe only in
+one direction: upgrade every role that receives the choice first, then the role that
+makes it. This has nothing to do with which role initiates the session. In a replicated
+monolith, where one binary holds both the chooser and the receivers, that order cannot
+happen inside one deploy, and the change has to go out as two.</p>
+
+<p><strong>The compatibility table.</strong> Every <code class="language-plaintext highlighter-rouge">@[endpoints]</code> protocol’s <code class="language-plaintext highlighter-rouge">&lt;P&gt;_Msg</code> module has
+<code class="language-plaintext highlighter-rouge">compat() : List((String, String, List(String)))</code>: one row <code class="language-plaintext highlighter-rouge">(fingerprint, role,
+accepts)</code> for each role that may form a session with peers on another fingerprint. It is
+computed at compile time against the previous version of the protocol, which the compiler
+reads from <code class="language-plaintext highlighter-rouge">--protocol-baseline &lt;file&gt;</code>. <code class="language-plaintext highlighter-rouge">forge build</code> keeps that file for you, in
+<code class="language-plaintext highlighter-rouge">.forge/protocols/&lt;P&gt;.json</code>, rewriting it on every build (<code class="language-plaintext highlighter-rouge">--emit-protocols</code>). Only the
+receivers of a compatible change get a row, naming the previous fingerprint. The chooser,
+and every role after a breaking change or a change with no wire effect, has no row:
+same fingerprint only.</p>
+
+<pre><code class="language-march">-- v2 added `later` to `choose by Shop`; Buyer receives the choice
+Order_Msg.compat()
+-- [("8e44…", "Buyer", ["d248…"])]
+</code></pre>
+
+<p><strong>One version back.</strong> The baseline file keeps the version last built and the one before
+it, and the table reaches exactly one version back. A peer two versions behind is
+“protocol differs”. That is enough for a rollout, which moves one version at a time, and
+for the monolith’s two-deploy split.</p>
+
+<p><strong>How a session forms across versions.</strong> An access point’s registry name carries its
+fingerprint (<code class="language-plaintext highlighter-rouge">ap:&lt;P&gt;/&lt;role&gt;/&lt;fp&gt;/&lt;node&gt;</code>), so a node can offer two versions of one role side
+by side, and an initiator can tell an offer’s version before inviting it. The initiator
+invites, in this order, offers at its own fingerprint, then older ones its table accepts,
+then ones it does not know (a newer version decides for itself). It never invites an offer
+its own table rules out, and it lets a session hold at most two fingerprints. An offer
+accepts an initiator at its own fingerprint, at an older one its table accepts, or at a
+newer one that has checked the pair against its own table and says so in the invitation.
+A new chooser and an old receiver never meet: the chooser’s table has no row for the
+receiver’s older version.</p>
+
+<p><strong>Hosted access points across a change.</strong> An actor hosting sessions holds each session’s
+epoch, so it cannot move to a new protocol version while it hosts old sessions (plan 6.1).
+<code class="language-plaintext highlighter-rouge">Topology.reoffer(node)</code> opens each open offer again with the code now running: a role whose
+fingerprint changed gets a new offer and, for an actor role, a fresh hosting actor. The old
+offer closes, its sessions finish on the old version, and its actor is stopped once they
+have. The placement loop runs this after a deploy, but see the limits below: today it
+reopens with the code the role’s <code class="language-plaintext highlighter-rouge">open</code> function was built from.</p>
+
+<p><strong>A monolith needs two deploys (D21).</strong> When one binary both makes and receives a changed
+choice, no rollout order exists inside one deploy. Build the first deploy with
+<code class="language-plaintext highlighter-rouge">--protocol-expand &lt;P&gt;:&lt;label&gt;</code>: the receivers take the new version, while the chooser
+keeps offering and initiating under the previous fingerprint, and its <code class="language-plaintext highlighter-rouge">choose_&lt;label&gt;</code>
+panics. Then deploy the plain build. <code class="language-plaintext highlighter-rouge">forge</code>’s <code class="language-plaintext highlighter-rouge">Protocol_split.plan</code> works out which
+case applies from <code class="language-plaintext highlighter-rouge">.forge/protocols/</code> and the topology’s pools.</p>
+
+<h2 id="configuration">Configuration</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;PROTOCOL&gt;_&lt;ROLE&gt;_ADDR</code></td>
+      <td>unset</td>
+      <td><code class="language-plaintext highlighter-rouge">host:port</code> of a role that listens, for <code class="language-plaintext highlighter-rouge">addrs_from_env()</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_SESSION_CONNECT_MS</code></td>
+      <td>20000</td>
+      <td>how long setup waits to dial, accept and handshake; 0 waits for ever</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_SESSION_HEARTBEAT_MS</code></td>
+      <td>1000</td>
+      <td>the heartbeat interval; 0 turns the heartbeat off</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_SESSION_TIMEOUT_MS</code></td>
+      <td>10000</td>
+      <td>silence after which a peer is taken for dead</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_SESSION_QUEUE_MAX_BYTES</code></td>
+      <td>67108864</td>
+      <td>bytes queued unread for one peer before it is given up on; 0 for no limit</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These apply to the runner’s own connections. Over a cluster node, failure detection is the
+node’s (SWIM) and the heartbeat settings do not apply.</p>
+
+<h2 id="limits">Limits</h2>
+
+<ul>
+  <li>The network runner is compiled-only for now.</li>
+  <li>A session cannot be resumed after a failure, and nothing restarts it for you.</li>
+  <li>Every role that exchanges messages with another needs a direct connection to it. There is
+no relaying.</li>
+  <li>Over a cluster node (<code class="language-plaintext highlighter-rouge">cluster_&lt;Role&gt;</code>), a
+connection lost for any reason cancels the sessions using it, even if the peer node
+reconnects at once. Frames in flight on the old connection may be gone, so the session
+cannot safely continue.</li>
+  <li>Messages are encoded as JSON, so every payload type needs a JSON codec. Built-in types
+have one; for your own types, add <code class="language-plaintext highlighter-rouge">derive Json for YourType</code>.</li>
+  <li>After a hot deploy, <code class="language-plaintext highlighter-rouge">Topology.reoffer</code> calls each role’s <code class="language-plaintext highlighter-rouge">open</code> function, which the old
+code built, and that runs the old code: the role is reopened under the old fingerprint
+(a no-op). It reopens under the new one only when new code builds the role, until calls
+from entry-module code and its closures go through the reload dispatch table (today a
+call is dispatched only when both caller and callee are reloadable). A hosting actor
+whose handler the
+deploy replaces can re-offer from there.</li>
+  <li>A hot patch currently carries its own copy of the runtime, so a session started by
+patched code can crash the process; the two-node test of a hot protocol change is
+pending on that fix (<code class="language-plaintext highlighter-rouge">specs/todos/2026-09-25-hcr-patch-so-private-runtime-copy.md</code>).</li>
+</ul>
+
+<h2 id="see-also">See also</h2>
+
+<ul>
+  <li><a href="/docs/session-types/">Session Types</a>: the type rules behind the
+generated states, and the two-party <code class="language-plaintext highlighter-rouge">Chan</code> API.</li>
+  <li><a href="/docs/clustering/">Clustering</a>: node identity, the handshake, and
+<code class="language-plaintext highlighter-rouge">SessionNode</code>, the transport the runner uses.</li>
+  <li><a href="/docs/actors/">Actors</a>: supervisors, which you would use to decide when
+to run a failed session again.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1790383577"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>

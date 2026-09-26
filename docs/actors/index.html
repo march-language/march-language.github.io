@@ -1,0 +1,3495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actors — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Upgrading</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-4-0/" class="d-sidebar-link">Upgrading to 0.4.0</a>
+        
+      
+        
+      <a href="/docs/tetris-playground/" class="d-sidebar-link">Tetris Playground</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-3-0/" class="d-sidebar-link">Upgrading to 0.3.0</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link active">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/cluster-certificates/" class="d-sidebar-link">Cluster Certificates</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/choreography/" class="d-sidebar-link">Choreography</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      <a href="/docs/topology/" class="d-sidebar-link">Topology</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <!-- GENERATED from specs/lang/actors.md by scripts/gen-lang-docs.py. Do not edit this file: edit specs/lang/actors.md and run scripts/gen-lang-docs.py. -->
+
+<h1 id="actors">Actors</h1>
+
+<p>March’s concurrency model is built on <strong>actors</strong> and <strong>tasks</strong>. Actors are isolated processes that communicate exclusively through message passing: no shared mutable state. Tasks are lightweight one-off computations that run concurrently and return a value.</p>
+
+<p><strong>Compiled-actor status:</strong> the core actor message plane runs both in the tree-walking interpreter and in ahead-of-time-compiled (native) binaries. In the compiled runtime, both actors and tasks run on an M:N green-thread scheduler (<code class="language-plaintext highlighter-rouge">runtime/march_scheduler.c</code>): multiple OS threads, each running many lightweight green threads, with work-stealing across threads. Actor declarations lower to TIR (<code class="language-plaintext highlighter-rouge">lib/tir/lower_actor.ml</code>) and emit LLVM IR that calls the public C API (<code class="language-plaintext highlighter-rouge">march_spawn</code>/<code class="language-plaintext highlighter-rouge">march_send</code>/<code class="language-plaintext highlighter-rouge">march_kill</code>/<code class="language-plaintext highlighter-rouge">march_is_alive</code>, <code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>); each actor runs as its own green thread. Actors park cooperatively when their mailbox is empty; tasks park when awaiting a result.</p>
+
+<p><strong>What matches exactly interpreted vs compiled, and what does NOT.</strong> The <strong>live-message plane</strong> (<code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code> (to a live actor) / <code class="language-plaintext highlighter-rouge">receive</code> / <code class="language-plaintext highlighter-rouge">run_until_idle</code> / <code class="language-plaintext highlighter-rouge">is_alive</code> / <code class="language-plaintext highlighter-rouge">kill</code>) produces identical observable output on both backends for a program with output that does not depend on scheduler interleaving; this is mechanically pinned by the golden conformance corpus (<code class="language-plaintext highlighter-rouge">specs/lang/golden/g35</code>–<code class="language-plaintext highlighter-rouge">g37</code>, verified <code class="language-plaintext highlighter-rouge">MATCH</code> interpreted-vs-compiled; see the <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md">operational reference</a> §4.10.5). The <strong><code class="language-plaintext highlighter-rouge">Actor.call</code> plane</strong> is also backend-identical as of 2026-07-13: both backends tag-route the zero-arg sentinel positionally to the handler at its ctor index, and both enforce <code class="language-plaintext highlighter-rouge">timeout_ms</code> (compiled via a deadline-bounded park in <code class="language-plaintext highlighter-rouge">march_actor_call</code>, <code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>; <code class="language-plaintext highlighter-rouge">timeout_ms &lt;= 0</code> means wait indefinitely); pinned by <code class="language-plaintext highlighter-rouge">test/native/actor_counter</code> and <code class="language-plaintext highlighter-rouge">test/native/actor_call_timeout</code>. The two formerly-diverging planes are also backend-identical now (their historical findings are closed in the <code class="language-plaintext highlighter-rouge">specs/todos/</code> ledger):</p>
+
+<ul>
+  <li><strong>Capabilities / dead-<code class="language-plaintext highlighter-rouge">send</code></strong> (<code class="language-plaintext highlighter-rouge">get_cap</code>, <code class="language-plaintext highlighter-rouge">send_checked</code>, <code class="language-plaintext highlighter-rouge">revoke_cap</code>, <code class="language-plaintext highlighter-rouge">is_cap_valid</code>, plain <code class="language-plaintext highlighter-rouge">send</code> to a <em>dead</em> pid): an exact byte match as of 2026-07-18: compiled <code class="language-plaintext highlighter-rouge">get_cap</code> builds the real epoch cap (niche <code class="language-plaintext highlighter-rouge">None</code> for a dead/unknown pid), <code class="language-plaintext highlighter-rouge">send_checked</code>/<code class="language-plaintext highlighter-rouge">revoke_cap</code> return the same <code class="language-plaintext highlighter-rouge">:ok</code>/<code class="language-plaintext highlighter-rouge">:error</code> atoms as the interpreter, and <code class="language-plaintext highlighter-rouge">send</code> to a dead pid returns <code class="language-plaintext highlighter-rouge">None</code> on both backends. Until 2026-09-22 compiled <code class="language-plaintext highlighter-rouge">is_cap_valid</code>/<code class="language-plaintext highlighter-rouge">send_checked</code> on a cap whose actor had been <em>killed</em> intermittently answered <code class="language-plaintext highlighter-rouge">true</code>/<code class="language-plaintext highlighter-rouge">:ok</code> (about one run in five), because they read the actor record after it had been freed; fixed, and <code class="language-plaintext highlighter-rouge">test/native/cap_epoch_plane</code> now runs the program 51 times per test run so a flake of that shape fails. See <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.6.</li>
+  <li><strong>Supervision / external state inspection</strong>: <code class="language-plaintext highlighter-rouge">get_actor_field</code>/<code class="language-plaintext highlighter-rouge">pid_of_int</code> and the full compiled supervision plane (spawn-time child <code class="language-plaintext highlighter-rouge">init</code>, crash isolation, all three restart strategies) work compiled as of 2026-07-08 (<code class="language-plaintext highlighter-rouge">examples/supervision_strategies.march</code> runs clean). See <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.7.</li>
+</ul>
+
+<p>The rest of this tutorial marks each interp-only surface where it appears. For the typing side (actor declaration, <code class="language-plaintext highlighter-rouge">spawn</code>/<code class="language-plaintext highlighter-rouge">Pid</code> typing, message-payload typing) see the <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march-types.md">typing reference</a> §2.6; for the scheduler and lowering internals, see the implementation reference (<code class="language-plaintext highlighter-rouge">specs/impl/index.md</code>).</p>
+
+<hr />
+
+<h2 id="defining-an-actor">Defining an Actor</h2>
+
+<p>An actor declaration has three parts:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">state { ... }</code>: the state record type</li>
+  <li><code class="language-plaintext highlighter-rouge">init { ... }</code>: the initial state value</li>
+  <li><code class="language-plaintext highlighter-rouge">on Msg(...) do ... end</code>: message handlers, each returning the new state</li>
+</ul>
+
+<p>and, optionally, <code class="language-plaintext highlighter-rouge">on_stop do ... end</code>: a terminate callback run on a graceful stop
+(see <a href="#stopping-an-actor">Stopping an Actor</a>).</p>
+
+<pre><code class="language-march">actor Counter do
+  state { value : Int }
+  init  { value: 0 }
+
+  on Increment(n : Int) do
+    { state with value: state.value + n }
+  end
+
+  on Decrement(n : Int) do
+    { state with value: state.value - n }
+  end
+
+  on Reset() do
+    { state with value: 0 }
+  end
+end
+</code></pre>
+
+<h3 id="parameterised-init">Parameterised <code class="language-plaintext highlighter-rouge">init</code></h3>
+
+<p><code class="language-plaintext highlighter-rouge">init</code> may take a parameter list, supplied at <code class="language-plaintext highlighter-rouge">spawn</code>. Every parameter carries a
+type annotation, and the parameters are in scope in the init expression only
+(not in handlers; put what a handler needs into the state):</p>
+
+<pre><code class="language-march">actor Counter do
+  state { value : Int, label : String }
+  init(start : Int, label : String) { value: start, label: label }
+
+  on Increment(n : Int) do
+    { state with value: state.value + n }
+  end
+end
+
+fn main() do
+  let c = spawn(Counter, 41, "answer")   -- start = 41, label = "answer"
+  send(c, Increment(1))
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">spawn(Counter, 41, "answer")</code> checks each argument against the matching
+parameter. Supplying the wrong number of arguments is an error that names the
+actor’s <code class="language-plaintext highlighter-rouge">init</code> signature; <code class="language-plaintext highlighter-rouge">spawn(Counter)</code> on an actor whose <code class="language-plaintext highlighter-rouge">init</code> takes
+parameters is rejected, as is <code class="language-plaintext highlighter-rouge">spawn(Plain, 1)</code> on an actor whose <code class="language-plaintext highlighter-rouge">init</code> takes
+none. <code class="language-plaintext highlighter-rouge">init()</code> is the zero-parameter spelling of the bare <code class="language-plaintext highlighter-rouge">init { ... }</code> form.
+The design rationale is decision D24 of the distributed-deploys plan: an actor
+that needs a value to start with (a database handle, an <code class="language-plaintext highlighter-rouge">Env</code> of capabilities)
+receives it as a value at spawn time, rather than as a first message that would
+leave the actor with an “uninitialised” state every handler has to cope with.</p>
+
+<p>A supervised child can be given its <code class="language-plaintext highlighter-rouge">init</code> arguments in the supervisor’s
+<code class="language-plaintext highlighter-rouge">supervise</code> block, and a restart re-supplies them; see
+<a href="/docs/supervision/#declaring-a-supervisor">Supervision</a>.</p>
+
+<p>Inside a handler, <code class="language-plaintext highlighter-rouge">state</code> refers to the current state record. Each handler must return the new state (same type as <code class="language-plaintext highlighter-rouge">state</code>). The typechecker enforces exactly this: the <code class="language-plaintext highlighter-rouge">init</code> block must produce the declared state record, and every handler body is checked to <em>return</em> the state type; see the <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march-types.md">typing reference</a> §2.6.1 for the precise checks the actor declaration performs (state-record construction, duplicate-handler rejection, message-constructor registration, <code class="language-plaintext highlighter-rouge">init</code>/handler conformance).</p>
+
+<hr />
+
+<h2 id="spawning-actors">Spawning Actors</h2>
+
+<p><code class="language-plaintext highlighter-rouge">spawn</code> creates a new actor and returns its process identifier (<code class="language-plaintext highlighter-rouge">Pid</code>):</p>
+
+<pre><code class="language-march">fn main() do
+  let counter = spawn(Counter)
+  -- counter : Pid
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">spawn(Name)</code> requires a <strong>literal actor name</strong> written directly; a computed
+actor expression (from an <code class="language-plaintext highlighter-rouge">if</code>, <code class="language-plaintext highlighter-rouge">match</code>, or function call) is rejected at
+compile time, because March resolves which actor to spawn statically from its
+name. The typing account (including the subtlety that the resulting <code class="language-plaintext highlighter-rouge">Pid</code>’s type
+parameter is a fresh variable, <em>not</em> the actor’s state type) is in the
+<a href="https://github.com/march-language/march/blob/main/specs/lang/core-march-types.md">typing reference</a> §2.6.2–§2.6.3; the runtime side (registering
+an <code class="language-plaintext highlighter-rouge">actor_inst</code>, returning a <code class="language-plaintext highlighter-rouge">VPid</code>) is in <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.1.</p>
+
+<hr />
+
+<h2 id="sending-messages">Sending Messages</h2>
+
+<p><code class="language-plaintext highlighter-rouge">send</code> delivers a message to an actor asynchronously:</p>
+
+<pre><code class="language-march">send(counter, Increment(10))
+send(counter, Increment(5))
+send(counter, Reset())
+</code></pre>
+
+<p>The message is the constructor applied to its arguments. The actor handles it according to its <code class="language-plaintext highlighter-rouge">on</code> clause.</p>
+
+<p><strong>A message payload may not carry a mutable-buffer type</strong> (<code class="language-plaintext highlighter-rouge">RingBuf</code>, <code class="language-plaintext highlighter-rouge">NativeIntArr</code>,
+<code class="language-plaintext highlighter-rouge">NativeFloatArr</code>, <code class="language-plaintext highlighter-rouge">NativeF32Arr</code>, <code class="language-plaintext highlighter-rouge">NativeI32Arr</code>, <code class="language-plaintext highlighter-rouge">NativeU8Arr</code>; the latter five are
+<code class="language-plaintext highlighter-rouge">NativeArray</code>’s real backing types, a stdlib function namespace rather than a type of
+its own, and any other type registered in <code class="language-plaintext highlighter-rouge">non_sendable_types</code>,
+<code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck.ml</code>); these types are
+single-actor-owned by design, so sharing one across an actor boundary would let two
+actors alias the same mutable state. The check runs once, at the moment the message
+constructor is <em>applied</em> (<code class="language-plaintext highlighter-rouge">Increment(rb)</code>), not at whichever builtin later moves the
+resulting value, so it covers <code class="language-plaintext highlighter-rouge">send</code>, <code class="language-plaintext highlighter-rouge">send_checked</code>, <code class="language-plaintext highlighter-rouge">Actor.cast</code>, <code class="language-plaintext highlighter-rouge">Actor.call</code>, and
+storing the message in a variable before sending it, uniformly, with one rule (fixed
+2026-08-07; see the <code class="language-plaintext highlighter-rouge">ci_is_actor_msg</code> field in <code class="language-plaintext highlighter-rouge">typecheck.ml</code>’s <code class="language-plaintext highlighter-rouge">ctor_info</code> for how a
+message constructor is distinguished from an ordinary one).</p>
+
+<p><strong>Message names share one flat global constructor namespace.</strong> A handler <code class="language-plaintext highlighter-rouge">on Msg(…)</code>
+registers <code class="language-plaintext highlighter-rouge">Msg</code> as an ordinary constructor; there is no per-actor message namespace,
+exactly analogous to the <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march-types.md">no-per-module-type-namespace design point</a>
+(§2.5). So a message name that collides with a constructor another type (including a
+stdlib type) already declares is ambiguous: writing <code class="language-plaintext highlighter-rouge">send(counter, Ping(…))</code> when the
+stdlib also declares a <code class="language-plaintext highlighter-rouge">Ping</code> constructor is rejected (<code class="language-plaintext highlighter-rouge">Constructor \</code>Ping` is defined by
+multiple types … Use a qualified form to disambiguate<code class="language-plaintext highlighter-rouge">). Pick message names unlikely to
+collide (e.g. </code>Increment<code class="language-plaintext highlighter-rouge">, </code>Poke<code class="language-plaintext highlighter-rouge">), or qualify. Two consequences of this design (the
+compiled wrong-actor-</code>send` misroute and the payload-typing rule) are documented in the
+<a href="https://github.com/march-language/march/blob/main/specs/lang/core-march-types.md">typing reference</a> §2.6.4.</p>
+
+<p><code class="language-plaintext highlighter-rouge">send</code> returns <code class="language-plaintext highlighter-rouge">Some(())</code> if the actor is alive, or <code class="language-plaintext highlighter-rouge">None</code> if the actor is dead, on
+both backends alike (fixed 2026-07-18; see the compiled-actor status note above):</p>
+
+<pre><code class="language-march">match send(counter, Increment(1)) do
+  Some(_) -&gt; println("message delivered")
+  None    -&gt; println("actor is dead")
+end
+</code></pre>
+
+<p>See §4.10.2 in <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> for the async-enqueue operational rule.</p>
+
+<hr />
+
+<h2 id="receiving-messages-inside-a-handler">Receiving Messages Inside a Handler</h2>
+
+<p><code class="language-plaintext highlighter-rouge">receive()</code> blocks until the next message arrives in the actor’s mailbox. Use it when a handler needs to wait for a sub-message before continuing:</p>
+
+<p>Every message you <code class="language-plaintext highlighter-rouge">send</code> (including the follow-up a handler <code class="language-plaintext highlighter-rouge">receive()</code>s) must be a
+<strong>declared handler message</strong>: the <code class="language-plaintext highlighter-rouge">Followup</code> message below is a valid constructor only
+because the actor declares an <code class="language-plaintext highlighter-rouge">on Followup(n)</code> handler. (A message name with no matching
+handler is not a registered constructor and is rejected at compile time.)</p>
+
+<pre><code class="language-march">actor Dispatcher do
+  state { got : Int }
+  init  { got: 0 }
+
+  on Dispatch() do
+    -- wait for the follow-up message already queued behind this one
+    let follow = receive()
+    match follow do
+      Followup(n) -&gt; { got: n }
+      _           -&gt; state
+    end
+  end
+
+  on Followup(n : Int) do
+    { got: n }
+  end
+end
+
+fn main() do
+  let pid = spawn(Dispatcher)
+  send(pid, Dispatch())
+  send(pid, Followup(99))   -- queued before Dispatch() is dispatched
+  run_until_idle()
+end
+</code></pre>
+
+<p><strong>Blocking semantics:</strong> If the mailbox is empty when <code class="language-plaintext highlighter-rouge">receive()</code> is called, the actor parks (interpreter: re-queues the triggering message and retries the handler on a later pass; compiled: green thread parks). It resumes automatically once a message is delivered. <code class="language-plaintext highlighter-rouge">run_until_idle()</code> returns as soon as all actors are either idle or waiting: no deadlock. See <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.3 for the pop-or-<code class="language-plaintext highlighter-rouge">BlockedOnReceive</code> rule.</p>
+
+<p><strong>Once-per-handler limitation:</strong> only the <em>first</em> <code class="language-plaintext highlighter-rouge">receive()</code> in a handler body is safe to block on: if a handler calls <code class="language-plaintext highlighter-rouge">receive()</code> twice and the second one blocks (empty mailbox), the message the first <code class="language-plaintext highlighter-rouge">receive()</code> already popped is lost (the scheduler’s re-queue only restores the outer triggering message). A handler needing multiple messages should recurse, with each <code class="language-plaintext highlighter-rouge">receive()</code> the first operation in its own handler body. The example above <code class="language-plaintext highlighter-rouge">receive()</code>s exactly once, on an already-queued message, so it neither blocks nor trips this limitation. (This is what the golden witness <code class="language-plaintext highlighter-rouge">g36_actor_receive</code> pins.)</p>
+
+<p>Messages are always delivered in FIFO order, so <code class="language-plaintext highlighter-rouge">receive()</code> pops the oldest queued message.</p>
+
+<hr />
+
+<h2 id="stash-and-become-multi-step-protocols-without-selective-receive">Stash and Become: multi-step protocols without selective receive</h2>
+
+<p><code class="language-plaintext highlighter-rouge">receive()</code> always pops the <em>oldest</em> message, and only the first <code class="language-plaintext highlighter-rouge">receive()</code> in a
+handler may block, so there is no way to say “wait for <em>this particular</em> message next”
+(Erlang’s selective receive). What an actor does have is its own state, and that is
+enough for the two jobs selective receive is used for, the same way Akka’s
+<code class="language-plaintext highlighter-rouge">stash</code>/<code class="language-plaintext highlighter-rouge">become</code> cover them:</p>
+
+<ul>
+  <li><strong>become</strong>: a <code class="language-plaintext highlighter-rouge">mode</code> field that the handlers dispatch on;</li>
+  <li><strong>stash</strong>: a list in state holding the work that cannot be served yet, replayed
+through the same serving code when the mode changes.</li>
+</ul>
+
+<p>A session that must be told it is connected before it may serve queries:</p>
+
+<pre><code class="language-march">type Mode = Connecting | Ready
+
+actor Session do
+  state { mode : Mode, stash : List(String), served : String }
+  init  { mode: Connecting, stash: Nil, served: "" }
+
+  on Query(q : String) do
+    match state.mode do
+      Ready      -&gt; serve(state, q)
+      Connecting -&gt; { state with stash: Cons(q, state.stash) }   -- stash it
+    end
+  end
+
+  on Connected() do
+    -- become Ready, then unstash: the stash is newest-first, so reverse it
+    -- and push each stashed query through the same serving code.
+    let ready = { state with mode: Ready, stash: Nil }
+    List.fold_left(List.reverse(state.stash), ready, fn (st, q) -&gt; serve(st, q))
+  end
+end
+
+fn serve(st, q) do
+  { mode: st.mode, stash: st.stash, served: st.served ++ q ++ ";" }
+end
+</code></pre>
+
+<p>Sending <code class="language-plaintext highlighter-rouge">Query("a")</code>, <code class="language-plaintext highlighter-rouge">Query("b")</code>, <code class="language-plaintext highlighter-rouge">Connected()</code>, <code class="language-plaintext highlighter-rouge">Query("c")</code> serves <code class="language-plaintext highlighter-rouge">a;b;c;</code>: the
+stash drains in arrival order <em>before</em> anything queued behind the transition is looked
+at. Draining inline is what gives that order. The other unstash shape, re-sending each
+stashed message to <code class="language-plaintext highlighter-rouge">self()</code>, is simpler when the stashed thing really is a whole message,
+but a re-sent message lands behind whatever is already queued, so here it would serve
+<code class="language-plaintext highlighter-rouge">c;a;b;</code>. Pick by whether arrival order matters to the protocol.</p>
+
+<p>The full example is <code class="language-plaintext highlighter-rouge">test/native/actor_stash_become.march</code>, run on both backends.</p>
+
+<hr />
+
+<h2 id="checking-if-an-actor-is-alive">Checking if an Actor is Alive</h2>
+
+<pre><code class="language-march">let alive = is_alive(counter)
+println("alive: " ++ bool_to_string(alive))
+</code></pre>
+
+<hr />
+
+<h2 id="stopping-an-actor">Stopping an Actor</h2>
+
+<pre><code class="language-march">kill(counter)
+</code></pre>
+
+<p>After <code class="language-plaintext highlighter-rouge">kill</code>, <code class="language-plaintext highlighter-rouge">is_alive(counter)</code> returns <code class="language-plaintext highlighter-rouge">false</code> and further <code class="language-plaintext highlighter-rouge">send</code>s return <code class="language-plaintext highlighter-rouge">None</code>, on
+both backends. <code class="language-plaintext highlighter-rouge">is_alive</code> is a pure registry lookup and
+is the one lifecycle observation that is <strong>an exact byte match interpreted vs compiled</strong> (the
+golden witness <code class="language-plaintext highlighter-rouge">g37_actor_lifecycle</code> pins <code class="language-plaintext highlighter-rouge">spawn → is_alive true → kill → is_alive false</code>).
+The operational rules for <code class="language-plaintext highlighter-rouge">kill</code>/<code class="language-plaintext highlighter-rouge">is_alive</code> are in <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.6.</p>
+
+<h3 id="graceful-stop-actorstop">Graceful stop: <code class="language-plaintext highlighter-rouge">Actor.stop</code></h3>
+
+<p><code class="language-plaintext highlighter-rouge">kill</code> is immediate and drops whatever is queued. <code class="language-plaintext highlighter-rouge">Actor.stop(pid, timeout_ms)</code> is the
+lossless form: the actor accepts no new messages (a <code class="language-plaintext highlighter-rouge">send</code> to it returns <code class="language-plaintext highlighter-rouge">None</code>), works
+off the messages already queued, and then dies a <strong>Normal</strong> death, which no restart type
+restarts. <code class="language-plaintext highlighter-rouge">stop</code> is synchronous: it returns once the actor is dead, or once <code class="language-plaintext highlighter-rouge">timeout_ms</code>
+has passed and the actor has been killed. A negative timeout waits indefinitely; <code class="language-plaintext highlighter-rouge">0</code>
+discards the queue as soon as the in-flight handler returns. It returns <code class="language-plaintext highlighter-rouge">false</code> for an
+actor that was already dead or already stopping.</p>
+
+<p>Stopping a supervisor stops its children first, in <strong>reverse declaration order</strong>, each
+with its own <code class="language-plaintext highlighter-rouge">shutdown</code> budget from the child spec (<code class="language-plaintext highlighter-rouge">W w shutdown 5000</code>, <code class="language-plaintext highlighter-rouge">shutdown
+infinity</code>, <code class="language-plaintext highlighter-rouge">shutdown brutal</code>; default 5 seconds), and detaches each child before stopping
+it so the teardown runs no restart strategy.</p>
+
+<p>An actor may stop itself from a handler (<code class="language-plaintext highlighter-rouge">Actor.stop(self, 1000)</code>): the handler finishes,
+its returned state is installed, the rest of the queue drains, and the actor dies.</p>
+
+<h3 id="on_stop-the-terminate-callback"><code class="language-plaintext highlighter-rouge">on_stop</code>: the terminate callback</h3>
+
+<p>An actor can run code of its own at shutdown (flush a buffer, checkpoint state, hand
+unfinished work back to a queue) by declaring one <code class="language-plaintext highlighter-rouge">on_stop</code> block among its handlers:</p>
+
+<pre><code class="language-march">type StoreState = { saved : Int }   -- the Store actor's state record
+
+actor Batcher do
+  state { buf : List(String), store : Option(Pid(StoreState)) }
+  init  { buf: [], store: None }
+
+  on UseStore(s : Pid(StoreState)) do
+    { state with store: Some(s) }
+  end
+
+  on Append(s : String) do
+    { state with buf: Cons(s, state.buf) }
+  end
+
+  -- Hand whatever was batched to the store before dying.
+  on_stop do
+    match state.store do
+      Some(store) -&gt; send(store, Save(List.reverse(state.buf)))
+      None        -&gt; None
+    end
+  end
+end
+</code></pre>
+
+<p>The Store’s Pid arrives in a message and is kept in state: a handler has no
+capability in scope, so it cannot look an actor up by name with
+<code class="language-plaintext highlighter-rouge">Actor.whereis</code>, which takes a <code class="language-plaintext highlighter-rouge">Cap(Actor.Introspect)</code>.</p>
+
+<p>Inside <code class="language-plaintext highlighter-rouge">on_stop</code>, <code class="language-plaintext highlighter-rouge">state</code> is the <strong>final</strong> state (after the drain) and <code class="language-plaintext highlighter-rouge">self</code> is the
+actor’s own Pid, exactly as in a handler; there are no message parameters, and the
+block’s value is discarded (a dying actor has no next state). The semantics follow
+OTP’s <code class="language-plaintext highlighter-rouge">terminate/2</code>:</p>
+
+<ol>
+  <li><strong>It runs on a graceful stop:</strong> <code class="language-plaintext highlighter-rouge">Actor.stop</code> on the actor, a self-stop, or its
+supervisor’s teardown with a non-<code class="language-plaintext highlighter-rouge">brutal</code> <code class="language-plaintext highlighter-rouge">shutdown</code>. It runs on the actor’s own
+thread, after the drain and before the Normal death, so it has finished by the
+time <code class="language-plaintext highlighter-rouge">Actor.stop</code> returns.</li>
+  <li><strong>It may send messages</strong>, and may block on a reply (<code class="language-plaintext highlighter-rouge">Actor.call</code>), within the budget
+below. The actor itself is draining, so messages sent <em>to</em> it are refused.</li>
+  <li><strong>A failure inside it is logged and the shutdown continues.</strong> A panic in <code class="language-plaintext highlighter-rouge">on_stop</code>
+prints <code class="language-plaintext highlighter-rouge">march: actor on_stop callback failed (the actor still stops): panic: ...</code>
+to stderr and the actor dies Normal as if <code class="language-plaintext highlighter-rouge">on_stop</code> had returned: it is not a crash,
+so no supervisor restarts it, and a tree teardown proceeds to the next child.</li>
+  <li><strong>It does not run on the brutal path.</strong> <code class="language-plaintext highlighter-rouge">kill(pid)</code>, a crash, and a child spec’s
+<code class="language-plaintext highlighter-rouge">shutdown brutal</code> end the actor without running it. That is what brutal means.</li>
+  <li><strong>It is bounded by the stop timeout.</strong> The <code class="language-plaintext highlighter-rouge">timeout_ms</code> of <code class="language-plaintext highlighter-rouge">Actor.stop</code> (or the
+child spec’s <code class="language-plaintext highlighter-rouge">shutdown</code> budget) covers the drain and <code class="language-plaintext highlighter-rouge">on_stop</code> together; if
+<code class="language-plaintext highlighter-rouge">on_stop</code> has not finished when it runs out, the actor is killed there. A stop
+whose deadline has already passed after the drain skips <code class="language-plaintext highlighter-rouge">on_stop</code> entirely.</li>
+</ol>
+
+<p>Both backends implement the same rules, and each is pinned compiled and interpreted by
+<code class="language-plaintext highlighter-rouge">test/native/actor_on_stop*.march</code>. Limits to know:</p>
+
+<ul>
+  <li>A <strong>self-stop</strong> has no outside waiter to enforce the deadline, so it bounds the drain
+but cannot cut a blocked <code class="language-plaintext highlighter-rouge">on_stop</code> short.</li>
+  <li>The interpreter cannot preempt running code, so there the deadline binds only an
+<code class="language-plaintext highlighter-rouge">on_stop</code> that <em>blocks</em> (a <code class="language-plaintext highlighter-rouge">receive()</code> it cannot satisfy waits out the deadline and
+the actor is killed); a compute loop in <code class="language-plaintext highlighter-rouge">on_stop</code> runs to completion.</li>
+  <li>Under <code class="language-plaintext highlighter-rouge">--hot-reload</code>, the callback registered is the one from the code the actor was
+spawned with; draining across a reload is still open
+(<code class="language-plaintext highlighter-rouge">specs/todos/2026-08-12-graceful-shutdown-and-drain.md</code>).</li>
+</ul>
+
+<h2 id="monitoring-actor-death">Monitoring Actor Death</h2>
+
+<p><code class="language-plaintext highlighter-rouge">monitor(watcher, target)</code> delivers a control-plane <code class="language-plaintext highlighter-rouge">Down(ref, target_pid, reason)</code>
+message to <code class="language-plaintext highlighter-rouge">watcher</code> when <code class="language-plaintext highlighter-rouge">target</code> terminates. The local reasons are <code class="language-plaintext highlighter-rouge">Normal</code>,
+<code class="language-plaintext highlighter-rouge">Killed</code>, and <code class="language-plaintext highlighter-rouge">Crash(message)</code>. Match the three fields in a handler rather than
+treating a monitor as a count of dead actors:</p>
+
+<pre><code class="language-march">actor Watcher do
+  state { seen : Int }
+  init  { seen: 0 }
+
+  on CheckDown() do
+    match receive() do
+      Down(_, target, Normal) -&gt;
+        println("stopped " ++ to_string(target))
+        state
+      Down(_, target, Killed) -&gt;
+        println("killed " ++ to_string(target))
+        state
+      Down(_, _, Crash(error)) -&gt;
+        println("crashed " ++ error)
+        state
+      _ -&gt;
+        println("unexpected monitor message")
+        state
+    end
+  end
+end
+</code></pre>
+
+<p>Monitor <code class="language-plaintext highlighter-rouge">Down</code> messages are control-plane delivery: they bypass the target
+watcher’s mailbox limit, so a full bounded mailbox cannot lose the death
+notification. Local monitoring has the same payload and reason vocabulary on
+the interpreted and compiled backends; the distributed monitor protocol uses
+the same <code class="language-plaintext highlighter-rouge">Down(ref, target_pid, reason)</code> shape (and additionally has <code class="language-plaintext highlighter-rouge">NodeDown</code>).</p>
+
+<h3 id="why-there-are-no-links">Why there are no links</h3>
+
+<p>March’s fault model is <strong>monitors plus supervisors</strong>, not BEAM’s links and exit
+signals. A monitor is one-directional and observational: the watcher receives
+<code class="language-plaintext highlighter-rouge">Down(ref, pid, reason)</code> where the reason is <code class="language-plaintext highlighter-rouge">Normal</code>, <code class="language-plaintext highlighter-rouge">Killed</code>, or <code class="language-plaintext highlighter-rouge">Crash(msg)</code>, and
+determines for itself what to do. Failure propagates <em>downward</em> through supervision
+trees, never sideways between actor peers.</p>
+
+<p>This is the same choice Akka made in dropping links for DeathWatch plus
+supervision strategies. A reason-carrying <code class="language-plaintext highlighter-rouge">Down</code> gives a watcher everything a
+link’s exit signal would have told it, without the bidirectional coupling, and
+without needing a <code class="language-plaintext highlighter-rouge">trap_exit</code> escape hatch to make that coupling survivable.</p>
+
+<p>One asymmetric edge remains: <code class="language-plaintext highlighter-rouge">task_spawn_link</code> links a plain task to an actor,
+and if the task’s thunk raises, the linked actor is crashed: a task-to-actor
+propagation path, not an actor-to-actor one. It is a narrower primitive than a
+BEAM link (a task cannot itself be linked to or crashed by anything), so it
+doesn’t reopen the sideways-coupling problem this section argues against.</p>
+
+<hr />
+
+<h2 id="named-actors">Named Actors</h2>
+
+<p>A Pid is not stable. When a supervisor restarts a crashed child, the replacement gets a
+<em>new</em> Pid, and everyone still holding the old one is talking to a corpse. The named
+registry hands out a stable string name instead:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO
+
+  actor Counter do
+    state { n : Int }
+    init  { n: 0 }
+    on Bump() do { n: state.n + 1 } end
+  end
+
+  fn main(io : Cap(IO)) do
+    let c = Actor.introspect(io)
+    let pid = spawn(Counter)
+    println("registered: " ++ bool_to_string(Actor.register(pid, "counter")))
+    println("names: " ++ int_to_string(List.length(Actor.registered(c))))
+
+    -- Resolve the name once, then reuse the Pid for the whole burst.
+    match Actor.whereis(c, "counter") do
+      None -&gt; println("counter is unavailable right now — retry")
+      Some(here) -&gt;
+        let _ = send(here, Bump())
+        let _ = send(here, Bump())
+        println("sent")
+    end
+
+    println("unregistered: " ++ bool_to_string(Actor.unregister("counter")))
+  end
+end
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Returns</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.register(pid, name)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Bind <code class="language-plaintext highlighter-rouge">name</code> to <code class="language-plaintext highlighter-rouge">pid</code>. <code class="language-plaintext highlighter-rouge">false</code> if <code class="language-plaintext highlighter-rouge">pid</code> is already dead, or if <code class="language-plaintext highlighter-rouge">name</code> is currently held by a <em>live</em> actor.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.unregister(name)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Bool</code></td>
+      <td>Release the name. <code class="language-plaintext highlighter-rouge">false</code> if it was not registered.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.whereis(c, name)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Option(Pid)</code></td>
+      <td>The actor currently holding <code class="language-plaintext highlighter-rouge">name</code>. <code class="language-plaintext highlighter-rouge">c : Cap(Actor.Introspect)</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.registered(c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(String)</code></td>
+      <td>Every name currently bound; order unspecified.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A name is released automatically when its actor dies, so a name never resolves to a dead
+Pid and you do not have to unregister from a crash path.</p>
+
+<h3 id="introspection-is-a-capability">Introspection is a capability</h3>
+
+<p>A Pid is an unforgeable reference: code that was never handed one cannot message the
+actor behind it. Four operations would break that, since each turns something anyone
+can write down (an integer, a name, nothing at all) into a Pid: <code class="language-plaintext highlighter-rouge">Actor.pid_from_int</code>,
+<code class="language-plaintext highlighter-rouge">Actor.whereis</code>, <code class="language-plaintext highlighter-rouge">Actor.list</code> and <code class="language-plaintext highlighter-rouge">Actor.registered</code>. They take a
+<code class="language-plaintext highlighter-rouge">Cap(Actor.Introspect)</code>, a proof capability that only <code class="language-plaintext highlighter-rouge">Actor.introspect(io : Cap(IO))</code>
+mints. Mint it once in <code class="language-plaintext highlighter-rouge">main</code>, which holds the root capability, and forward it to the
+code that needs it:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs Actor.Introspect
+
+  fn child_of(c : Cap(Actor.Introspect), sup, field : String) do
+    match get_actor_field(sup, field) do
+      Some(n) -&gt; Actor.pid_from_int(c, n)
+      None    -&gt; Actor.pid_from_int(c, -1)
+    end
+  end
+
+  fn main(io : Cap(IO)) do
+    let c = Actor.introspect(io)
+    let sup = spawn(Sup)
+    send(child_of(c, sup, "worker"), Work())
+  end
+end
+</code></pre>
+
+<p>A function that forwards the cap through its signature declares <code class="language-plaintext highlighter-rouge">needs Actor.Introspect</code>,
+as with any proof capability declared elsewhere. <code class="language-plaintext highlighter-rouge">Actor.register</code> and <code class="language-plaintext highlighter-rouge">Actor.unregister</code>
+stay unprivileged: registering a Pid you hold is not authority; resolving a name you were
+never handed is. The raw builtins behind these wrappers (<code class="language-plaintext highlighter-rouge">pid_of_int</code>,
+<code class="language-plaintext highlighter-rouge">actor_pid_indices</code>, <code class="language-plaintext highlighter-rouge">actor_whereis</code>, <code class="language-plaintext highlighter-rouge">actor_registered</code>) are internal to the standard
+library; a program that calls one is rejected at typecheck time with the wrapper to use:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>`pid_of_int` is internal to the standard library; use `Actor.pid_from_int(cap, n)` (see `Actor.introspect`)
+</code></pre></div></div>
+
+<p>Because <code class="language-plaintext highlighter-rouge">Actor.introspect</code> takes <code class="language-plaintext highlighter-rouge">Cap(IO)</code>, a role body or hook under a narrower grant
+(say <code class="language-plaintext highlighter-rouge">Cap(IO.NetConnect)</code>) cannot mint the cap itself; the composition root does, and
+hands it down. Cross-node references (<code class="language-plaintext highlighter-rouge">GlobalPid.make</code>, <code class="language-plaintext highlighter-rouge">GlobalRegistry.lookup</code>) are not
+covered: unforgeability is a process property first.</p>
+
+<p><code class="language-plaintext highlighter-rouge">whereis</code> returns an <code class="language-plaintext highlighter-rouge">Option</code> because a name can be <em>momentarily</em> unresolvable. While a
+supervised child is being respawned (in particular while it waits out its restart backoff)
+the old actor is gone and its replacement does not exist yet. <code class="language-plaintext highlighter-rouge">None</code> there is the accurate
+signal that the service is mid-restart, not that the name was never registered; retry
+rather than treating it as a permanent error.</p>
+
+<p>Names survive supervisor restarts, on <strong>both</strong> backends: the crashing child’s names are
+brought forward and re-established on its replacement, so a holder outside the supervision
+tree keeps reaching whichever incarnation is current without at any point learning the new Pid.
+<strong>Hold names, not Pids, across a restart boundary.</strong> This includes a live sibling killed by
+a <code class="language-plaintext highlighter-rouge">one_for_all</code> / <code class="language-plaintext highlighter-rouge">rest_for_one</code> batch restart, not only the child that actually crashed.
+If a <em>different</em> live actor claims the name during the restart window, the carried-forward
+registration is dropped for that name rather than stolen back. Unsupervised actors are
+unaffected; their names are simply dropped on death.</p>
+
+<p>On a hot path, resolve a name <strong>once and cache the Pid</strong> instead of calling <code class="language-plaintext highlighter-rouge">whereis</code> per
+message. Concurrent lookups of the <em>same</em> name all bump the refcount on the one stored
+value, and that contention, not the registry’s table lock, is what bounds same-name
+resolution; <code class="language-plaintext highlighter-rouge">send</code> itself takes no registry lock. Re-resolve when a send fails or a monitor
+fires, not on every message.</p>
+
+<hr />
+
+<h2 id="capability-based-messaging">Capability-Based Messaging</h2>
+
+<p>For supervision-safe message delivery, use capabilities (<code class="language-plaintext highlighter-rouge">Cap</code>). A capability encodes the actor’s identity and current <em>epoch</em>: it becomes stale (and is rejected) if the actor restarts:</p>
+
+<pre><code class="language-march">-- Obtain a capability for a live actor
+match get_cap(pid) do
+  None      -&gt; println("actor is dead")
+  Some(cap) -&gt;
+    -- send_checked validates the epoch before delivering
+    match send_checked(cap, Increment(1)) do
+      :ok    -&gt; println("delivered")
+      :error -&gt; println("actor dead or cap stale")
+    end
+end
+</code></pre>
+
+<p>Use capabilities when you hold a reference across an actor restart boundary and need to know whether the message was delivered to the <em>current</em> incarnation of the actor. Under a supervisor, a restarted actor gets a fresh epoch, invalidating caps from before the restart.</p>
+
+<p>The epoch-<code class="language-plaintext highlighter-rouge">Cap</code> validation plane is an exact match on both backends as of 2026-07-18:
+compiled <code class="language-plaintext highlighter-rouge">get_cap</code> gates on liveness (niche <code class="language-plaintext highlighter-rouge">None</code> for a dead/unknown pid) and compiled
+<code class="language-plaintext highlighter-rouge">send_checked</code> returns the same <code class="language-plaintext highlighter-rouge">:ok</code>/<code class="language-plaintext highlighter-rouge">:error</code> atoms as the interpreter after checking
+revocation, epoch match, and liveness (<code class="language-plaintext highlighter-rouge">march_send_checked</code>/<code class="language-plaintext highlighter-rouge">march_get_cap</code>,
+<code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>); pinned by <code class="language-plaintext highlighter-rouge">test/native/cap_epoch_plane</code>. A cap holds no
+reference on its actor, so both calls validate against the actor’s runtime metadata
+(its terminal flag and epoch), never the actor record itself, and <code class="language-plaintext highlighter-rouge">send_checked</code>
+returns <code class="language-plaintext highlighter-rouge">:ok</code> only when the underlying send actually accepted the message (an actor
+that dies or starts draining between the check and the enqueue gives <code class="language-plaintext highlighter-rouge">:error</code>). Before
+2026-09-22 the compiled backend read the record’s alive word after the record could
+already be freed and reused, so a cap on a killed actor intermittently validated. <code class="language-plaintext highlighter-rouge">revoke_cap</code> and
+<code class="language-plaintext highlighter-rouge">is_cap_valid</code> are registered in the typechecker (<code class="language-plaintext highlighter-rouge">lib/typecheck/typecheck_builtins.ml</code>) and
+surface-callable on both backends. See <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.6 for the full
+epoch-invalidation model.</p>
+
+<hr />
+
+<h2 id="synchronous-request-reply-via-actorcall">Synchronous Request-Reply via <code class="language-plaintext highlighter-rouge">Actor.call</code></h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">Actor</code> module provides a synchronous call pattern. You pass a <strong>zero-arg
+sentinel constructor</strong> as the call message; its tag selects which handler receives
+the call, and the runtime injects the caller (the <em>reply channel</em>) as that handler’s
+<strong>first argument</strong>. The handler answers with <code class="language-plaintext highlighter-rouge">Actor.reply</code>:</p>
+
+<pre><code class="language-march">type GetReq = GetReq          -- zero-arg sentinel for the sync call
+
+actor Counter do
+  state { count : Int }
+  init  { count: 0 }
+
+  -- First handler (tag 0) = the call handler; reply_to is the caller.
+  on GetCount(reply_to) do
+    Actor.reply(reply_to, state.count)
+    state
+  end
+
+  on Inc(n : Int) do
+    { state with count: state.count + n }
+  end
+end
+
+fn main() do
+  let pid = spawn(Counter)
+  Actor.cast(pid, Inc(1))
+  run_until_idle()
+  match Actor.call(pid, GetReq, 5000) do
+    Ok(n)  -&gt; println("count = " ++ int_to_string(n))
+    Err(e) -&gt; println("error: " ++ e)
+  end
+end
+</code></pre>
+
+<p>This program prints <code class="language-plaintext highlighter-rouge">count = 1</code> on both backends. <code class="language-plaintext highlighter-rouge">Actor.call(pid, sentinel, timeout_ms)</code>
+reads the tag from the zero-arg <code class="language-plaintext highlighter-rouge">sentinel</code>, builds an augmented message (same tag,
+with the caller in field 0), and routes it to the handler at that tag. That handler
+receives the caller as its first argument and must call <code class="language-plaintext highlighter-rouge">Actor.reply(reply_to, result)</code>
+to unblock the caller. <code class="language-plaintext highlighter-rouge">Actor.call</code> returns <code class="language-plaintext highlighter-rouge">Ok(result)</code>, or <code class="language-plaintext highlighter-rouge">Err(reason)</code> if no reply
+arrives before <code class="language-plaintext highlighter-rouge">timeout_ms</code> (a value <code class="language-plaintext highlighter-rouge">&lt;= 0</code> means wait indefinitely).</p>
+
+<p>Two consequences of the tag-selects-the-handler rule:</p>
+
+<ul>
+  <li><strong>The call handler must be declared FIRST</strong> in the actor, so it sits at tag 0: the
+sentinel <code class="language-plaintext highlighter-rouge">GetReq</code> has tag 0, and that is the handler the call routes to.</li>
+  <li><strong>The sentinel must have a name distinct from the handler</strong> (<code class="language-plaintext highlighter-rouge">GetReq</code> vs <code class="language-plaintext highlighter-rouge">GetCount</code>)
+to avoid a constructor-name clash.</li>
+</ul>
+
+<p>There is no <code class="language-plaintext highlighter-rouge">Call</code> wrapper constructor, and the call handler takes exactly one argument
+(the reply channel).</p>
+
+<p><strong>Calling from inside a handler.</strong> A handler may itself <code class="language-plaintext highlighter-rouge">Actor.call</code> another actor. While
+it waits, the calling actor handles nothing else: messages sent to it in the meantime
+stay in its mailbox, in arrival order, and are handled after the current handler returns.
+Only the reply ends the wait (both backends; pinned by
+<code class="language-plaintext highlighter-rouge">test/native/actor_call_in_handler_keeps_messages</code>).</p>
+
+<blockquote>
+  <p><strong>Two notes (both resolved 2026-07-13).</strong> (1) <code class="language-plaintext highlighter-rouge">timeout_ms</code> <strong>is enforced in the
+compiled runtime</strong> via a deadline-bounded park (<code class="language-plaintext highlighter-rouge">march_actor_call</code>,
+<code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>); the caller’s green thread parks on the scheduler rather
+than busy-polling, and wakes on reply delivery or at the deadline; a <code class="language-plaintext highlighter-rouge">call</code> that never
+receives a reply returns <code class="language-plaintext highlighter-rouge">Err(...)</code> once the deadline passes, and <code class="language-plaintext highlighter-rouge">timeout_ms &lt;= 0</code>
+means wait indefinitely. <strong>Correlation-checked replies (actor-system hardening, task 4):</strong>
+every reply is wrapped in an envelope that stores the correlation id issued for that
+specific <code class="language-plaintext highlighter-rouge">march_actor_call</code> invocation; the receive loop discards any envelope with a
+correlation id that doesn’t match; a late reply from a timed-out first call can no longer
+be misdelivered as the answer to a second, unrelated call (<code class="language-plaintext highlighter-rouge">march_actor_call_unwrap</code>,
+<code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>). (2) The <strong>interpreter now dispatches <code class="language-plaintext highlighter-rouge">Actor.call</code>
+identically to the compiled runtime</strong>: it tag-routes the zero-arg sentinel to the
+handler at the same ctor index and binds the caller as the handler’s single argument
+(<code class="language-plaintext highlighter-rouge">lib/eval/eval.ml</code> <code class="language-plaintext highlighter-rouge">actor_call</code>). The historical interp-only <code class="language-plaintext highlighter-rouge">on Call(ref, msg)</code>
+two-argument form is retired. Both behaviors are pinned by the
+<code class="language-plaintext highlighter-rouge">test/native/actor_counter</code> and <code class="language-plaintext highlighter-rouge">test/native/actor_call_timeout</code> goldens, which pass on
+both backends.</p>
+
+  <p><strong>Historical regression, fixed 2026-07-22:</strong> <code class="language-plaintext highlighter-rouge">Actor.call</code>’s reply value was briefly
+corrupted compiled: a scalar reply (e.g. <code class="language-plaintext highlighter-rouge">value=5</code>) came back as its raw tagged bit
+pattern (<code class="language-plaintext highlighter-rouge">value=11</code>) instead of the untagged integer. Root cause: <code class="language-plaintext highlighter-rouge">int_to_string</code>/
+<code class="language-plaintext highlighter-rouge">bool_to_string</code>/<code class="language-plaintext highlighter-rouge">float_to_string</code> had no dedicated argument-coercion arm in
+<code class="language-plaintext highlighter-rouge">lib/tir/llvm_emit.ml</code>’s <code class="language-plaintext highlighter-rouge">EApp</code> emission, so a generically-extracted <code class="language-plaintext highlighter-rouge">Result</code>
+payload flowed into the C call still tagged. Fixed by adding the missing coercion
+arms (mirroring the existing <code class="language-plaintext highlighter-rouge">int_not</code>/bitwise-op pattern); <code class="language-plaintext highlighter-rouge">test/native/actor_counter</code>
+now matches its golden (<code class="language-plaintext highlighter-rouge">value=5</code>) on both backends.</p>
+</blockquote>
+
+<p><code class="language-plaintext highlighter-rouge">Actor.cast(pid, msg)</code> is fire-and-forget: equivalent to <code class="language-plaintext highlighter-rouge">send</code> but goes through the <code class="language-plaintext highlighter-rouge">Actor</code> module.
+Both <code class="language-plaintext highlighter-rouge">Actor.cast</code> and <code class="language-plaintext highlighter-rouge">Actor.call</code>’s message payloads are checked for non-sendable types
+identically to <code class="language-plaintext highlighter-rouge">send</code>; see the note under <a href="#sending-messages">Sending Messages</a>.</p>
+
+<h3 id="request-reply-by-reply-address">Request-reply by reply address</h3>
+
+<p>A lower-level request-reply pattern needs no <code class="language-plaintext highlighter-rouge">Actor.call</code> at all: the requester puts
+its own <code class="language-plaintext highlighter-rouge">Pid</code> (from <a href="#actor-identity-self"><code class="language-plaintext highlighter-rouge">self()</code></a>) in the message, and the handler
+replies with a plain <code class="language-plaintext highlighter-rouge">send</code> to that address. It is built entirely from <code class="language-plaintext highlighter-rouge">send</code>, so it
+behaves identically on both backends, and it is the right choice when a handler needs
+to reply to more than one caller, or reply asynchronously outside the call/timeout
+protocol:</p>
+
+<pre><code class="language-march">on Ask(question : String, reply_to) do
+  send(reply_to, Answer(compute_answer(question)))
+  state
+end
+</code></pre>
+
+<p>The requester must itself be an actor: it handles the <code class="language-plaintext highlighter-rouge">Answer(...)</code> reply in its own
+<code class="language-plaintext highlighter-rouge">on Answer(...)</code> clause. <code class="language-plaintext highlighter-rouge">Actor.call</code> covers the common single-request/single-reply
+case; reach for this pattern when you need more flexibility than a one-shot call.</p>
+
+<hr />
+
+<h2 id="a-complete-actor-example">A Complete Actor Example</h2>
+
+<pre><code class="language-march">mod ActorDemo do
+  needs IO.Console
+
+  actor Counter do
+    state { value : Int }
+    init  { value: 0 }
+
+    on Increment(n : Int) do
+      { state with value: state.value + n }
+    end
+
+    on Poke(label : String) do
+      println("[Counter] poke from " ++ label
+              ++ ", value = " ++ int_to_string(state.value))
+      state
+    end
+  end
+
+  actor Logger do
+    state { count : Int }
+    init  { count: 0 }
+
+    on Log(msg : String) do
+      let n = state.count + 1
+      println("[LOG #" ++ int_to_string(n) ++ "] " ++ msg)
+      { state with count: n }
+    end
+  end
+
+  fn main(_c : Cap(IO.Console)) do
+    let counter = spawn(Counter)
+    let logger  = spawn(Logger)
+
+    send(counter, Increment(10))
+    send(logger,  Log("counter incremented by 10"))
+    send(counter, Increment(5))
+    send(counter, Poke("main"))
+
+    kill(logger)
+    println("logger alive: " ++ bool_to_string(is_alive(logger)))
+
+    match send(logger, Log("dropped")) do
+      None    -&gt; println("message dropped — actor is dead")
+      Some(_) -&gt; ()
+    end
+
+    send(counter, Poke("after kill"))
+    run_until_idle()
+  end
+
+end
+</code></pre>
+
+<p>(This example uses the message name <code class="language-plaintext highlighter-rouge">Poke</code> rather than <code class="language-plaintext highlighter-rouge">Ping</code>: <code class="language-plaintext highlighter-rouge">Ping</code> collides with a
+stdlib constructor in the flat global namespace; see the note under <em>Sending Messages</em>.
+Interpreted, it prints <code class="language-plaintext highlighter-rouge">logger alive: false</code>, <code class="language-plaintext highlighter-rouge">message dropped — actor is dead</code>, then
+<code class="language-plaintext highlighter-rouge">[Counter] poke from main, value = 15</code> and <code class="language-plaintext highlighter-rouge">[Counter] poke from after kill, value = 15</code>.
+It uses only the live-message + <code class="language-plaintext highlighter-rouge">kill</code>/<code class="language-plaintext highlighter-rouge">is_alive</code> plane, so compiled output is an exact byte match.)</p>
+
+<hr />
+
+<h2 id="actor-state-with-records">Actor State with Records</h2>
+
+<p>Complex state uses record types. Functional update with <code class="language-plaintext highlighter-rouge">{ state with field: new_value }</code> is the canonical way to update state:</p>
+
+<pre><code class="language-march">actor WebServer do
+  state {
+    request_count : Int,
+    error_count   : Int,
+    last_path     : String
+  }
+  init {
+    request_count: 0,
+    error_count:   0,
+    last_path:     ""
+  }
+
+  on Req(path : String, status : Int) do
+    let rc = state.request_count + 1
+    let ec = if status &gt;= 400 do state.error_count + 1 else state.error_count end
+    { state with
+        request_count: rc,
+        error_count:   ec,
+        last_path:     path }
+  end
+
+  on Stats() do
+    println("requests: " ++ int_to_string(state.request_count))
+    println("errors: "   ++ int_to_string(state.error_count))
+    state
+  end
+end
+</code></pre>
+
+<p>(This example uses the message name <code class="language-plaintext highlighter-rouge">Req</code> rather than <code class="language-plaintext highlighter-rouge">Request</code>: <code class="language-plaintext highlighter-rouge">Request</code> collides with the
+stdlib <code class="language-plaintext highlighter-rouge">Http.Request</code> constructor in the flat global namespace; see the note under <em>Sending
+Messages</em>.)</p>
+
+<hr />
+
+<h2 id="tasks-lightweight-concurrent-computations">Tasks: Lightweight Concurrent Computations</h2>
+
+<p>Tasks are a simpler alternative to actors when you just need to run a function concurrently and collect its result. Use the <code class="language-plaintext highlighter-rouge">Task</code> module:</p>
+
+<pre><code class="language-march">-- Spawn a task and await its result
+let t = Task.async(fn () -&gt; expensive_computation())
+let result = Task.await(t)   -- Ok(value) or Err(reason)
+
+-- Parallel map
+let results = Task.async_stream([1, 2, 3], fn n -&gt; n * n)
+-- [Ok(1), Ok(4), Ok(9)]
+
+-- Await multiple tasks
+let t1 = Task.async(fn () -&gt; fetch_user(1))
+let t2 = Task.async(fn () -&gt; fetch_user(2))
+let [r1, r2] = Task.await_many([t1, t2])
+
+-- Unwrap directly (panics on error)
+let value = Task.await!(t)
+</code></pre>
+
+<p>Tasks run on the same M:N green-thread pool as actors. Spawning 250,000+ tasks is routine; the scheduler distributes them across OS threads automatically.</p>
+
+<p>See the <a href="/docs/stdlib/Task.html">Task module docs</a> for the full API including <code class="language-plaintext highlighter-rouge">Task.race</code>, <code class="language-plaintext highlighter-rouge">Task.any</code>, <code class="language-plaintext highlighter-rouge">Task.scope</code>, and <code class="language-plaintext highlighter-rouge">Task.all_settled</code>.</p>
+
+<p>To run a transformation over a whole collection in parallel without wiring up tasks by hand, use the data-parallel <code class="language-plaintext highlighter-rouge">List</code> operations (<code class="language-plaintext highlighter-rouge">pmap</code>, <code class="language-plaintext highlighter-rouge">pmap_n</code>, <code class="language-plaintext highlighter-rouge">pfilter</code>, <code class="language-plaintext highlighter-rouge">preduce</code>); see <a href="/docs/parallel-collections/">Parallel Collections</a>.</p>
+
+<hr />
+
+<h2 id="running-until-idle">Running Until Idle</h2>
+
+<p>In scripts and tests, <code class="language-plaintext highlighter-rouge">run_until_idle()</code> processes all pending actor messages before continuing:</p>
+
+<pre><code class="language-march">fn main() do
+  let counter = spawn(Counter)
+  send(counter, Increment(1))
+  send(counter, Increment(2))
+  send(counter, Increment(3))
+  run_until_idle()
+  -- All three messages are processed here
+  send(counter, Poke("done"))
+  run_until_idle()
+end
+</code></pre>
+
+<p>In long-running applications, the scheduler runs automatically; you do not call <code class="language-plaintext highlighter-rouge">run_until_idle()</code>. <code class="language-plaintext highlighter-rouge">run_until_idle()</code> drains the scheduler to a fixed point (every mailbox empty); its operational rule is in <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.4, and the determinism property it enables (interleaving-free output, an exact byte match interpreted vs compiled) is §4.10.5.</p>
+
+<hr />
+
+<h2 id="actor-identity-self">Actor Identity: <code class="language-plaintext highlighter-rouge">self()</code></h2>
+
+<p>Inside a handler, <code class="language-plaintext highlighter-rouge">self()</code> returns the current actor’s <code class="language-plaintext highlighter-rouge">Pid</code>. Useful for passing yourself as a reply address:</p>
+
+<pre><code class="language-march">on Request(question : String, caller) do
+  let answer = compute_answer(question)
+  send(caller, Answer(answer, self()))
+  state
+end
+</code></pre>
+
+<p>(As of 2026-07-22, <code class="language-plaintext highlighter-rouge">self()</code> typechecks as this actor’s own <code class="language-plaintext highlighter-rouge">Pid[state]</code> (the
+same type <code class="language-plaintext highlighter-rouge">spawn</code> produces for it), so <code class="language-plaintext highlighter-rouge">is_alive(self())</code> and a message field
+explicitly annotated <code class="language-plaintext highlighter-rouge">: Pid</code> both unify cleanly; previously <code class="language-plaintext highlighter-rouge">self()</code> was
+registered as plain <code class="language-plaintext highlighter-rouge">Int</code>, causing a confusing <code class="language-plaintext highlighter-rouge">expected Pid but got Int</code>
+error. A separate, still-open gap: a bare <code class="language-plaintext highlighter-rouge">Pid</code> annotation with no type
+parameter can resolve against the unrelated <code class="language-plaintext highlighter-rouge">GlobalPid.Pid</code> record type
+sharing the same bare name in the flat global namespace, rather than the
+parametric actor <code class="language-plaintext highlighter-rouge">Pid(a)</code> that <code class="language-plaintext highlighter-rouge">spawn</code>/<code class="language-plaintext highlighter-rouge">self()</code> actually produce, leaving
+<code class="language-plaintext highlighter-rouge">caller</code> and reply payloads unannotated, as above, still sidesteps that one.)</p>
+
+<hr />
+
+<h2 id="app-entry-point">App Entry Point</h2>
+
+<p>For long-running applications, use <code class="language-plaintext highlighter-rouge">app</code> instead of (or alongside) <code class="language-plaintext highlighter-rouge">main</code>:</p>
+
+<pre><code class="language-march">mod MyService do
+  actor Worker do
+    state { count : Int }
+    init  { count: 0 }
+    on Tick() do { state with count: state.count + 1 } end
+  end
+
+  app MyService do
+    Supervisor.spec(:one_for_one, [worker(Worker)])
+  end
+end
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">app</code> declaration integrates with the supervision system. See <a href="/docs/supervision/">Supervision</a> for the tutorial, and <a href="https://github.com/march-language/march/blob/main/specs/lang/core-march.md"><code class="language-plaintext highlighter-rouge">core-march.md</code></a> §4.10.7 for the operational rules of restart and epoch invalidation.</p>
+
+<p><strong>How this relates to the <code class="language-plaintext highlighter-rouge">supervise</code> block.</strong> These are two spellings of the same idea.
+The <code class="language-plaintext highlighter-rouge">supervise do strategy one_for_one … Child field end</code> block you put <em>inside an
+ordinary actor</em> (see <a href="/docs/supervision/#declaring-a-supervisor">Supervision</a>) declares
+that actor’s supervised children with a small DSL. An <code class="language-plaintext highlighter-rouge">app</code> body instead evaluates to a
+<code class="language-plaintext highlighter-rouge">Supervisor.Spec</code> <strong>value</strong>: <code class="language-plaintext highlighter-rouge">Supervisor.spec(:one_for_one, [worker(Worker), …])</code> is the
+value-level counterpart of that block, and it defines the application’s single top-level
+supervisor. The two surfaces spell the strategy differently: a bare <code class="language-plaintext highlighter-rouge">one_for_one</code> in
+the <code class="language-plaintext highlighter-rouge">supervise</code> block versus the atom <code class="language-plaintext highlighter-rouge">:one_for_one</code> passed to <code class="language-plaintext highlighter-rouge">Supervisor.spec</code>. Reach
+for <code class="language-plaintext highlighter-rouge">supervise</code> to give an actor children; reach for <code class="language-plaintext highlighter-rouge">app</code> to declare the root of a
+long-running application. The <code class="language-plaintext highlighter-rouge">app</code> / <code class="language-plaintext highlighter-rouge">Supervisor.spec</code> / <code class="language-plaintext highlighter-rouge">worker</code> DSL is
+interpreter-only (see <a href="/docs/supervision/#app-level-entry-point">App-Level Entry Point</a>);
+compiled programs use <code class="language-plaintext highlighter-rouge">supervise</code>.</p>
+
+<p>Supervision observation is an exact match on both backends as of 2026-07-08: the compiled
+supervisor runs each declared child’s <code class="language-plaintext highlighter-rouge">init</code> at <code class="language-plaintext highlighter-rouge">spawn(Sup)</code>, and <code class="language-plaintext highlighter-rouge">get_actor_field(sup, …)</code></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Actor.pid_from_int(c, …)</code> (the surface way to read a supervised child’s pid out of the
+supervisor state; <code class="language-plaintext highlighter-rouge">c</code> is the <code class="language-plaintext highlighter-rouge">Cap(Actor.Introspect)</code> minted by <code class="language-plaintext highlighter-rouge">Actor.introspect</code>) resolve correctly compiled (a real shape-registry lookup and a safe dead-actor
+fallback, respectively, in <code class="language-plaintext highlighter-rouge">runtime/march_extras.c</code>/<code class="language-plaintext highlighter-rouge">runtime/march_runtime.c</code>; no longer
+stubs). <code class="language-plaintext highlighter-rouge">examples/supervision_strategies.march</code> runs clean (exit 0) compiled, exercising
+all three restart strategies (<code class="language-plaintext highlighter-rouge">one_for_one</code>/<code class="language-plaintext highlighter-rouge">one_for_all</code>/<code class="language-plaintext highlighter-rouge">rest_for_one</code>).</li>
+</ul>
+
+<hr />
+
+<h2 id="choosing-a-concurrency-primitive">Choosing a concurrency primitive</h2>
+
+<p>March gives you several concurrency tools, and they all run on the <strong>same M:N green-thread scheduler</strong>; the choice is about <em>shape of problem</em>, not about performance tiers. One mental model to keep them straight:</p>
+
+<blockquote>
+  <p><strong>Actors</strong> = identity + state + mailbox. <strong>Tasks</strong> = structured fork/join. <strong>Flow</strong> = bounded streaming. <strong><code class="language-plaintext highlighter-rouge">pmap</code></strong> = data-parallel collections. <strong>Session channels</strong> = a typed two-party conversation.</p>
+</blockquote>
+
+<p>Pick by what you need:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>If you need…</th>
+      <th>Reach for</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A long-lived stateful entity many parties talk to (counter, connection, cache)</td>
+      <td><strong>actor</strong> (<code class="language-plaintext highlighter-rouge">spawn</code> / <code class="language-plaintext highlighter-rouge">send</code>)</td>
+      <td>Identity + private state + a mailbox; persists across messages and restarts</td>
+    </tr>
+    <tr>
+      <td>To fan out independent work and collect <em>all</em> the results</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.async</code></strong> + <strong><code class="language-plaintext highlighter-rouge">Task.await_many</code></strong></td>
+      <td>Structured fork/join; you await every task</td>
+    </tr>
+    <tr>
+      <td>The <em>first</em> result and want to cancel the losers</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.race</code></strong> / <strong><code class="language-plaintext highlighter-rouge">Task.any</code></strong></td>
+      <td>Returns as soon as one finishes (<code class="language-plaintext highlighter-rouge">any</code> = first success; <code class="language-plaintext highlighter-rouge">race</code> = first to settle)</td>
+    </tr>
+    <tr>
+      <td>Fork tasks that are guaranteed to be cleaned up when the block exits</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Task.scope</code></strong></td>
+      <td>Structured concurrency: no task outlives its scope</td>
+    </tr>
+    <tr>
+      <td>To transform a whole list across cores, identical result to <code class="language-plaintext highlighter-rouge">map</code></td>
+      <td><strong><code class="language-plaintext highlighter-rouge">List.pmap</code></strong> / <strong><code class="language-plaintext highlighter-rouge">pmap_n</code></strong></td>
+      <td>Data-parallel; <code class="language-plaintext highlighter-rouge">pmap_n</code> bounds concurrency for expensive items</td>
+    </tr>
+    <tr>
+      <td>A multi-stage stream where one stage can fall behind a fast producer</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">Flow</code></strong></td>
+      <td>Backpressure: the consumer’s demand caps how far the producer runs ahead</td>
+    </tr>
+    <tr>
+      <td>A strict two-party protocol with a message <em>order</em> the compiler should enforce</td>
+      <td><strong>session channels</strong> (<code class="language-plaintext highlighter-rouge">Chan.*</code>)</td>
+      <td>Linear, typed conversation; wrong-order/use-after-close are compile errors</td>
+    </tr>
+    <tr>
+      <td>Raw, un-managed green-thread spawn (you handle joining yourself)</td>
+      <td><strong><code class="language-plaintext highlighter-rouge">task_spawn</code></strong></td>
+      <td>The low-level primitive <code class="language-plaintext highlighter-rouge">Task.*</code> is built on; prefer <code class="language-plaintext highlighter-rouge">Task.*</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Rules of thumb:</p>
+
+<ul>
+  <li><strong>Default to <code class="language-plaintext highlighter-rouge">Task.async</code> / <code class="language-plaintext highlighter-rouge">await_many</code></strong> for “do these N things concurrently, give me the answers.” It’s the simplest structured option.</li>
+  <li><strong>Default to an actor</strong> the moment there’s <em>mutable state with an identity</em>: something that several callers update over time.</li>
+  <li><strong>Choose <code class="language-plaintext highlighter-rouge">Flow</code> over an unbounded <code class="language-plaintext highlighter-rouge">Task.async_stream</code></strong> when a fast producer could overwhelm a slow downstream stage and pile up in-flight work. See <a href="/docs/flow/">Flow &amp; Backpressure</a>.</li>
+  <li><strong>Choose <code class="language-plaintext highlighter-rouge">pmap</code> over hand-wired tasks</strong> when the input is a list, items are independent, and you want the order-preserving, threshold-managed convenience. See <a href="/docs/parallel-collections/">Parallel Collections</a>.</li>
+  <li><strong>Choose session channels over a bare actor</strong> when two parties run a fixed protocol and ordering correctness matters. See <a href="/docs/session-types/">Session Types</a>.</li>
+</ul>
+
+<hr />
+
+<h2 id="mailbox-limits-and-backpressure">Mailbox Limits and Backpressure</h2>
+
+<p>By default an actor’s mailbox is unbounded; a producer that outruns its consumer grows
+the mailbox without limit. <code class="language-plaintext highlighter-rouge">Actor.set_queue_limit(pid, limit, policy)</code> bounds it:</p>
+
+<pre><code class="language-march">Actor.set_queue_limit(pid, 1000, 3)   -- cap at 1000, block_sender policy
+</code></pre>
+
+<p>Or declare the bound with the actor, so every spawn gets it and no caller has
+to remember the call:</p>
+
+<pre><code class="language-march">actor Worker do
+  state { n : Int }
+  init  { n: 0 }
+  mailbox 1000 drop_old        -- after init, before any supervise block
+  on Work() do ... end
+end
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">mailbox N policy</code> takes the policy by name — <code class="language-plaintext highlighter-rouge">drop_new</code>, <code class="language-plaintext highlighter-rouge">drop_old</code> or
+<code class="language-plaintext highlighter-rouge">block_sender</code> — and lowers to <code class="language-plaintext highlighter-rouge">Actor.set_queue_limit(pid, N, policy)</code> right
+after each <code class="language-plaintext highlighter-rouge">spawn(Worker)</code>. <code class="language-plaintext highlighter-rouge">block_sender</code> is compiled-only there too: under the
+interpreter the spawn fails with the same message the call does.</p>
+
+<p><code class="language-plaintext highlighter-rouge">policy</code> is one of:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Value</th>
+      <th>Policy</th>
+      <th>Behavior when the mailbox is full</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">0</code></td>
+      <td>unbounded (default)</td>
+      <td>never rejects</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">1</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drop_new</code></td>
+      <td>the incoming message is discarded</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">2</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drop_old</code></td>
+      <td>the oldest queued message is evicted to make room</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">3</code></td>
+      <td><code class="language-plaintext highlighter-rouge">block_sender</code></td>
+      <td>the sender parks until space frees up (compiled backend only; the interpreter refuses it at the call rather than silently running unbounded)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Dropped messages (policies <code class="language-plaintext highlighter-rouge">1</code>/<code class="language-plaintext highlighter-rouge">2</code>) are counted in <code class="language-plaintext highlighter-rouge">Scheduler.dropped_messages()</code>. The
+interpreter’s single-threaded eager scheduler cannot park a sender without deadlocking, so
+it does not implement policy <code class="language-plaintext highlighter-rouge">3</code>: <code class="language-plaintext highlighter-rouge">Actor.set_queue_limit(pid, n, 3)</code> and a <code class="language-plaintext highlighter-rouge">mailbox N
+block_sender</code> declaration both fail under the interpreter with an error naming the
+alternatives, rather than silently running unbounded (<code class="language-plaintext highlighter-rouge">lib/eval/eval_builtins.ml</code>,
+<code class="language-plaintext highlighter-rouge">actor_set_mailbox_limit</code>; resolved 2026-09-14).</p>
+
+<p>Under a drop policy, a dropped <code class="language-plaintext highlighter-rouge">Actor.call</code> request or its reply is impossible to tell from
+a lost reply at the caller; both surface as a timeout <code class="language-plaintext highlighter-rouge">Err</code> from <code class="language-plaintext highlighter-rouge">Actor.call</code>. Callers
+that rely on <code class="language-plaintext highlighter-rouge">Actor.call</code> against a bounded actor should prefer the <code class="language-plaintext highlighter-rouge">block_sender</code> policy
+(<code class="language-plaintext highlighter-rouge">3</code>) instead, so no request or reply is silently dropped at any point.</p>
+
+<hr />
+
+<h2 id="scheduler-observability">Scheduler Observability</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">Scheduler</code> module exposes runtime counters for load-shedding decisions: a
+supervisor or ingress actor can poll them to decide when to shed:</p>
+
+<pre><code class="language-march">if Scheduler.live_procs() &gt; 10000 do
+  println("shedding: too many live actors")
+else
+  dispatch_work()
+end
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Returns</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Scheduler.live_procs()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Green-thread processes currently alive (actors + tasks + main)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Scheduler.total_spawned()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Processes spawned over the whole program lifetime</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Scheduler.runq_depth()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Cross-thread global run-queue depth (instantaneous)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Scheduler.dropped_messages()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Messages dropped by bounded-mailbox overflow policies</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Scheduler.stat(i)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int</code></td>
+      <td>Raw stat by index (<code class="language-plaintext highlighter-rouge">0</code>=live procs, <code class="language-plaintext highlighter-rouge">1</code>=total spawned, <code class="language-plaintext highlighter-rouge">2</code>=runq depth, <code class="language-plaintext highlighter-rouge">3</code>=stack-alloc failures, <code class="language-plaintext highlighter-rouge">4</code>=dropped messages, <code class="language-plaintext highlighter-rouge">5</code>=stacks recycled, <code class="language-plaintext highlighter-rouge">6</code>=pending timers; unknown index reads <code class="language-plaintext highlighter-rouge">0</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.top_by_mailbox(c, n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List((Pid, Int))</code></td>
+      <td>The <code class="language-plaintext highlighter-rouge">n</code> deepest mailboxes right now, deepest first, as <code class="language-plaintext highlighter-rouge">(pid, depth)</code> pairs; <code class="language-plaintext highlighter-rouge">c : Cap(Actor.Introspect)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.over_mailbox(c, t)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List((Pid, Int))</code></td>
+      <td>Every actor whose mailbox is deeper than <code class="language-plaintext highlighter-rouge">t</code>, in spawn order: the growing-mailbox alarm, polled</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The interpreted backend reports the subset that’s meaningful without the C scheduler
+(live actor count); everything else reads <code class="language-plaintext highlighter-rouge">0</code> on both backends rather than erroring.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Scheduler</code> answers “is the system behind?”. “<em>Which</em> actor is behind?” is
+<code class="language-plaintext highlighter-rouge">Actor.top_by_mailbox(c, n)</code> and <code class="language-plaintext highlighter-rouge">Actor.over_mailbox(c, threshold)</code>, built on
+<code class="language-plaintext highlighter-rouge">Actor.list(c)</code> and <code class="language-plaintext highlighter-rouge">mailbox_size</code> (<code class="language-plaintext highlighter-rouge">c</code> from <code class="language-plaintext highlighter-rouge">Actor.introspect</code>, see
+<a href="#introspection-is-a-capability">Introspection is a capability</a>): both are snapshots (an actor can die or drain between the walk and
+your reaction) and cost one pass over every live actor, so poll them from a timer, not a
+hot path. There is no push-style alarm that fires when a queue crosses a threshold, and no
+per-actor state inspection or tracing; see
+<code class="language-plaintext highlighter-rouge">specs/todos/2026-08-12-per-actor-introspection-and-alarms.md</code>.</p>
+
+<hr />
+
+<h2 id="builtins-reference">Builtins Reference</h2>
+
+<p>Backends: <strong>both</strong> = an exact byte match interpreted vs compiled. As of 2026-07-18 this covers
+every builtin below, including the capability and supervision-observation plane that used
+to diverge or crash compiled (see the compiled-actor status note at the top of this page).</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Builtin</th>
+      <th>Signature</th>
+      <th>Backends</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">spawn(Actor)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>both</td>
+      <td>Start a new actor (literal actor name only)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">send(pid, msg)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Option(())</code></td>
+      <td>both</td>
+      <td>Send a message; <code class="language-plaintext highlighter-rouge">None</code> if actor is dead</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">receive()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Msg</code></td>
+      <td>both</td>
+      <td>Pop the next mailbox message (only the first <code class="language-plaintext highlighter-rouge">receive()</code> per handler may block)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">kill(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>both</td>
+      <td>Stop an actor immediately (queue dropped, <code class="language-plaintext highlighter-rouge">on_stop</code> not run)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.stop(pid, timeout_ms)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Bool</code></td>
+      <td>both</td>
+      <td>Graceful stop: refuse new messages, drain, run <code class="language-plaintext highlighter-rouge">on_stop</code>, die Normal; see <a href="#stopping-an-actor">Stopping an Actor</a></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.is_draining(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Bool</code></td>
+      <td>both</td>
+      <td>Stopping but not yet dead</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">is_alive(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Bool</code></td>
+      <td>both</td>
+      <td>Check if actor is running (registry lookup)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">monitor(watcher, target)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Int</code></td>
+      <td>both</td>
+      <td>Deliver <code class="language-plaintext highlighter-rouge">Down(ref, target_pid, reason)</code> on target exit; local reasons are <code class="language-plaintext highlighter-rouge">Normal</code>, <code class="language-plaintext highlighter-rouge">Killed</code>, and <code class="language-plaintext highlighter-rouge">Crash(String)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">self()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>both</td>
+      <td>Current actor’s Pid</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">run_until_idle()</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>both</td>
+      <td>Drain the scheduler to a fixed point (interpreter / tests)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">get_cap(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Option(Cap(Msg))</code></td>
+      <td>both</td>
+      <td>Obtain an epoch-tagged capability; <code class="language-plaintext highlighter-rouge">None</code> for a dead/unknown pid</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">send_checked(cap, msg)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ :ok \| :error</code></td>
+      <td>both</td>
+      <td>Epoch-validated send; checks revocation, epoch match, and liveness (payload is checked for non-sendable types at construction, same rule as <code class="language-plaintext highlighter-rouge">send</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">revoke_cap(cap)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Atom</code></td>
+      <td>both</td>
+      <td>Revoke a capability; a later <code class="language-plaintext highlighter-rouge">send_checked</code> on it returns <code class="language-plaintext highlighter-rouge">:error</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">is_cap_valid(cap)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Bool</code></td>
+      <td>both</td>
+      <td>Boolean form of the epoch/revocation/liveness check</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.pid_from_int(c, n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Pid</code></td>
+      <td>both</td>
+      <td>Convert Int to Pid; <code class="language-plaintext highlighter-rouge">c : Cap(Actor.Introspect)</code> from <code class="language-plaintext highlighter-rouge">Actor.introspect(io)</code> (an unknown index resolves to a safe already-dead sentinel; the raw <code class="language-plaintext highlighter-rouge">pid_of_int</code> builtin is stdlib-internal)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pid_to_int(pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Int</code></td>
+      <td>both</td>
+      <td>The inverse: a Pid’s spawn index, the <code class="language-plaintext highlighter-rouge">N</code> in its <code class="language-plaintext highlighter-rouge">Pid(N)</code> display (what <code class="language-plaintext highlighter-rouge">GlobalPid.make</code> takes for a local actor)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">get_actor_field(pid, name)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Option(a)</code></td>
+      <td>both</td>
+      <td>Read an actor’s state field via the runtime shape registry</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">task_spawn(fn)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Task(a)</code></td>
+      <td>both</td>
+      <td>Spawn a green-thread task (use <code class="language-plaintext highlighter-rouge">Task.async</code> instead)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">task_await(t)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ Result(a, String)</code></td>
+      <td>both</td>
+      <td>Await a task (use <code class="language-plaintext highlighter-rouge">Task.await</code> instead)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.set_queue_limit(pid, limit, policy)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>both (policy <code class="language-plaintext highlighter-rouge">3</code> is compiled-only; interpreted treats it as unbounded)</td>
+      <td>Bound an actor’s mailbox; see <a href="#mailbox-limits-and-backpressure">Mailbox Limits and Backpressure</a></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.send_after(pid, msg, delay_ms)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ TimerRef</code></td>
+      <td>both</td>
+      <td>Schedule <code class="language-plaintext highlighter-rouge">msg</code> for delivery to <code class="language-plaintext highlighter-rouge">pid</code> after <code class="language-plaintext highlighter-rouge">delay_ms</code>. Built on the same timer heap that backs <code class="language-plaintext highlighter-rouge">Actor.call</code>’s timeout and supervisor restart backoff. A pending timer does not keep <code class="language-plaintext highlighter-rouge">run_until_idle()</code> waiting.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Actor.cancel_timer(ref)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">→ ()</code></td>
+      <td>both</td>
+      <td>Cancel a pending <code class="language-plaintext highlighter-rouge">send_after</code> timer. Safe to call at any time, including after the timer already fired or was already cancelled (both are no-ops).</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>The concurrency and distribution docs form a journey: actors are the foundation; each step below builds on them:</p>
+
+<ul>
+  <li><a href="/docs/supervision/">Supervision Trees</a>: fault-tolerant hierarchies with automatic restart, ending in a capstone crash-tolerant job processor.</li>
+  <li><a href="/docs/parallel-collections/">Parallel Collections</a>: <code class="language-plaintext highlighter-rouge">pmap</code> / <code class="language-plaintext highlighter-rouge">pmap_n</code> for data-parallel work on the same scheduler.</li>
+  <li><a href="/docs/flow/">Flow &amp; Backpressure</a>: bounded streaming pipelines when a fast producer outruns a slow consumer.</li>
+  <li><a href="/docs/session-types/">Session Types</a>: typed two-party protocols with a message order the compiler enforces.</li>
+  <li><a href="/docs/clustering/">Clustering &amp; RPC</a>: take a supervised actor app from one node to a cluster with cross-node calls.</li>
+  <li><a href="/docs/hot-code-reload/">Hot Code Reload</a>: deploy new code to a running server without restarting; actors migrate their state on the fly.</li>
+  <li><a href="/docs/linear-types/">Linear Types</a>: how linear types interact with message passing.</li>
+  <li><a href="/docs/stdlib/Task.html">Task stdlib</a>: full Task API reference.</li>
+  <li><a href="/docs/overload-resilience/">Overload &amp; Resilience</a>: the practical guide to mailbox limits, load shedding, deadlines, and restart backoff working together.</li>
+</ul>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1790383577"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>
