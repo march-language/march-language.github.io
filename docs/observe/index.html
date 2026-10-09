@@ -1,0 +1,4065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Observing a running node — March</title>
+  <meta name="description" content="A statically-typed, capability-based functional language in the ML/Elixir tradition, with a compile-time effect system and native-code compilation via LLVM.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Upgrading</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-4-0/" class="d-sidebar-link">Upgrading to 0.4.0</a>
+        
+      
+        
+      <a href="/docs/tetris-playground/" class="d-sidebar-link">Tetris Playground</a>
+        
+      
+        
+      <a href="/docs/upgrading-to-0-3-0/" class="d-sidebar-link">Upgrading to 0.3.0</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/cluster-certificates/" class="d-sidebar-link">Cluster Certificates</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/choreography/" class="d-sidebar-link">Choreography</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      <a href="/docs/topology/" class="d-sidebar-link">Topology</a>
+        
+      
+        
+      <a href="/docs/lab/" class="d-sidebar-link">Multi-host Lab</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/observe/" class="d-sidebar-link active">Observing a running node</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <h1 id="observing-a-running-node">Observing a running node</h1>
+
+<p>A compiled March program can answer questions about itself while it runs: which
+actors exist, how deep their mailboxes are, who is crashing, how busy each
+scheduler is, how much memory is live, and which hot-reload epochs are still
+pinned. It answers on a Unix socket, read-only, and <code class="language-plaintext highlighter-rouge">forge</code> has four commands
+on top of it. This page is for the person on call: how to turn it on, what every
+number means, and what to do when one looks wrong.</p>
+
+<ul>
+  <li><a href="#turning-it-on">Turning it on</a></li>
+  <li><a href="#the-protocol">The protocol</a></li>
+  <li><a href="#the-verbs">The verbs</a></li>
+  <li><a href="#the-forge-commands">The forge commands</a></li>
+  <li><a href="#reading-diagnose-findings">Reading diagnose findings</a></li>
+  <li><a href="#from-inside-a-program-recon-and-diagnose">From inside a program: Recon and Diagnose</a></li>
+  <li><a href="#walkthrough-a-node-is-slow-what-now">Walkthrough: a node is slow, what now</a></li>
+  <li><a href="#interpreter-vs-compiled-and-what-is-not-there-yet">Interpreter vs compiled, and what is not there yet</a></li>
+</ul>
+
+<p>Everything here is the <strong>observe tier</strong>: it reports counts, states and kinds,
+never message contents, actor state, or panic text. Reading actor state is a
+separate, later debug tier (see the <a href="#what-is-not-there-yet">end of the page</a>).</p>
+
+<hr />
+
+<h2 id="turning-it-on">Turning it on</h2>
+
+<p>Set one environment variable when you start the program:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">MARCH_OBSERVE_SOCKET</span><span class="o">=</span>/run/myapp/observe.sock ./myapp
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_OBSERVE_SOCKET=&lt;path&gt;</code></td>
+      <td>Serve the observe socket at <code class="language-plaintext highlighter-rouge">&lt;path&gt;</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_HOT_RELOAD_SOCKET=&lt;path&gt;</code></td>
+      <td>If <code class="language-plaintext highlighter-rouge">MARCH_OBSERVE_SOCKET</code> is not set, the observe socket is served at <code class="language-plaintext highlighter-rouge">&lt;path&gt;.observe</code>, next to the reload socket. This is the path <code class="language-plaintext highlighter-rouge">forge</code> uses for <code class="language-plaintext highlighter-rouge">[hot-reload]</code> hosts.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_OBSERVE_IDLE_MS=&lt;ms&gt;</code></td>
+      <td>How long a connected client may stay silent before it is dropped (default 5000).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_NODE_NAME=&lt;name&gt;</code></td>
+      <td>The <code class="language-plaintext highlighter-rouge">node</code> field of every reply (default <code class="language-plaintext highlighter-rouge">pid:&lt;os pid&gt;</code>).</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Any compiled program serves it: no compiler flag is needed (the server is
+started by the runtime’s scheduler entry, <code class="language-plaintext highlighter-rouge">runtime/march_observe.c</code>). With
+neither socket variable set, nothing is started. The interpreter does not serve
+a socket; it answers the same questions in-process (see
+<a href="#from-inside-a-program-recon-and-diagnose">Recon</a>).</p>
+
+<p><strong>Permissions.</strong> The socket is created mode <code class="language-plaintext highlighter-rouge">0600</code>: only the user the program
+runs as (and root) can connect. The filesystem permissions are the
+authentication; there is no other. It is a separate socket from the hot-reload
+socket, with its own threads, so an observer can never block or delay a deploy.</p>
+
+<p><strong>The path.</strong> A stale socket left at the path by an earlier run is replaced. Any
+other kind of file there is left alone, the server does not start, and the
+program logs <code class="language-plaintext highlighter-rouge">march: observe socket path exists and is not a socket</code>. A path
+longer than the platform’s Unix-socket limit (103 bytes on macOS, 107 on Linux)
+is refused with a log line too. In both cases the program itself keeps running.
+The socket is unlinked when the program exits.</p>
+
+<p><strong>Limits.</strong> At most 8 connections are served at once; the ninth gets
+<code class="language-plaintext highlighter-rouge">"error":"busy"</code>. At most two windowed requests (<code class="language-plaintext highlighter-rouge">TOP</code> over a window) run at
+once, so they cannot take every connection. A request line is at most 4096
+bytes.</p>
+
+<p><strong>What it costs.</strong> Nothing runs until a client connects: one accept thread
+waits on the socket. The counters the verbs report (dispatches, messages in and
+out, last run time) are always kept, socket or not. Measured on Linux arm64
+with <code class="language-plaintext highlighter-rouge">bench/actors/fanin_flood.march --opt 2</code> (a message-bound microbenchmark),
+the counters cost about <strong>+0.9%</strong> at one scheduler (+0.92%, 95% interval
++0.73% to +1.16%, against the pre-counter runtime; later review fixes added
+about 0.3% more), and nothing measurable at eight schedulers (every 8-scheduler
+leg was inside the A/A noise). An open, idle socket measured +0.77% (1
+scheduler) and -0.54% (8 schedulers), both inside the noise. A query walks the
+actor table once: about 9-11 ms per 100 000 actors for the walk, about 20 ms for
+a full <code class="language-plaintext highlighter-rouge">ACTORS</code> reply. Details: <code class="language-plaintext highlighter-rouge">specs/progress/2026-10-02-observe-r2-counters-crash-ring.md</code>
+and <code class="language-plaintext highlighter-rouge">specs/progress/2026-10-02-observe-r1-snapshot-verbs.md</code>.</p>
+
+<hr />
+
+<h2 id="the-protocol">The protocol</h2>
+
+<p>Connect, send <strong>one line</strong>, read <strong>one line</strong> of JSON, and the server closes the
+connection. <code class="language-plaintext highlighter-rouge">\r\n</code> line endings are accepted. Verb names are upper case and
+case-sensitive over the raw socket (<code class="language-plaintext highlighter-rouge">ping</code> is an <code class="language-plaintext highlighter-rouge">unknown_verb</code>; <code class="language-plaintext highlighter-rouge">forge observe</code>
+upper-cases the verb for you).</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo </span>PING | nc <span class="nt">-U</span> /run/myapp/observe.sock
+</code></pre></div></div>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"proto"</span><span class="p">:</span><span class="s2">"march.observe/1"</span><span class="p">,</span><span class="nl">"node"</span><span class="p">:</span><span class="s2">"web-1"</span><span class="p">,</span><span class="nl">"at_ms"</span><span class="p">:</span><span class="mi">1791167992809</span><span class="p">,</span><span class="nl">"took_us"</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nl">"truncated"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nl">"data"</span><span class="p">:</span><span class="s2">"pong"</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Every reply is this envelope:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">proto</code></td>
+      <td>Always <code class="language-plaintext highlighter-rouge">"march.observe/1"</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">node</code></td>
+      <td><code class="language-plaintext highlighter-rouge">MARCH_NODE_NAME</code>, or <code class="language-plaintext highlighter-rouge">pid:&lt;os pid&gt;</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">at_ms</code></td>
+      <td>Wall-clock time of the reply, Unix milliseconds.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">took_us</code></td>
+      <td>How long the verb took on the node, microseconds (includes any window it slept).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">truncated</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if the verb’s output passed the 16 MB reply limit; <code class="language-plaintext highlighter-rouge">data</code> is then <code class="language-plaintext highlighter-rouge">null</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">data</code></td>
+      <td>The verb’s answer. Present on success.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">error</code></td>
+      <td>An error code, in place of <code class="language-plaintext highlighter-rouge">data</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Error codes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">unknown_verb</code></td>
+      <td>No such verb (check the case). <code class="language-plaintext highlighter-rouge">HELP</code> lists them.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">bad_args</code></td>
+      <td>The arguments did not parse: an unknown sort or section, a number out of range, an extra word.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">not_found</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ACTOR &lt;pid&gt;</code> for a pid that was never spawned. A pid that lived and died is not an error; it answers with <code class="language-plaintext highlighter-rouge">alive: false</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">busy</code></td>
+      <td>Eight connections are already open, or two windowed <code class="language-plaintext highlighter-rouge">TOP</code>s are already running. Retry.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">line_too_long</code></td>
+      <td>The request line was over 4096 bytes.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">windowed_in_process</code></td>
+      <td>A windowed <code class="language-plaintext highlighter-rouge">SCHED</code> or <code class="language-plaintext highlighter-rouge">TOP</code> was asked in-process (through <code class="language-plaintext highlighter-rouge">Recon</code>/<code class="language-plaintext highlighter-rouge">observe_query</code>): the window would sleep a scheduler thread. <code class="language-plaintext highlighter-rouge">Recon</code> takes its windows differently; you only see this if you build the request yourself.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">out_of_memory</code></td>
+      <td>The node could not allocate the reply.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="the-verbs">The verbs</h2>
+
+<p><code class="language-plaintext highlighter-rouge">HELP</code> lists every verb the node serves with its arguments and tier:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="s2">"ACTORS"</span><span class="p">,</span><span class="nl">"tier"</span><span class="p">:</span><span class="s2">"observe"</span><span class="p">,</span><span class="nl">"args"</span><span class="p">:</span><span class="s2">"[mbox|status|epoch|pid] [n]"</span><span class="p">,</span><span class="nl">"help"</span><span class="p">:</span><span class="s2">"live actors, sorted, at most n (default 100, max 10000)"</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Verb</th>
+      <th>Arguments</th>
+      <th>Answers</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">HELP</code></td>
+      <td> </td>
+      <td>the verb table</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">PING</code></td>
+      <td> </td>
+      <td><code class="language-plaintext highlighter-rouge">"pong"</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ACTORS</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[mbox\|status\|epoch\|pid] [n]</code></td>
+      <td>live actors, sorted, at most <code class="language-plaintext highlighter-rouge">n</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ACTOR</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;pid&gt;</code></td>
+      <td>one actor in detail, alive or dead</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TREE</code></td>
+      <td> </td>
+      <td>the supervision tree and the unsupervised actors</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">NAMES</code></td>
+      <td> </td>
+      <td>registered names and their pids</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SCHED</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[window_ms]</code></td>
+      <td>scheduler threads, utilisation, scheduler counters</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">MEM</code></td>
+      <td> </td>
+      <td>RSS, peak RSS, live heap objects, queued messages</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EPOCHS</code></td>
+      <td> </td>
+      <td>hot-reload epochs, pins, dispatch slots, reload counters</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CRASHES</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[n]</code></td>
+      <td>the last <code class="language-plaintext highlighter-rouge">n</code> crashes, without messages</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TOP</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;attr&gt; &lt;n&gt; [window_ms]</code></td>
+      <td>the <code class="language-plaintext highlighter-rouge">n</code> actors highest on one attribute</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SNAPSHOT</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[sections]</code></td>
+      <td>several of the above from one actor walk</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">STATE</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;sig&gt; nonce:… not_after_ms:… pid:&lt;p&gt; [timeout_ms:&lt;t&gt;]</code></td>
+      <td>debug tier: one actor’s state (<a href="#the-debug-tier-signed-requests">below</a>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CRASHES_FULL</code></td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;sig&gt; nonce:… not_after_ms:… [n:&lt;n&gt;]</code></td>
+      <td>debug tier: <code class="language-plaintext highlighter-rouge">CRASHES</code> with each crash’s message</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The example replies below are real output from
+<code class="language-plaintext highlighter-rouge">test/native/observe_snapshot.march</code> (3 supervisors of 4 children each, 5 bare
+actors, one of them stalled with 500 messages queued, one supervised child
+crashed), trimmed to fit.</p>
+
+<h3 id="actors">ACTORS</h3>
+
+<p><code class="language-plaintext highlighter-rouge">ACTORS [mbox|status|epoch|pid] [n]</code>. Default <code class="language-plaintext highlighter-rouge">mbox 100</code>; <code class="language-plaintext highlighter-rouge">n</code> is 1 to 10 000;
+the two words may come in either order.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Sort</th>
+      <th>Order</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">mbox</code></td>
+      <td>deepest waiting work (<code class="language-plaintext highlighter-rouge">mbox + held</code>) first</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">status</code></td>
+      <td>running, then runnable, then waiting, then exiting; deepest mailbox within each</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">epoch</code></td>
+      <td>oldest code epoch first (the actors holding a drain back)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pid</code></td>
+      <td>ascending pid</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"total"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="nl">"shown"</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span><span class="nl">"sort"</span><span class="p">:</span><span class="s2">"mbox"</span><span class="p">,</span><span class="nl">"actors"</span><span class="p">:[</span><span class="w">
+  </span><span class="p">{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">15</span><span class="p">,</span><span class="nl">"type"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"names"</span><span class="p">:[</span><span class="s2">"hot"</span><span class="p">],</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"mbox"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"user_mbox"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"held"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+   </span><span class="nl">"mbox_limit"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"mbox_policy"</span><span class="p">:</span><span class="s2">"unbounded"</span><span class="p">,</span><span class="nl">"code_epoch"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"cap_epoch"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"sched"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"pinned"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="w">
+   </span><span class="nl">"draining"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nl">"parent"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"children"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"spawned_by"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"slices"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"msgs_in"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"msgs_out"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+   </span><span class="nl">"crashes"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"child_crashes"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"idle_ms"</span><span class="p">:</span><span class="mi">9592</span><span class="p">},</span><span class="w">
+  </span><span class="err">...</span><span class="p">]}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">total</code> is every live actor; <code class="language-plaintext highlighter-rouge">shown</code> is how many rows follow. Every actor row,
+here and in <code class="language-plaintext highlighter-rouge">ACTOR</code> and <code class="language-plaintext highlighter-rouge">SNAPSHOT</code>, has these fields:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pid</code></td>
+      <td>The pid index (what <code class="language-plaintext highlighter-rouge">pid_to_int</code> returns). Pids are never reused.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">type</code></td>
+      <td>The actor type’s name, <strong>only in builds compiled with <code class="language-plaintext highlighter-rouge">--hot-reload</code></strong> (the name comes from the dispatch table). <code class="language-plaintext highlighter-rouge">null</code> otherwise.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">names</code></td>
+      <td>Names it is registered under (<code class="language-plaintext highlighter-rouge">Actor.register</code>), possibly empty.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">status</code></td>
+      <td><code class="language-plaintext highlighter-rouge">running</code> (on a scheduler now), <code class="language-plaintext highlighter-rouge">runnable</code> (queued to run), <code class="language-plaintext highlighter-rouge">waiting</code> (blocked: waiting for a message, a timer, a reply or I/O), <code class="language-plaintext highlighter-rouge">exiting</code> (finished, death not yet processed), <code class="language-plaintext highlighter-rouge">starting</code> (spawned, not yet run once).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">mbox</code></td>
+      <td>Messages queued in its mailbox, user and control messages together.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">user_mbox</code></td>
+      <td>The user messages among them.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">held</code></td>
+      <td>Messages an <code class="language-plaintext highlighter-rouge">Actor.call</code> has taken off the mailbox while this actor waits for the reply. They go back on the mailbox after the reply. An actor stuck in a slow call shows <code class="language-plaintext highlighter-rouge">mbox: 0</code> and a large <code class="language-plaintext highlighter-rouge">held</code>; the <code class="language-plaintext highlighter-rouge">mbox</code> sorts and <code class="language-plaintext highlighter-rouge">MEM</code> count <code class="language-plaintext highlighter-rouge">mbox + held</code> as its waiting work. (<code class="language-plaintext highlighter-rouge">mailbox_size(pid)</code> in March code still reads the mailbox alone.)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">mbox_limit</code></td>
+      <td>Its mailbox limit, <code class="language-plaintext highlighter-rouge">0</code> for unbounded.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">mbox_policy</code></td>
+      <td>What happens at the limit: <code class="language-plaintext highlighter-rouge">unbounded</code>, <code class="language-plaintext highlighter-rouge">block</code> (the sender waits), <code class="language-plaintext highlighter-rouge">drop_new</code>, <code class="language-plaintext highlighter-rouge">drop_old</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">code_epoch</code></td>
+      <td>The hot-reload code epoch the actor is running (1 in a program that has never been reloaded).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">cap_epoch</code></td>
+      <td>The pid’s capability epoch, bumped when a supervisor respawns the slot.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sched</code></td>
+      <td>The scheduler that last ran it, <code class="language-plaintext highlighter-rouge">null</code> if none has.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pinned</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if it may only run on scheduler 0 (the process main thread).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">draining</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> while it is being stopped gracefully: new sends are refused, the queue is being finished.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">parent</code></td>
+      <td>Its supervisor’s pid, <code class="language-plaintext highlighter-rouge">null</code> when unsupervised.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">children</code></td>
+      <td>How many supervised children it has (greater than 0: it is a supervisor).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">spawned_by</code></td>
+      <td>The pid of the actor that spawned it, <code class="language-plaintext highlighter-rouge">null</code> if it was spawned from outside an actor (e.g. from <code class="language-plaintext highlighter-rouge">main</code>).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">slices</code></td>
+      <td>Times it has been dispatched (run), since spawn.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">msgs_in</code></td>
+      <td>User messages it has received, since spawn.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">msgs_out</code></td>
+      <td>Messages it has sent that were enqueued, since spawn, including <code class="language-plaintext highlighter-rouge">Actor.call</code> requests and replies, and sends to other nodes (<code class="language-plaintext highlighter-rouge">NodeSend</code>, <code class="language-plaintext highlighter-rouge">Node</code>). Sends from a task or from <code class="language-plaintext highlighter-rouge">main</code> do not appear: they are not actors and have no row.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">crashes</code></td>
+      <td>Crash-ring entries for this pid in the last hour. A restarted child gets a new pid, so this is usually 0 on live rows; see <code class="language-plaintext highlighter-rouge">child_crashes</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">child_crashes</code></td>
+      <td>Crash-ring entries in the last hour whose supervisor is this pid: where a crash-looping slot’s count lands.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">idle_ms</code></td>
+      <td>Milliseconds since it last ran (1 ms resolution), <code class="language-plaintext highlighter-rouge">null</code> if it never has.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code> and <code class="language-plaintext highlighter-rouge">msgs_out</code> are cumulative. For a rate, use <code class="language-plaintext highlighter-rouge">TOP</code> with a
+window.</p>
+
+<h3 id="actor">ACTOR</h3>
+
+<p><code class="language-plaintext highlighter-rouge">ACTOR &lt;pid&gt;</code>: one actor in detail.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nl">"alive"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nl">"cap_epoch"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"actor"</span><span class="p">:{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nl">"names"</span><span class="p">:[</span><span class="s2">"sup_one"</span><span class="p">],</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"children"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nl">"child_crashes"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">},</span><span class="w">
+ </span><span class="nl">"children"</span><span class="p">:[</span><span class="mi">20</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span><span class="w">
+ </span><span class="nl">"spawned"</span><span class="p">:[],</span><span class="w">
+ </span><span class="nl">"supervisor"</span><span class="p">:{</span><span class="nl">"strategy"</span><span class="p">:</span><span class="s2">"one_for_one"</span><span class="p">,</span><span class="nl">"max_restarts"</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span><span class="nl">"window_secs"</span><span class="p">:</span><span class="mi">60</span><span class="p">,</span><span class="w">
+               </span><span class="nl">"restarts_held"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"restart_ages_ms"</span><span class="p">:[</span><span class="mi">15179</span><span class="p">]},</span><span class="w">
+ </span><span class="nl">"terminal"</span><span class="p">:</span><span class="kc">null</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">alive</code>, <code class="language-plaintext highlighter-rouge">actor</code></td>
+      <td>Whether it is live, and its row (above) if so; <code class="language-plaintext highlighter-rouge">actor</code> is <code class="language-plaintext highlighter-rouge">null</code> when dead.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">children</code></td>
+      <td>Its supervised children’s pids, in <code class="language-plaintext highlighter-rouge">supervise</code>-block order.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">spawned</code></td>
+      <td>Unsupervised actors it spawned that are still alive.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">supervisor</code></td>
+      <td>For a supervisor: its strategy (<code class="language-plaintext highlighter-rouge">one_for_one</code>, <code class="language-plaintext highlighter-rouge">one_for_all</code>, <code class="language-plaintext highlighter-rouge">rest_for_one</code>), <code class="language-plaintext highlighter-rouge">max_restarts</code> within <code class="language-plaintext highlighter-rouge">window_secs</code>, how many restarts are currently inside the window (<code class="language-plaintext highlighter-rouge">restarts_held</code>), and their ages (up to 16). <code class="language-plaintext highlighter-rouge">null</code> otherwise.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">terminal</code></td>
+      <td>For a dead actor: <code class="language-plaintext highlighter-rouge">{"kind": "Crash" \| "Killed" \| "Normal"}</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A dead actor answers with the kind of death and nothing else:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"alive"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nl">"cap_epoch"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"actor"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"children"</span><span class="p">:[],</span><span class="nl">"spawned"</span><span class="p">:[],</span><span class="nl">"supervisor"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"terminal"</span><span class="p">:{</span><span class="nl">"kind"</span><span class="p">:</span><span class="s2">"Crash"</span><span class="p">}}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The panic message is never shown here or anywhere in the observe tier: panic
+strings can carry payloads (tokens, user data). It is kept in the node’s crash
+ring for the planned debug tier.</p>
+
+<h3 id="tree">TREE</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"total"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"roots"</span><span class="p">:[{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nl">"type"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"names"</span><span class="p">:[</span><span class="s2">"sup_one"</span><span class="p">],</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"mbox"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"link"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="w">
+           </span><span class="nl">"children"</span><span class="p">:[{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"mbox"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"link"</span><span class="p">:</span><span class="s2">"supervised"</span><span class="p">,</span><span class="nl">"children"</span><span class="p">:[]},</span><span class="w"> </span><span class="err">...</span><span class="p">]},</span><span class="w"> </span><span class="err">...</span><span class="p">],</span><span class="w">
+ </span><span class="nl">"unsupervised"</span><span class="p">:[</span><span class="mi">15</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="mi">18</span><span class="p">,</span><span class="mi">19</span><span class="p">],</span><span class="w">
+ </span><span class="nl">"truncated"</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>A root is an actor with no supervisor that supervises or spawned something live.
+Children nest under their supervisor (<code class="language-plaintext highlighter-rouge">link: "supervised"</code>), or, if
+unsupervised, under the live actor that spawned them (<code class="language-plaintext highlighter-rouge">link: "spawned"</code>).
+Actors in neither role are listed by pid in <code class="language-plaintext highlighter-rouge">unsupervised</code>. A node’s <code class="language-plaintext highlighter-rouge">mbox</code> here
+is waiting work (<code class="language-plaintext highlighter-rouge">mbox + held</code>). The tree is cut at 64 levels or 10 000 nodes,
+and <code class="language-plaintext highlighter-rouge">truncated</code> says so.</p>
+
+<h3 id="names">NAMES</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"names"</span><span class="p">:[{</span><span class="nl">"name"</span><span class="p">:</span><span class="s2">"hot"</span><span class="p">,</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">15</span><span class="p">},{</span><span class="nl">"name"</span><span class="p">:</span><span class="s2">"sup_one"</span><span class="p">,</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">4</span><span class="p">}]}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Sorted by name. Local registrations only (no global registry).</p>
+
+<h3 id="sched">SCHED</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SCHED [window_ms]</code>: default 200, at most 5000. With a window the observe thread
+samples each scheduler’s idle time, sleeps the window, samples again, and
+reports utilisation over it. <code class="language-plaintext highlighter-rouge">SCHED 0</code> reports lifetime figures only and does
+not sleep.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"schedulers"</span><span class="p">:</span><span class="mi">14</span><span class="p">,</span><span class="nl">"window_ms"</span><span class="p">:</span><span class="mi">200</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"threads"</span><span class="p">:[{</span><span class="nl">"id"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"started"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nl">"entered"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nl">"dispatches"</span><span class="p">:</span><span class="mi">23</span><span class="p">,</span><span class="nl">"idle_polls"</span><span class="p">:</span><span class="mi">8683</span><span class="p">,</span><span class="nl">"idle_ms"</span><span class="p">:</span><span class="mi">10302</span><span class="p">,</span><span class="w">
+             </span><span class="nl">"utilisation"</span><span class="p">:</span><span class="mf">0.0043</span><span class="p">,</span><span class="nl">"lifetime_utilisation"</span><span class="p">:</span><span class="mf">0.00056</span><span class="p">},</span><span class="w"> </span><span class="err">...</span><span class="p">],</span><span class="w">
+ </span><span class="nl">"utilisation"</span><span class="p">:</span><span class="mf">0.0049</span><span class="p">,</span><span class="nl">"lifetime_utilisation"</span><span class="p">:</span><span class="mf">0.0004</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"live_procs"</span><span class="p">:</span><span class="mi">21</span><span class="p">,</span><span class="nl">"procs_spawned"</span><span class="p">:</span><span class="mi">22</span><span class="p">,</span><span class="nl">"runq"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"stack_failures"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"msgs_dropped"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"stacks_recycled"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"timers"</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nl">"ctx_released"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"procs_freed"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"procs_awaiting_free"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"metas_freed"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"metas_awaiting_free"</span><span class="p">:</span><span class="mi">0</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Utilisation is <code class="language-plaintext highlighter-rouge">1 - idle/wall</code> (0.0 to 1.0); idle time is only counted on the
+scheduler’s idle path, so a scheduler running any green thread, actor or task,
+counts as busy. The top-level <code class="language-plaintext highlighter-rouge">utilisation</code> averages the schedulers that have
+started. <code class="language-plaintext highlighter-rouge">idle_ms</code> per thread is cumulative idle time. <code class="language-plaintext highlighter-rouge">runq</code> is what is queued
+to run right now across the node; <code class="language-plaintext highlighter-rouge">msgs_dropped</code> is the node’s total of messages
+dropped at a mailbox limit. <code class="language-plaintext highlighter-rouge">dispatches</code> and <code class="language-plaintext highlighter-rouge">idle_polls</code> are a racy read of
+per-thread fields and only good for orders of magnitude.</p>
+
+<h3 id="mem">MEM</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"rss_bytes"</span><span class="p">:</span><span class="mi">4816896</span><span class="p">,</span><span class="nl">"peak_rss_bytes"</span><span class="p">:</span><span class="mi">4816896</span><span class="p">,</span><span class="nl">"live_objects"</span><span class="p">:</span><span class="mi">527</span><span class="p">,</span><span class="nl">"stacks_recycled"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"queued_messages"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"actors"</span><span class="p">:</span><span class="mi">20</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">rss_bytes</code></td>
+      <td>Resident set size now (<code class="language-plaintext highlighter-rouge">null</code> where the platform gives none).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">peak_rss_bytes</code></td>
+      <td>Highest RSS so far.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">live_objects</code></td>
+      <td>Heap cells allocated and not yet freed. Queued messages are heap objects, so a deep mailbox raises it.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">queued_messages</code></td>
+      <td>The sum of every actor’s waiting work (<code class="language-plaintext highlighter-rouge">mbox + held</code>).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">actors</code></td>
+      <td>Live actors.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="epochs">EPOCHS</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"current"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"pins"</span><span class="p">:[{</span><span class="nl">"epoch"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"pins"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="nl">"current"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nl">"draining"</span><span class="p">:</span><span class="kc">false</span><span class="p">}],</span><span class="nl">"slots"</span><span class="p">:[],</span><span class="w">
+ </span><span class="nl">"counters"</span><span class="p">:{</span><span class="nl">"deferred"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"converted"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"dropped"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"killed"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"stopped"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"advances"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w">
+             </span><span class="nl">"early"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"forced"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"markers_live"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"markers_lost"</span><span class="p">:</span><span class="mi">0</span><span class="p">}}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">pins</code> lists every epoch something still runs, with how many units pin it and
+whether it is draining. <code class="language-plaintext highlighter-rouge">slots</code> (hot-reload builds only) lists each dispatch
+slot: name, implementation hash, epoch, activation time and signer. <code class="language-plaintext highlighter-rouge">counters</code>
+are the hot-reload delivery counters; see <a href="/docs/hot-code-reload/">Hot Code Reload</a>.</p>
+
+<h3 id="crashes">CRASHES</h3>
+
+<p><code class="language-plaintext highlighter-rouge">CRASHES [n]</code>: the last <code class="language-plaintext highlighter-rouge">n</code> crashes, newest first (default 20, at most 256; the
+ring keeps 256).</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"total"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"crashes"</span><span class="p">:[{</span><span class="nl">"seq"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"kind"</span><span class="p">:</span><span class="s2">"crash"</span><span class="p">,</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"type"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"code_epoch"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"supervisor"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nl">"restart"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"at_ms"</span><span class="p">:</span><span class="mi">1791167983217</span><span class="p">}]}</span><span class="w">
+</span></code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">total</code></td>
+      <td>Crashes since the node started (the ring keeps the last 256).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">kind</code></td>
+      <td><code class="language-plaintext highlighter-rouge">crash</code> (an actor died abnormally), <code class="language-plaintext highlighter-rouge">draining</code> (killed at a hot-reload hard deadline), <code class="language-plaintext highlighter-rouge">panic</code> (an unsupervised panic, recorded just before the process exits).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">pid</code>, <code class="language-plaintext highlighter-rouge">type</code></td>
+      <td>The actor that died; <code class="language-plaintext highlighter-rouge">type</code> only in <code class="language-plaintext highlighter-rouge">--hot-reload</code> builds.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">supervisor</code></td>
+      <td>Its supervisor’s pid, <code class="language-plaintext highlighter-rouge">null</code> if unsupervised.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">restart</code></td>
+      <td>The slot’s crash streak, read after the supervisor was told: 1 for the first crash, 3 for the third in a row.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">at_ms</code></td>
+      <td>Wall-clock time, Unix milliseconds.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>There is no message field, by design: the observe tier never returns panic
+text. The ring keeps the message for the planned debug tier, which will need a
+separate capability.</p>
+
+<h3 id="top">TOP</h3>
+
+<p><code class="language-plaintext highlighter-rouge">TOP mbox|crashes|stack|slices|msgs_in|msgs_out &lt;n&gt; [window_ms]</code>: the <code class="language-plaintext highlighter-rouge">n</code> actors
+highest on one attribute (<code class="language-plaintext highlighter-rouge">n</code> up to 10 000). Equal values come in pid order.</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">mbox</code> ranks by waiting work (<code class="language-plaintext highlighter-rouge">mbox + held</code>) now. No window.</li>
+  <li><code class="language-plaintext highlighter-rouge">crashes</code> ranks by <code class="language-plaintext highlighter-rouge">crashes + child_crashes</code> (last hour), so a crash-looping
+supervisor comes first. No window.</li>
+  <li><code class="language-plaintext highlighter-rouge">stack</code> ranks by committed machine-stack bytes: the memory the runtime can
+attribute to one actor. A green thread’s stack grows on demand and never
+shrinks, so this is the deepest recursion the actor has ever done, in pages
+(a page is 4 KiB on Linux, 16 KiB on macOS arm64, and every actor has at
+least one). It is 0 under the interpreter. No window. <strong>Heap bytes per actor
+are not tracked</strong> (the heap is shared and reference-counted, with no
+per-actor accounting), so there is no <code class="language-plaintext highlighter-rouge">heap</code> ranking.</li>
+  <li><code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code>, <code class="language-plaintext highlighter-rouge">msgs_out</code> rank by <strong>how much the counter rose</strong> over
+<code class="language-plaintext highlighter-rouge">window_ms</code> (default 1000, at most 5000): two walks, the observe thread asleep
+between them. An actor born during the window counts from 0. An explicit
+window of <code class="language-plaintext highlighter-rouge">0</code> ranks by the cumulative counter instead, with no sleep.</li>
+</ul>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"attr"</span><span class="p">:</span><span class="s2">"mbox"</span><span class="p">,</span><span class="nl">"window_ms"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"total"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"top"</span><span class="p">:[{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">15</span><span class="p">,</span><span class="nl">"value"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"type"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"names"</span><span class="p">:[</span><span class="s2">"hot"</span><span class="p">],</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"mbox"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="w">
+         </span><span class="nl">"stack_bytes"</span><span class="p">:</span><span class="mi">16384</span><span class="p">,</span><span class="nl">"crashes"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"child_crashes"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"children"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"link"</span><span class="p">:</span><span class="s2">"none"</span><span class="p">,</span><span class="w">
+         </span><span class="nl">"parent"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"parent_type"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"spawned_by"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"supervisor"</span><span class="p">:</span><span class="kc">null</span><span class="p">},</span><span class="w"> </span><span class="err">...</span><span class="p">]}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">value</code> is what was ranked; <code class="language-plaintext highlighter-rouge">window_ms</code> is <code class="language-plaintext highlighter-rouge">null</code> when no window was used. Only
+two windowed <code class="language-plaintext highlighter-rouge">TOP</code>s run at once; a third gets <code class="language-plaintext highlighter-rouge">busy</code>.</p>
+
+<p>Each row also says how the actor is supervised, so one call answers “the
+biggest actors, and who restarts them”:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">link</code></td>
+      <td><code class="language-plaintext highlighter-rouge">supervised</code> (a <code class="language-plaintext highlighter-rouge">supervise</code> block restarts it), <code class="language-plaintext highlighter-rouge">spawned</code> (nobody restarts it, but an actor spawned it) or <code class="language-plaintext highlighter-rouge">none</code> (spawned from <code class="language-plaintext highlighter-rouge">main</code> or a task).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">parent</code>, <code class="language-plaintext highlighter-rouge">parent_type</code></td>
+      <td>Its supervisor’s pid and actor type (<code class="language-plaintext highlighter-rouge">parent_type</code> only in <code class="language-plaintext highlighter-rouge">--hot-reload</code> builds). <code class="language-plaintext highlighter-rouge">null</code> unless <code class="language-plaintext highlighter-rouge">link</code> is <code class="language-plaintext highlighter-rouge">supervised</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">spawned_by</code></td>
+      <td>The spawning actor’s pid, <code class="language-plaintext highlighter-rouge">null</code> if none.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">children</code></td>
+      <td>Supervised children it has (greater than 0: a supervisor).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">supervisor</code></td>
+      <td>For a supervisor: <code class="language-plaintext highlighter-rouge">{strategy, max_restarts, window_secs, restarts_held}</code> as in <code class="language-plaintext highlighter-rouge">ACTOR</code>; <code class="language-plaintext highlighter-rouge">null</code> otherwise.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">crashes</code>, <code class="language-plaintext highlighter-rouge">child_crashes</code></td>
+      <td>As in an <code class="language-plaintext highlighter-rouge">ACTORS</code> row (last hour).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">stack_bytes</code></td>
+      <td>Committed stack bytes, whatever the ranking (<code class="language-plaintext highlighter-rouge">ACTORS</code>/<code class="language-plaintext highlighter-rouge">ACTOR</code> rows carry it too).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="snapshot">SNAPSHOT</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SNAPSHOT [sections]</code>, sections as a comma list or words, from <code class="language-plaintext highlighter-rouge">actors</code>, <code class="language-plaintext highlighter-rouge">tree</code>,
+<code class="language-plaintext highlighter-rouge">names</code>, <code class="language-plaintext highlighter-rouge">sched</code>, <code class="language-plaintext highlighter-rouge">mem</code>, <code class="language-plaintext highlighter-rouge">epochs</code>, <code class="language-plaintext highlighter-rouge">crashes</code> (default: all). Every actor section
+comes from <strong>one</strong> walk, so they agree with each other.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"mem"</span><span class="p">:{</span><span class="nl">"rss_bytes"</span><span class="p">:</span><span class="mi">2834432</span><span class="p">,</span><span class="nl">"queued_messages"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"actors"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">},</span><span class="w">
+ </span><span class="nl">"crashes"</span><span class="p">:{</span><span class="nl">"total"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"crashes"</span><span class="p">:[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]}}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Each section is that verb’s data, with fixed arguments: <code class="language-plaintext highlighter-rouge">actors</code> is
+<code class="language-plaintext highlighter-rouge">ACTORS mbox 100</code>, <code class="language-plaintext highlighter-rouge">sched</code> is <code class="language-plaintext highlighter-rouge">SCHED 0</code> (lifetime only, never sleeps), <code class="language-plaintext highlighter-rouge">crashes</code>
+is <code class="language-plaintext highlighter-rouge">CRASHES 20</code>. This is what <code class="language-plaintext highlighter-rouge">forge diagnose</code> and <code class="language-plaintext highlighter-rouge">forge status</code> read.</p>
+
+<hr />
+
+<h2 id="the-debug-tier-signed-requests">The debug tier: signed requests</h2>
+
+<p>The verbs above show counts, never data. Two more show data: <code class="language-plaintext highlighter-rouge">STATE</code> (an
+actor’s state) and <code class="language-plaintext highlighter-rouge">CRASHES_FULL</code> (crashes with their panic messages). A node
+answers them only when all of these hold:</p>
+
+<ol>
+  <li><strong>It was built with a deploy key</strong>: <code class="language-plaintext highlighter-rouge">march --compile --hot-reload &lt;Mod&gt;
+--signing-pubkey &lt;base64&gt;</code>, the same key <code class="language-plaintext highlighter-rouge">forge deploy hot</code> signs patches
+with. Any other build answers <code class="language-plaintext highlighter-rouge">signing_not_configured</code>.</li>
+  <li><strong>The request is signed by that key.</strong> The signature covers the whole line
+except the signature itself, so changing the pid or the expiry after signing
+gives <code class="language-plaintext highlighter-rouge">bad_signature</code>.</li>
+  <li><strong>It is fresh.</strong> Each request carries a random <code class="language-plaintext highlighter-rouge">nonce</code> (16-64 hex digits) and
+a <code class="language-plaintext highlighter-rouge">not_after_ms</code> wall-clock expiry at most 60 s ahead. A node refuses an
+expired request (<code class="language-plaintext highlighter-rouge">expired</code>), one that expires too far ahead
+(<code class="language-plaintext highlighter-rouge">not_after_too_far</code>), and a nonce it has already seen (<code class="language-plaintext highlighter-rouge">replay</code>). It
+remembers the last 256 unexpired nonces. If all 256 are still unexpired it
+refuses new requests (<code class="language-plaintext highlighter-rouge">nonce_ring_full</code>) rather than forget one.</li>
+  <li><strong>The node’s policy allows the verb.</strong> <code class="language-plaintext highlighter-rouge">$MARCH_DEBUG_POLICY</code> names a file
+that lists the allowed verbs one per line (<code class="language-plaintext highlighter-rouge">#</code> starts a comment). With no
+file, nothing is allowed (<code class="language-plaintext highlighter-rouge">policy</code>). The file is read on every request, so
+editing it takes effect at once.</li>
+</ol>
+
+<p>The checks run in that order: an unsigned client learns nothing about the
+policy. Every attempt, allowed or not, appends a line to the audit log the
+reload server writes (<code class="language-plaintext highlighter-rouge">$MARCH_AUDIT_LOG</code>, default
+<code class="language-plaintext highlighter-rouge">~/.local/share/march/audit.jsonl</code>):</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"ts"</span><span class="p">:</span><span class="mi">1791223456789</span><span class="p">,</span><span class="nl">"type"</span><span class="p">:</span><span class="s2">"debug"</span><span class="p">,</span><span class="nl">"verb"</span><span class="p">:</span><span class="s2">"STATE"</span><span class="p">,</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">42</span><span class="p">,</span><span class="nl">"nonce"</span><span class="p">:</span><span class="s2">"9f3c…"</span><span class="p">,</span><span class="nl">"signer"</span><span class="p">:</span><span class="s2">"&lt;pubkey hex&gt;"</span><span class="p">,</span><span class="nl">"result"</span><span class="p">:</span><span class="s2">"ok"</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">forge observe</code> builds and signs these requests for you:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge observe <span class="nt">--socket</span> /run/myapp/observe.sock <span class="nt">--state</span> 42          <span class="c"># STATE, 1 s to answer</span>
+forge observe <span class="nt">--env</span> prod <span class="nt">--state</span> 42 <span class="nt">--timeout-ms</span> 5000
+forge observe <span class="nt">--env</span> prod <span class="nt">--crashes-full</span> <span class="nt">--count</span> 50
+</code></pre></div></div>
+
+<p>It signs with <code class="language-plaintext highlighter-rouge">~/.march/ed25519_secret.key</code> and makes each request valid for
+30 s, so a node whose clock differs by more than 30 s refuses it. forge then
+says which way the clock is off.</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">STATE</code> reply’s <code class="language-plaintext highlighter-rouge">data</code> is <code class="language-plaintext highlighter-rouge">{"pid":42,"state":"{ n: 5, tags: [x] }","error":null}</code>.
+<code class="language-plaintext highlighter-rouge">state</code> is exactly what <code class="language-plaintext highlighter-rouge">Actor.inspect_state</code> returns inside the program: the
+state fields in declaration order, each printed by its <code class="language-plaintext highlighter-rouge">Show</code>, <code class="language-plaintext highlighter-rouge">&lt;opaque&gt;</code> for a
+field that holds functions. When the actor cannot answer, <code class="language-plaintext highlighter-rouge">state</code> is <code class="language-plaintext highlighter-rouge">null</code> and
+<code class="language-plaintext highlighter-rouge">error</code> says why:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">dead</code>: the pid is not running.</li>
+  <li><code class="language-plaintext highlighter-rouge">timeout</code>: the actor did not answer within <code class="language-plaintext highlighter-rouge">timeout_ms</code> (the node allows at
+most 10000; <code class="language-plaintext highlighter-rouge">forge observe --timeout-ms</code> at most 8000, since forge waits 10 s
+for any reply).
+An actor is asked between messages, so one stuck in a long handler or a
+nested <code class="language-plaintext highlighter-rouge">receive</code> cannot answer.</li>
+  <li><code class="language-plaintext highlighter-rouge">render failed: …</code>: a field’s <code class="language-plaintext highlighter-rouge">Show</code> panicked. The actor keeps running.</li>
+  <li><code class="language-plaintext highlighter-rouge">the actor's code changed by a hot reload …</code>: the renderer predates a reload
+that may have changed the state’s layout.</li>
+</ul>
+
+<p>The request skips the actor’s mailbox limit, so a full mailbox still answers.</p>
+
+<h2 id="the-forge-commands">The forge commands</h2>
+
+<p>All four take a target the same way:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--socket PATH</code>: a local observe socket (the program’s <code class="language-plaintext highlighter-rouge">MARCH_OBSERVE_SOCKET</code>).</li>
+  <li>otherwise the <code class="language-plaintext highlighter-rouge">[hot-reload]</code> hosts in <code class="language-plaintext highlighter-rouge">forge.toml</code>, reached over ssh at
+<code class="language-plaintext highlighter-rouge">&lt;reload socket&gt;.observe</code>; <code class="language-plaintext highlighter-rouge">--env NAME</code> picks the <code class="language-plaintext highlighter-rouge">[[hot-reload.env]]</code>
+entries with that name. <code class="language-plaintext highlighter-rouge">forge status</code> also reads <code class="language-plaintext highlighter-rouge">topology.toml</code>.</li>
+</ul>
+
+<h3 id="forge-observe">forge observe</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge observe [REQUEST...] [--section S]... [--json] [--socket PATH] [--env NAME]
+forge observe --state PID [--timeout-ms MS] | --crashes-full [-n N]   [--socket PATH] [--env NAME]
+</code></pre></div></div>
+
+<p>Sends one request and prints the reply envelope (indented, or one line per host
+with <code class="language-plaintext highlighter-rouge">--json</code>). The request is the positional words; the first is upper-cased,
+so <code class="language-plaintext highlighter-rouge">forge observe actors mbox 20</code> works. With no words it sends <code class="language-plaintext highlighter-rouge">SNAPSHOT</code>;
+<code class="language-plaintext highlighter-rouge">--section</code> (repeatable) narrows it.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge observe <span class="nt">--socket</span> /run/myapp/observe.sock                 <span class="c"># SNAPSHOT, every section</span>
+forge observe <span class="nt">--socket</span> /run/myapp/observe.sock actors mbox 10  <span class="c"># the 10 deepest mailboxes</span>
+forge observe <span class="nt">--socket</span> /run/myapp/observe.sock ACTOR 42
+forge observe <span class="nt">--env</span> prod <span class="nt">--section</span> mem <span class="nt">--section</span> crashes       <span class="c"># every prod host, over ssh</span>
+forge observe <span class="nt">--env</span> prod TOP msgs_in 10 2000 <span class="nt">--json</span>
+</code></pre></div></div>
+
+<p>Exit 0 when every target answered; 1 if any failed, including an error reply
+(<code class="language-plaintext highlighter-rouge">error: observe: unknown_verb</code>).</p>
+
+<h3 id="forge-status">forge status</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge status [--json] [--socket PATH] [--env NAME]
+</code></pre></div></div>
+
+<p>One line per node. With a <code class="language-plaintext highlighter-rouge">topology.toml</code>, it first prints <code class="language-plaintext highlighter-rouge">forge topology
+status</code>’s report (alive, versions, drift), then the observe line for each node
+that has a socket; otherwise it reads the <code class="language-plaintext highlighter-rouge">[hot-reload]</code> hosts.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>web-1: actors 1, queued 1550, rss 5 MB, busy 0%, crashes (1h) 0, deepest mailbox sink (pid 0) 1550
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">busy</code> is the lifetime utilisation over all schedulers (since start, not now:
+use <code class="language-plaintext highlighter-rouge">forge diagnose</code> or <code class="language-plaintext highlighter-rouge">SCHED</code> for now). <code class="language-plaintext highlighter-rouge">crashes (1h)</code> counts the crashes in
+the last 20 ring entries that fall in the last hour. The deepest mailbox is
+named by its first registered name, else its type, else <code class="language-plaintext highlighter-rouge">?</code>. A node that does
+not answer prints <code class="language-plaintext highlighter-rouge">observe unavailable (&lt;reason&gt;)</code>. <code class="language-plaintext highlighter-rouge">--json</code> prints one
+<code class="language-plaintext highlighter-rouge">march.status/1</code> document:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"proto"</span><span class="p">:</span><span class="s2">"march.status/1"</span><span class="p">,</span><span class="nl">"topology"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"nodes"</span><span class="p">:[{</span><span class="nl">"name"</span><span class="p">:</span><span class="s2">"web-1"</span><span class="p">,</span><span class="nl">"observe"</span><span class="p">:{</span><span class="nl">"actors"</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span><span class="nl">"queued"</span><span class="p">:</span><span class="mi">500</span><span class="p">,</span><span class="nl">"rss_mb"</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nl">"utilisation"</span><span class="p">:</span><span class="mf">0.0003</span><span class="p">,</span><span class="nl">"crashes_hour"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"deepest"</span><span class="p">:{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">15</span><span class="p">,</span><span class="nl">"name"</span><span class="p">:</span><span class="s2">"hot"</span><span class="p">,</span><span class="nl">"waiting"</span><span class="p">:</span><span class="mi">500</span><span class="p">}}}]}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="forge-top">forge top</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge top [--sort ATTR] [-n N] [--window MS] [--once] [--json] [--socket PATH] [--env NAME]
+</code></pre></div></div>
+
+<p>Redraws the biggest or busiest actors in place until interrupted. <code class="language-plaintext highlighter-rouge">--sort</code> is <code class="language-plaintext highlighter-rouge">mbox</code>
+(default), <code class="language-plaintext highlighter-rouge">stack</code> (committed stack bytes), <code class="language-plaintext highlighter-rouge">crashes</code>, <code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code> or <code class="language-plaintext highlighter-rouge">msgs_out</code>; the last three rank the
+change over <code class="language-plaintext highlighter-rouge">--window</code> (default 1000 ms), which is also their refresh. The
+others refresh every max(1 s, 4x the time the node took to answer). <code class="language-plaintext highlighter-rouge">-n</code> is the
+row count (default 20; note it is <code class="language-plaintext highlighter-rouge">-n</code>, not <code class="language-plaintext highlighter-rouge">--n</code>). <code class="language-plaintext highlighter-rouge">--once</code> prints one frame
+with no screen control, for scripts and tickets. <code class="language-plaintext highlighter-rouge">--json</code> prints the node’s
+<code class="language-plaintext highlighter-rouge">TOP</code> reply (every row with its supervision fields) as one line and exits. Over
+<code class="language-plaintext highlighter-rouge">--env</code>, it watches the first matching host, through the same ssh tunnel as the
+other observe verbs; it needs only the observe tier.</p>
+
+<p>The quick answer to “which actors are biggest, and who supervises them”:
+<code class="language-plaintext highlighter-rouge">forge top --once --sort stack -n 10</code>, or <code class="language-plaintext highlighter-rouge">--sort mbox</code> for the deepest queues.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>web-1  actors 20, queued 500, rss 5 MB, busy 0%, crashes (1h) 1, deepest mailbox hot (pid 16) 500
+sorted by mbox
+
+     PID  NAME                 TYPE               STATUS        MBOX     STACK       MBOX CRASHES  LINK       SUPERVISOR             POLICY (held/max in window)
+      16  hot                                     waiting        500     16384        500       0  none       -                      -
+       1                                          waiting          0     16384          0       0  supervised 4                      -
+       4  sup_one                                 waiting          0     16384          0       1  none       -                      one_for_one 1/5 in 60s, 4 kids
+</code></pre></div></div>
+
+<p>The first line is the <code class="language-plaintext highlighter-rouge">forge status</code> summary. <code class="language-plaintext highlighter-rouge">MBOX</code> is waiting work
+(<code class="language-plaintext highlighter-rouge">mbox + held</code>), <code class="language-plaintext highlighter-rouge">STACK</code> the committed stack, and the column named for the sort
+is the ranked value. <code class="language-plaintext highlighter-rouge">CRASHES</code> is the actor’s own plus its children’s in the last
+hour. <code class="language-plaintext highlighter-rouge">LINK</code> is <code class="language-plaintext highlighter-rouge">supervised</code>, <code class="language-plaintext highlighter-rouge">spawned</code> or <code class="language-plaintext highlighter-rouge">none</code>; <code class="language-plaintext highlighter-rouge">SUPERVISOR</code> is the supervisor’s
+pid and type (or <code class="language-plaintext highlighter-rouge">spawned by &lt;pid&gt;</code>); <code class="language-plaintext highlighter-rouge">POLICY</code> is shown for a supervisor only:
+strategy, restarts currently held out of the allowed maximum within the window,
+and its child count.</p>
+
+<h3 id="forge-diagnose">forge diagnose</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge diagnose [--window MS] [--dump FILE] [--json] [--socket PATH] [--env NAME]
+</code></pre></div></div>
+
+<p>Takes two <code class="language-plaintext highlighter-rouge">SNAPSHOT</code>s <code class="language-plaintext highlighter-rouge">--window</code> apart (default 1000 ms), runs a fixed list of
+checks over the pair, and prints a <code class="language-plaintext highlighter-rouge">march.diagnose/1</code> envelope per target:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"proto"</span><span class="p">:</span><span class="w"> </span><span class="s2">"march.diagnose/1"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"node"</span><span class="p">:</span><span class="w"> </span><span class="s2">"web-1"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"window_ms"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"findings"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mailbox.growth"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"severity"</span><span class="p">:</span><span class="w"> </span><span class="s2">"critical"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"rows"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"pid"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nl">"mbox"</span><span class="p">:</span><span class="w"> </span><span class="mi">2066</span><span class="p">,</span><span class="w"> </span><span class="nl">"delta"</span><span class="p">:</span><span class="w"> </span><span class="mi">499</span><span class="p">,</span><span class="w"> </span><span class="nl">"names"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">"sink"</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">],</span><span class="w">
+      </span><span class="nl">"next"</span><span class="p">:</span><span class="w"> </span><span class="s2">"forge observe ACTORS mbox 20, then ACTOR &lt;pid&gt; for the deepest"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"coverage"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"ran"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">"mailbox.growth"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mailbox.over_limit"</span><span class="p">,</span><span class="w"> </span><span class="s2">"sched.saturated"</span><span class="p">,</span><span class="w"> </span><span class="s2">"sched.idle_imbalance"</span><span class="p">,</span><span class="w">
+             </span><span class="s2">"crash.loop"</span><span class="p">,</span><span class="w"> </span><span class="s2">"rc.climb"</span><span class="p">,</span><span class="w"> </span><span class="s2">"epoch.stuck"</span><span class="p">,</span><span class="w"> </span><span class="s2">"epoch.old_units"</span><span class="w"> </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"unavailable"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"cluster.suspect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"no cluster section yet (observe plan R1.3)"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"names.lost"</span><span class="p">:</span><span class="w"> </span><span class="s2">"global-registry Lost events are not recorded"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"partial"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"mailbox.over_limit"</span><span class="p">:</span><span class="w"> </span><span class="s2">"per-actor dropped counts are not tracked; the node total is used"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Each finding has an <code class="language-plaintext highlighter-rouge">id</code>, a <code class="language-plaintext highlighter-rouge">severity</code> (<code class="language-plaintext highlighter-rouge">warning</code> or <code class="language-plaintext highlighter-rouge">critical</code>), the <code class="language-plaintext highlighter-rouge">rows</code>
+that triggered it, and <code class="language-plaintext highlighter-rouge">next</code>: the command to run next.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Exit</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>nothing found</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>warnings only</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>at least one critical finding</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>a target could not be reached</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>With several targets the exit code is the worst of them. <code class="language-plaintext highlighter-rouge">--dump FILE</code> also
+writes the raw before/after pair (<code class="language-plaintext highlighter-rouge">{"before": ..., "after": ...}</code>) for the first
+target, in the same format as the test fixtures in
+<code class="language-plaintext highlighter-rouge">forge/test/fixtures/diagnose/</code>: attach it to the incident, or turn it into a
+regression fixture.</p>
+
+<p><code class="language-plaintext highlighter-rouge">forge diagnose</code> is a good health probe for a cron job or a deploy gate:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge diagnose <span class="nt">--env</span> prod <span class="nt">--json</span> <span class="o">&gt;</span> diagnose.json<span class="p">;</span> <span class="nv">rc</span><span class="o">=</span><span class="nv">$?</span>
+<span class="o">[</span> <span class="s2">"</span><span class="nv">$rc</span><span class="s2">"</span> <span class="nt">-ge</span> 2 <span class="o">]</span> <span class="o">&amp;&amp;</span> page-someone &lt; diagnose.json
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="reading-diagnose-findings">Reading diagnose findings</h2>
+
+<p>Each check compares the <strong>before</strong> and <strong>after</strong> snapshots. Thresholds below are
+exact, from <code class="language-plaintext highlighter-rouge">forge/lib/diagnose.ml</code>; <code class="language-plaintext highlighter-rouge">stdlib/diagnose.march</code> implements the same
+checks with the same thresholds, and both are tested against the same fixtures.
+“Waiting work” is <code class="language-plaintext highlighter-rouge">mbox + held</code>.</p>
+
+<h3 id="mailboxgrowth">mailbox.growth</h3>
+
+<p><strong>Fires when</strong> an actor’s waiting work rose across the window (any increase) and
+is at least 10 in the after snapshot. <strong>Critical</strong> if one of those actors holds
+more than half of the node’s queued messages and the node has 100 or more
+queued; <strong>warning</strong> otherwise. The rows are the five that grew most, with their
+depth and growth (<code class="language-plaintext highlighter-rouge">delta</code>).</p>
+
+<p><strong>Usually means</strong> a consumer slower than its producers: a handler blocked on
+something slow (a call, I/O, a sleep), a hot actor everyone sends to, or a
+consumer that crashed and restarted and is catching up. A large <code class="language-plaintext highlighter-rouge">held</code> with
+<code class="language-plaintext highlighter-rouge">mbox</code> near 0 means the actor is waiting in an <code class="language-plaintext highlighter-rouge">Actor.call</code> while work piles up
+behind it.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge observe ACTORS mbox 20</code>, then <code class="language-plaintext highlighter-rouge">ACTOR &lt;pid&gt;</code> for the deepest.
+Look at its <code class="language-plaintext highlighter-rouge">status</code> (is it running, or waiting?), <code class="language-plaintext highlighter-rouge">idle_ms</code> (has it run
+lately?), and <code class="language-plaintext highlighter-rouge">held</code>. <code class="language-plaintext highlighter-rouge">forge top --sort msgs_in</code> tells you whether it is still
+draining at all. If the queue is bounded by design, give the actor a mailbox
+limit and a policy rather than letting it grow.</p>
+
+<h3 id="mailboxover_limit">mailbox.over_limit</h3>
+
+<p><strong>Fires when</strong> an actor with a mailbox limit and a <code class="language-plaintext highlighter-rouge">drop_new</code> or <code class="language-plaintext highlighter-rouge">drop_old</code>
+policy has waiting work at or over its limit, <strong>and</strong> the node’s dropped-message
+total (<code class="language-plaintext highlighter-rouge">SCHED</code>’s <code class="language-plaintext highlighter-rouge">msgs_dropped</code>) rose during the window. <strong>Warning.</strong> Actors with
+the <code class="language-plaintext highlighter-rouge">block</code> policy never trip it (their senders wait instead).</p>
+
+<p><strong>Usually means</strong> the node is shedding load: messages to that actor are being
+discarded. This is the policy working, but someone is losing messages.</p>
+
+<p><strong>Next:</strong> decide whether dropping is acceptable. If not, raise the limit, add
+consumers, or slow the producers upstream. This check is <em>partial</em>: per-actor
+drop counts are not tracked, so a drop elsewhere on the node in the same window
+also satisfies the second condition.</p>
+
+<h3 id="schedsaturated">sched.saturated</h3>
+
+<p><strong>Fires when</strong> some scheduler was more than 95% busy over the window (idle time
+under 5% of the wall time between the snapshots) <strong>and</strong> the node’s run queue was
+non-empty in the after snapshot. <strong>Warning.</strong></p>
+
+<p><strong>Usually means</strong> the node is CPU-bound: there is runnable work and no idle
+scheduler to take it. Latency rises for everything on that node.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge observe TOP slices 10 1000</code> shows who is being dispatched most
+(or <code class="language-plaintext highlighter-rouge">forge top --sort slices</code>). A single actor at the top is a hot spot to
+split or shard; a broad spread means the node needs more cores or less work.</p>
+
+<h3 id="schedidle_imbalance">sched.idle_imbalance</h3>
+
+<p><strong>Fires when</strong> the node has at least two schedulers with data, one more than
+80% busy over the window and another less than 20% busy. <strong>Warning.</strong></p>
+
+<p><strong>Usually means</strong> one scheduler carries the load. Common causes: work pinned to
+scheduler 0 (the main thread: <code class="language-plaintext highlighter-rouge">pinned: true</code> in the rows), or one hot actor,
+which can only run on one scheduler at a time. On a lightly loaded node with one
+busy actor this fires and is harmless.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge observe ACTORS status 20</code> and look at <code class="language-plaintext highlighter-rouge">sched</code> and <code class="language-plaintext highlighter-rouge">pinned</code> on
+the running actors; <code class="language-plaintext highlighter-rouge">TOP slices 10 1000</code> for the hot one.</p>
+
+<h3 id="crashloop">crash.loop</h3>
+
+<p><strong>Fires when</strong> the crash ring holds 3 or more crashes with the same supervisor.
+<strong>Critical</strong> if 3 or more fall in the last minute (before the after snapshot’s
+time); <strong>warning</strong> if 3 or more fall in the last hour. Rows are the supervisors
+and their counts. Only supervised crashes count (an unsupervised panic has no
+supervisor), and only the 20 most recent ring entries are read (the snapshot’s
+<code class="language-plaintext highlighter-rouge">crashes</code> section).</p>
+
+<p><strong>Usually means</strong> a child that cannot start or keeps hitting the same bad input.
+When the supervisor exhausts <code class="language-plaintext highlighter-rouge">max_restarts</code> within its window, it gives up and
+the failure moves up the tree.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge observe CRASHES 20</code> for the kinds, pids and restart numbers, then
+<code class="language-plaintext highlighter-rouge">ACTOR &lt;supervisor&gt;</code> for its strategy, <code class="language-plaintext highlighter-rouge">max_restarts</code>, and how many restarts it
+is currently holding (<code class="language-plaintext highlighter-rouge">restarts_held</code>, <code class="language-plaintext highlighter-rouge">restart_ages_ms</code>). The panic text is not
+available from the observe tier; check the program’s own logs.</p>
+
+<h3 id="rcclimb">rc.climb</h3>
+
+<p><strong>Fires when</strong> live heap objects (<code class="language-plaintext highlighter-rouge">MEM</code>’s <code class="language-plaintext highlighter-rouge">live_objects</code>) were at least 1000
+before and grew by more than 10% across the window, <strong>while</strong> the actor count
+stayed within 5%. <strong>Warning.</strong> Never fires under the interpreter (no gauge).</p>
+
+<p><strong>Usually means</strong> memory is being held with no new actors to explain it: a leak,
+a cache without a bound, or messages piling up. Queued messages are heap
+objects, so this often fires together with <code class="language-plaintext highlighter-rouge">mailbox.growth</code>; fix that first and
+see whether this one goes away.</p>
+
+<p><strong>Next:</strong> take <code class="language-plaintext highlighter-rouge">forge observe --section mem</code> a few times over minutes. A steady
+climb with flat <code class="language-plaintext highlighter-rouge">queued_messages</code> and flat actors is a leak worth a bug report.
+A one-window spike that settles is usually a burst of work.</p>
+
+<h3 id="epochstuck">epoch.stuck</h3>
+
+<p><strong>Fires when</strong> any pinned hot-reload epoch is marked draining. <strong>Warning.</strong></p>
+
+<p><strong>Usually means</strong> a deploy is still waiting for actors to leave old code: a
+long-running handler, or an actor that never receives the migrate marker.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge hot-reload status</code>; then <code class="language-plaintext highlighter-rouge">forge observe ACTORS epoch 20</code> lists
+the actors on the oldest epoch first.</p>
+
+<h3 id="epochold_units">epoch.old_units</h3>
+
+<p><strong>Fires when</strong> some epoch two or more behind the current one still has pins.
+<strong>Warning.</strong></p>
+
+<p><strong>Usually means</strong> units still run code two or more deploys old, which every
+later deploy’s drain has to wait for.</p>
+
+<p><strong>Next:</strong> <code class="language-plaintext highlighter-rouge">forge observe ACTORS epoch 20</code> to find them, and <code class="language-plaintext highlighter-rouge">ACTOR &lt;pid&gt;</code> for
+what they are doing.</p>
+
+<h3 id="coverage">Coverage</h3>
+
+<p>The envelope’s <code class="language-plaintext highlighter-rouge">coverage</code> says what was and was not checked, so an empty
+<code class="language-plaintext highlighter-rouge">findings</code> list is never read as “healthy” for things nobody looked at:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">ran</code>: every check above.</li>
+  <li><code class="language-plaintext highlighter-rouge">unavailable</code>: <code class="language-plaintext highlighter-rouge">cluster.suspect</code> (the snapshot has no cluster section yet, so
+unreachable or suspect peers are not reported) and <code class="language-plaintext highlighter-rouge">names.lost</code> (global
+registry <code class="language-plaintext highlighter-rouge">Lost</code> events are not recorded).</li>
+  <li><code class="language-plaintext highlighter-rouge">partial</code>: <code class="language-plaintext highlighter-rouge">mailbox.over_limit</code>, which uses the node’s total dropped count
+because per-actor drop counts are not tracked.</li>
+</ul>
+
+<p>Two more limits come from the snapshot itself: its <code class="language-plaintext highlighter-rouge">actors</code> section is the 100
+deepest mailboxes (so <code class="language-plaintext highlighter-rouge">mailbox.growth</code> sees at most those), and its <code class="language-plaintext highlighter-rouge">crashes</code>
+section is the last 20 crashes (so <code class="language-plaintext highlighter-rouge">crash.loop</code> sees at most those).</p>
+
+<hr />
+
+<h2 id="from-inside-a-program-recon-and-diagnose">From inside a program: Recon and Diagnose</h2>
+
+<p>The stdlib modules <code class="language-plaintext highlighter-rouge">Recon</code> and <code class="language-plaintext highlighter-rouge">Diagnose</code> ask the same questions from March
+code, in-process, on both the interpreter and compiled code. Every function
+takes a <code class="language-plaintext highlighter-rouge">Cap(Actor.Introspect)</code>, which <code class="language-plaintext highlighter-rouge">main</code> mints from its <code class="language-plaintext highlighter-rouge">IO</code> capability
+with <code class="language-plaintext highlighter-rouge">Actor.introspect(io)</code>; a module that names the capability declares
+<code class="language-plaintext highlighter-rouge">needs Actor.Introspect</code>. Nothing here returns a panic message.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Returns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.info(c, pid)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Option(ActorInfo)</code>: one live actor (<code class="language-plaintext highlighter-rouge">None</code> if dead or never spawned)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.actors(c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(ActorInfo)</code>, deepest mailbox first (at most 10 000)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.proc_count(c, attr, n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List((Int, Int))</code>: (pid, value), highest first; counters are cumulative</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.top(c, attr, n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(TopRow)</code>: the <code class="language-plaintext highlighter-rouge">n</code> biggest actors by <code class="language-plaintext highlighter-rouge">attr</code> (<code class="language-plaintext highlighter-rouge">mbox</code> or <code class="language-plaintext highlighter-rouge">mailbox</code>, <code class="language-plaintext highlighter-rouge">stack</code>, <code class="language-plaintext highlighter-rouge">crashes</code>, or a cumulative counter), each with <code class="language-plaintext highlighter-rouge">value</code>, <code class="language-plaintext highlighter-rouge">mbox</code>, <code class="language-plaintext highlighter-rouge">stack_bytes</code>, <code class="language-plaintext highlighter-rouge">link</code>, <code class="language-plaintext highlighter-rouge">parent</code>, <code class="language-plaintext highlighter-rouge">parent_type</code>, <code class="language-plaintext highlighter-rouge">spawned_by</code>, <code class="language-plaintext highlighter-rouge">children</code>, <code class="language-plaintext highlighter-rouge">crashes</code>, <code class="language-plaintext highlighter-rouge">child_crashes</code> and <code class="language-plaintext highlighter-rouge">supervision</code> (<code class="language-plaintext highlighter-rouge">Some({policy, limit, window_secs, held})</code> for a supervisor); ties by pid</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.print_top(c, attr, n)</code></td>
+      <td>prints <code class="language-plaintext highlighter-rouge">top</code> as an aligned table (the shell one-liner)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.format_top(rows)</code></td>
+      <td>the table as a <code class="language-plaintext highlighter-rouge">String</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.proc_window(c, attr, n, window_ms)</code></td>
+      <td>the same, ranked by the rise over the window (<code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code>, <code class="language-plaintext highlighter-rouge">msgs_out</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.tree(c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(SupNode)</code>: <code class="language-plaintext highlighter-rouge">SupNode(pid, type, names, children)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.node_stats(c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">NodeStats</code>: actors, queued, <code class="language-plaintext highlighter-rouge">rss_bytes</code>, <code class="language-plaintext highlighter-rouge">live_objects</code>, schedulers, <code class="language-plaintext highlighter-rouge">crashes_total</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.crashes(c, n)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(CrashReport)</code>: seq, kind, pid, type, supervisor, restart, at_ms</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.epochs(c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">EpochReport</code>: current epoch and (epoch, pins) pairs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Recon.scheduler_usage(c, window_ms)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List((Int, Float))</code>: (scheduler id, fraction busy)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Diagnose.run(c, window_ms)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">List(Finding)</code>: the <code class="language-plaintext highlighter-rouge">forge diagnose</code> findings for this program</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Diagnose.findings(before, after)</code></td>
+      <td>the same over two <code class="language-plaintext highlighter-rouge">SNAPSHOT</code> envelopes you already have</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">ActorInfo</code> carries <code class="language-plaintext highlighter-rouge">pid</code>, <code class="language-plaintext highlighter-rouge">type_name</code>, <code class="language-plaintext highlighter-rouge">names</code>, <code class="language-plaintext highlighter-rouge">status</code>, <code class="language-plaintext highlighter-rouge">mbox</code>, <code class="language-plaintext highlighter-rouge">held</code>,
+<code class="language-plaintext highlighter-rouge">parent</code>, <code class="language-plaintext highlighter-rouge">children</code>, <code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code>, <code class="language-plaintext highlighter-rouge">msgs_out</code>, <code class="language-plaintext highlighter-rouge">crashes</code> and
+<code class="language-plaintext highlighter-rouge">child_crashes</code>, with the meanings in the <a href="#actors">row table</a>. A
+<code class="language-plaintext highlighter-rouge">Diagnose.Finding</code> is <code class="language-plaintext highlighter-rouge">{ id, severity, rows, next }</code>, where <code class="language-plaintext highlighter-rouge">rows</code> is a list of
+pids (or scheduler ids, supervisor pids, epochs) rather than forge’s objects.</p>
+
+<p>The windowed functions (<code class="language-plaintext highlighter-rouge">proc_window</code>, <code class="language-plaintext highlighter-rouge">scheduler_usage</code>, <code class="language-plaintext highlighter-rouge">Diagnose.run</code>) take
+two samples and sleep the <strong>calling</strong> green thread between them, so call them
+from a task or an actor that can afford to wait, not from a hot handler.</p>
+
+<p>A node report from <code class="language-plaintext highlighter-rouge">main</code>:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs IO.Console
+  needs Actor.Introspect
+
+  actor Worker do
+    state { n : Int }
+    init  { n: 0 }
+    on Work(k : Int) do
+      { n: state.n + k }
+    end
+  end
+
+  fn report(c : Cap(Actor.Introspect)) do
+    let ns = Recon.node_stats(c)
+    println("actors " ++ int_to_string(ns.actors) ++ ", queued " ++ int_to_string(ns.queued))
+    match ns.rss_bytes do
+      Some(b) -&gt; println("rss " ++ int_to_string(b / 1048576) ++ " MB")
+      None -&gt; println("rss unknown (interpreter)")
+    end
+    -- The three deepest mailboxes, as (pid, waiting).
+    List.each(Recon.proc_count(c, "mbox", 3), fn p -&gt;
+      match p do
+        (pid, depth) -&gt;
+          let label = match Recon.info(c, pid) do
+            Some(a) -&gt; String.join(a.names, ",")
+            None -&gt; "(gone)"
+          end
+          println("  pid " ++ int_to_string(pid) ++ " " ++ label ++ ": " ++ int_to_string(depth))
+      end)
+  end
+
+  fn main(io : Cap(IO)) do
+    let c = Actor.introspect(io)
+    let w = spawn(Worker)
+    let _r = Actor.register(w, "worker")
+    let _ = send(w, Work(1))
+    report(c)
+  end
+end
+</code></pre>
+
+<p>Rates, scheduler load and recent crashes:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs IO.Console
+  needs Actor.Introspect
+
+  fn busiest(c : Cap(Actor.Introspect)) do
+    -- Who handled the most messages over the next half second.
+    List.each(Recon.proc_window(c, "msgs_in", 5, 500), fn p -&gt;
+      match p do
+        (pid, n) -&gt; println(int_to_string(pid) ++ ": " ++ int_to_string(n) ++ " in 500 ms")
+      end)
+    -- How busy each scheduler was over the next second.
+    List.each(Recon.scheduler_usage(c, 1000), fn s -&gt;
+      match s do
+        (id, u) -&gt; println("scheduler " ++ int_to_string(id) ++ ": " ++ float_to_string(u))
+      end)
+    -- Recent crashes: how, where, and which restart, never the message.
+    List.each(Recon.crashes(c, 5), fn cr -&gt;
+      let sup = match cr.supervisor do
+        Some(s) -&gt; int_to_string(s)
+        None -&gt; "none"
+      end
+      println(cr.kind ++ " under " ++ sup ++ ", restart " ++ int_to_string(cr.restart)))
+  end
+
+  fn main(io : Cap(IO)) do
+    busiest(Actor.introspect(io))
+  end
+end
+</code></pre>
+
+<p>A self-check, for a health endpoint or a periodic task:</p>
+
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs IO.Console
+  needs Actor.Introspect
+
+  fn check(c : Cap(Actor.Introspect)) : Bool do
+    let fs = Diagnose.run(c, 1000)
+    List.each(fs, fn f -&gt;
+      println(f.severity ++ " " ++ f.id ++ ": " ++ f.next))
+    List.any(fs, fn f -&gt; f.severity == "critical")
+  end
+
+  fn main(io : Cap(IO)) do
+    let c = Actor.introspect(io)
+    if check(c) do
+      println("critical finding")
+    else
+      println("healthy")
+    end
+  end
+end
+</code></pre>
+
+<hr />
+
+<h2 id="walkthrough-a-node-is-slow-what-now">Walkthrough: a node is slow, what now</h2>
+
+<p>Requests to <code class="language-plaintext highlighter-rouge">web-1</code> are timing out. Start wide and narrow down.</p>
+
+<p><strong>1. Is it alive, and what does it look like?</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge status <span class="nt">--env</span> prod
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>web-1: actors 1, queued 1550, rss 5 MB, busy 0%, crashes (1h) 0, deepest mailbox sink (pid 0) 1550
+</code></pre></div></div>
+
+<p>It answers, nothing is crashing, and the schedulers are mostly idle over its
+lifetime. But 1550 messages are queued, all of them on <code class="language-plaintext highlighter-rouge">sink</code>. A mostly idle
+node with a deep queue is a consumer that is stuck, not a node that is
+overloaded.</p>
+
+<p><strong>2. What is wrong right now?</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge diagnose <span class="nt">--env</span> prod <span class="nt">--dump</span> /tmp/web-1-incident.json
+<span class="nb">echo</span> <span class="nv">$?</span>    <span class="c"># 2: critical</span>
+</code></pre></div></div>
+
+<p>Its <code class="language-plaintext highlighter-rouge">findings</code>, in short: <code class="language-plaintext highlighter-rouge">mailbox.growth</code> (critical; row <code class="language-plaintext highlighter-rouge">{"pid": 0, "mbox":
+2066, "delta": 499, "names": ["sink"]}</code>) and <code class="language-plaintext highlighter-rouge">rc.climb</code> (warning; live objects
+1574 to 2073, actors 1). <code class="language-plaintext highlighter-rouge">sink</code>’s queue grew by about 500 a second and it holds
+the whole node’s queue, so this is critical. <code class="language-plaintext highlighter-rouge">rc.climb</code> is the same queue seen
+from the heap: messages are heap objects. The <code class="language-plaintext highlighter-rouge">--dump</code> file keeps both raw
+snapshots for the incident ticket.</p>
+
+<p><strong>3. Is it draining at all?</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge top <span class="nt">--env</span> prod <span class="nt">--sort</span> msgs_in <span class="nt">--once</span> <span class="nt">-n</span> 5
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>web-1  actors 1, queued 2598, rss 5 MB, busy 0%, crashes (1h) 0, deepest mailbox sink (pid 0) 2598
+sorted by msgs_in over 1000 ms
+
+     PID  NAME                 TYPE               STATUS        MBOX    MSGS_IN
+       0  sink                                    waiting       2597          0
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">sink</code> received nothing in the last second while its queue kept growing.</p>
+
+<p><strong>4. What is it doing?</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge observe <span class="nt">--env</span> prod ACTOR 0
+</code></pre></div></div>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"alive"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nl">"actor"</span><span class="p">:{</span><span class="nl">"pid"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"names"</span><span class="p">:[</span><span class="s2">"sink"</span><span class="p">],</span><span class="nl">"status"</span><span class="p">:</span><span class="s2">"waiting"</span><span class="p">,</span><span class="nl">"mbox"</span><span class="p">:</span><span class="mi">2616</span><span class="p">,</span><span class="w">
+ </span><span class="nl">"held"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nl">"msgs_in"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nl">"msgs_out"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">},</span><span class="nl">"supervisor"</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nl">"terminal"</span><span class="p">:</span><span class="kc">null</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">msgs_in: 1</code>: it has taken one message off its mailbox since it started, and is
+<code class="language-plaintext highlighter-rouge">waiting</code> inside that handler, not in <code class="language-plaintext highlighter-rouge">receive</code>: the first handler is blocked
+(here, a long sleep; in production, typically a slow call or I/O). With <code class="language-plaintext highlighter-rouge">held</code>
+large instead, it would be waiting in an <code class="language-plaintext highlighter-rouge">Actor.call</code>. The fix is in that
+handler: give the slow operation a timeout, move it to a task, or put a mailbox
+limit on <code class="language-plaintext highlighter-rouge">sink</code> so the node sheds load instead of growing.</p>
+
+<hr />
+
+<h2 id="a-remote-shell-forge-shell-and-forge-rpc">A remote shell: forge shell and forge rpc</h2>
+
+<p><code class="language-plaintext highlighter-rouge">forge shell</code> evaluates March on a running node. Each input is compiled on
+your machine against the project, as <code class="language-plaintext highlighter-rouge">forge build</code> would compile it, into a
+small library. That library is signed with the deploy key and sent to the
+node, which loads it and runs it as a task. The node answers with the
+result and anything the input printed.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ forge shell --env prod
+attached at epoch 3 (:help for commands, :quit to leave)
+march&gt; Actor.list(intro)
+[Pid(0), Pid(1), Pid(2)]
+march&gt; let c = Actor.whereis(intro, "counter")
+c : Option(Pid(a))
+march&gt; List.range(1, 1000) limit: 3
+[1, 2, 3, … 996 more]
+march&gt; println("hello")
+hello
+()
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge rpc <span class="nt">--env</span> prod <span class="s1">'Scheduler.live_procs()'</span>   <span class="c"># one input; exit 1 if it did not run</span>
+</code></pre></div></div>
+
+<p>What a node needs:</p>
+
+<ul>
+  <li><strong>A deploy key.</strong> A <code class="language-plaintext highlighter-rouge">--hot-reload</code> build with <code class="language-plaintext highlighter-rouge">--signing-pubkey</code>, the same
+key <code class="language-plaintext highlighter-rouge">forge deploy hot</code> signs with (<code class="language-plaintext highlighter-rouge">~/.march/ed25519_secret.key</code> on your
+machine).</li>
+  <li><strong>A shell policy.</strong> <code class="language-plaintext highlighter-rouge">$MARCH_SHELL_POLICY</code> names a file listing, one per
+line, the capabilities an input may use. With no file, nothing is allowed.</li>
+</ul>
+
+<p>Inputs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>You type</th>
+      <th>It does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;expr&gt;</code></td>
+      <td>runs it and prints the value (collections and strings cut at 50)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;expr&gt; limit: N</code> / <code class="language-plaintext highlighter-rouge">limit: all</code></td>
+      <td>the same, cutting at <code class="language-plaintext highlighter-rouge">N</code> / not at all</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">let x = &lt;expr&gt;</code></td>
+      <td>runs it and keeps the value on the node for later inputs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">:t &lt;expr&gt;</code></td>
+      <td>the expression’s type; nothing runs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">:actors</code></td>
+      <td>a table of the node’s actors by waiting work (up to 100), with link, supervisor and restart policy: <code class="language-plaintext highlighter-rouge">Recon.print_top(intro, "mbox", 100)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">:top [metric] [n]</code></td>
+      <td>the same table for <code class="language-plaintext highlighter-rouge">n</code> actors (default 20) ranked by <code class="language-plaintext highlighter-rouge">mbox</code> (or <code class="language-plaintext highlighter-rouge">mailbox</code>, the default), <code class="language-plaintext highlighter-rouge">stack</code>, <code class="language-plaintext highlighter-rouge">crashes</code>, <code class="language-plaintext highlighter-rouge">slices</code>, <code class="language-plaintext highlighter-rouge">msgs_in</code> or <code class="language-plaintext highlighter-rouge">msgs_out</code>: <code class="language-plaintext highlighter-rouge">:top stack 10</code> is <code class="language-plaintext highlighter-rouge">Recon.print_top(intro, "stack", 10)</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">:limit N</code>, <code class="language-plaintext highlighter-rouge">:caps</code>, <code class="language-plaintext highlighter-rouge">:help</code>, <code class="language-plaintext highlighter-rouge">:quit</code></td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The two table commands print the table instead of a record per actor. For the
+rows as values, call <code class="language-plaintext highlighter-rouge">Recon.top(intro, "mailbox", 10)</code> (a list of <code class="language-plaintext highlighter-rouge">TopRow</code>).</p>
+
+<p>Capabilities are pre-bound names: <code class="language-plaintext highlighter-rouge">console</code> (<code class="language-plaintext highlighter-rouge">Cap(IO.Console)</code>), <code class="language-plaintext highlighter-rouge">clock</code>,
+<code class="language-plaintext highlighter-rouge">intro</code> (<code class="language-plaintext highlighter-rouge">Cap(Actor.Introspect)</code>), <code class="language-plaintext highlighter-rouge">debug</code> (<code class="language-plaintext highlighter-rouge">Cap(Actor.Debug)</code>).</p>
+
+<p>A value prints by its type, the way you would write it:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march&gt; Json.parse("{\"a\": [1, true]}")
+Ok(Object([("a", Array([Number(1.), Bool(true)]))]))
+march&gt; [{ name: "first", tags: ["a", "b", "c"] }] limit: 2
+[{ name: "fi"… 3 more chars, tags: ["a", "b", … 1 more] }]
+</code></pre></div></div>
+
+<ul>
+  <li>Records, tuples and constructors print field by field, with constructor
+names. A type that derives <code class="language-plaintext highlighter-rouge">Show</code> prints as its derived <code class="language-plaintext highlighter-rouge">show</code> would.</li>
+  <li>Strings inside a value print quoted and escaped (<code class="language-plaintext highlighter-rouge">["a", "b"]</code>). A string
+that is the whole result, or the one field of a top-level constructor,
+prints as it is: <code class="language-plaintext highlighter-rouge">Actor.inspect_state</code> shows <code class="language-plaintext highlighter-rouge">Ok({ n: 42 })</code>.</li>
+  <li>The limit applies at every depth: each list, Array, Map and Set shows at
+most <code class="language-plaintext highlighter-rouge">N</code> elements then <code class="language-plaintext highlighter-rouge">… n more</code>, and each string at most <code class="language-plaintext highlighter-rouge">N</code> characters
+then <code class="language-plaintext highlighter-rouge">… n more chars</code>. <code class="language-plaintext highlighter-rouge">limit: all</code> (or <code class="language-plaintext highlighter-rouge">:limit 0</code>) turns it off.</li>
+  <li>The other stdlib containers print by their elements too, with the same
+limit: <code class="language-plaintext highlighter-rouge">HashMap{"a" =&gt; 1}</code>, <code class="language-plaintext highlighter-rouge">OrderedMap{1 =&gt; "a"}</code>, <code class="language-plaintext highlighter-rouge">SortedSet{1, 3}</code>,
+<code class="language-plaintext highlighter-rouge">Deque[1, 2]</code>, <code class="language-plaintext highlighter-rouge">Queue[1, 2]</code>, <code class="language-plaintext highlighter-rouge">RRB.Vec[1, 2]</code>, <code class="language-plaintext highlighter-rouge">NativeArray[1.5, 2.5]</code>.
+A HashMap prints in hash order; the others in their own order. RingBuf and
+LinearMap are linear (reading one consumes it), so they print as
+<code class="language-plaintext highlighter-rouge">to_string</code> prints them. So does a container whose type name the program
+reuses for a type of its own (a program <code class="language-plaintext highlighter-rouge">Deque</code>, say).</li>
+  <li>A type with a hand-written <code class="language-plaintext highlighter-rouge">Show</code> prints through its <code class="language-plaintext highlighter-rouge">show</code>, cut at 16 KiB
+with <code class="language-plaintext highlighter-rouge">… (n more bytes)</code>.</li>
+  <li>A function prints <code class="language-plaintext highlighter-rouge">&lt;fn&gt;</code>; a Pid and other runtime values print as
+<code class="language-plaintext highlighter-rouge">to_string</code> prints them, as does a type whose constructors are private
+(<code class="language-plaintext highlighter-rouge">ptype</code>).</li>
+</ul>
+
+<p>The shell generates this renderer from the input’s static type, into the
+input’s fragment only (<code class="language-plaintext highlighter-rouge">bin/shell_render_gen.ml</code>, stdlib <code class="language-plaintext highlighter-rouge">ShellRender</code>); the
+node’s code is not changed.</p>
+
+<p>The node refuses an input whose compiled code uses a capability its policy
+does not list (<code class="language-plaintext highlighter-rouge">** refused: policy IO.Clock</code>). This counts capabilities the
+input reaches through program and library code, not only the names it
+uses: calling a program function that reads the clock needs <code class="language-plaintext highlighter-rouge">IO.Clock</code>.
+The fragment carries its capability list, and the node checks it against the
+signed request after loading the fragment, before running it.</p>
+
+<p><strong>Your checkout must match the node’s build</strong> for the code an input reaches.
+When a session starts, the shell compares a hash of every declaration in
+your source with the node’s and names the ones that differ. An input that
+reaches one of them is refused, with the list:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>error: this input reaches code that differs from the node's build:
+  evens differs
+</code></pre></div></div>
+
+<p>Inputs that reach only unchanged code still run. A type whose constructors
+are numbered differently on the node (reordered, added) is always refused,
+since values built here would be read back wrongly there.</p>
+
+<p><strong>Spawning the program’s actors.</strong> An input can spawn one of the program’s
+own actors and use it like any other:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>march&gt; let k = spawn(Counter)
+k : Pid({ n : Int })
+march&gt; send(k, Bump(5))
+Some(())
+march&gt; Actor.inspect_state(debug, k, 500)
+Ok({ n: 5 })
+</code></pre></div></div>
+
+<p>The actor runs the node’s code, not a copy compiled into the input: the
+input calls the node’s own spawn function for that actor, so the actor
+answers <code class="language-plaintext highlighter-rouge">inspect_state</code>, shows its type name in <code class="language-plaintext highlighter-rouge">ACTORS</code> and <code class="language-plaintext highlighter-rouge">Recon</code>, and is
+upgraded by a hot deploy like every other instance. It belongs to the node:
+it keeps running after the session ends (or a deploy ends it), and a later
+session finds it with <code class="language-plaintext highlighter-rouge">Actor.list</code> or <code class="language-plaintext highlighter-rouge">Actor.pid_from_int</code>. Spawning needs no
+capability of its own, but an input is charged with the capabilities the
+actor’s handlers use, as for any program code it reaches. An input that
+could only spawn the actor by carrying its own copy of the handlers is
+refused instead: a node built by an older compiler, or an actor whose init
+arguments include a function.</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">--force</code> runs a read-only input over differing code.</strong> With
+<code class="language-plaintext highlighter-rouge">forge shell --force</code> (or <code class="language-plaintext highlighter-rouge">forge rpc --force</code>, <code class="language-plaintext highlighter-rouge">march --shell-force</code>), an
+input that reaches differing declarations runs if it is read-only. It runs
+<em>your checkout’s</em> version of those declarations against the node’s state,
+so its answer is what your code computes, not necessarily what the node’s
+would:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ forge shell --env prod --force
+march&gt; evens(4)
+warning: --shell-force: this read-only input runs this checkout's code, which differs from the node's build:
+  evens differs
+[0, 2, 4]
+march [skew]&gt; send(c, Bump(List.length(evens(4))))
+error: this input reaches code that differs from the node's build:
+  evens differs
+  --shell-force runs such an input only when it is read-only, and this one is not:
+    calls march_send
+</code></pre></div></div>
+
+<p>Read-only is decided on the compiled input, which carries a copy of all
+the code it runs (it calls none of the node’s functions when forced):</p>
+
+<ul>
+  <li>every capability its code uses is one of <code class="language-plaintext highlighter-rouge">IO.Console</code>, <code class="language-plaintext highlighter-rouge">IO.Clock</code>,
+<code class="language-plaintext highlighter-rouge">IO.Random</code>, <code class="language-plaintext highlighter-rouge">IO.FileRead</code> (no file writes, network, processes, tasks,
+Vault writes, signals or foreign code);</li>
+  <li>it calls none of the runtime’s operations that change something without
+a capability: <code class="language-plaintext highlighter-rouge">send</code>, <code class="language-plaintext highlighter-rouge">spawn</code>, <code class="language-plaintext highlighter-rouge">kill</code>, <code class="language-plaintext highlighter-rouge">Actor.call</code>, replies, <code class="language-plaintext highlighter-rouge">register</code>,
+<code class="language-plaintext highlighter-rouge">monitor</code>, setters such as <code class="language-plaintext highlighter-rouge">Actor.set_queue_limit</code>, the logger, and the
+like;</li>
+  <li>it does not use <code class="language-plaintext highlighter-rouge">Actor.Debug</code> (<code class="language-plaintext highlighter-rouge">debug</code>, <code class="language-plaintext highlighter-rouge">Actor.inspect_state</code>);</li>
+  <li>it does not use an earlier <code class="language-plaintext highlighter-rouge">let</code> that may hold a closure, since that
+closure’s code was compiled with an earlier input and is not checked.</li>
+</ul>
+
+<p>The node’s policy still applies on top. Only differing <em>code</em> is forced:
+an input that reaches a type, actor or protocol whose definition differs
+is refused even with <code class="language-plaintext highlighter-rouge">--force</code>, since a value of the node’s could be read
+with the wrong layout. Once a forced input has run, the prompt
+reads <code class="language-plaintext highlighter-rouge">march [skew]&gt;</code>, and the node’s audit line for each forced input
+carries <code class="language-plaintext highlighter-rouge">"skew":1</code>. The operations are recognised by the names of the
+runtime functions the input calls, so treat <code class="language-plaintext highlighter-rouge">--force</code> as an operator’s tool
+for looking, not as a sandbox.</p>
+
+<p>What happens when:</p>
+
+<ul>
+  <li><strong>An input panics.</strong> You see <code class="language-plaintext highlighter-rouge">** panic: &lt;message&gt;</code>; the node and the
+session carry on.</li>
+  <li><strong>An input runs too long.</strong> It is cancelled after <code class="language-plaintext highlighter-rouge">--timeout-ms</code> (default
+10 s, at most 30 s) and you see <code class="language-plaintext highlighter-rouge">** timeout</code>. A loop that never reaches a
+cancellation point is reported as still running on the node.</li>
+  <li><strong>A deploy happens.</strong> The session ends with “the node was redeployed”.
+Bindings belong to the session, so they go with it.</li>
+  <li><strong>Anything is sent.</strong> Every input, accepted or not, is appended to the
+node’s audit log with <code class="language-plaintext highlighter-rouge">"type":"shell"</code>, the signer and the source. If the
+log cannot be written, the input does not run
+(<code class="language-plaintext highlighter-rouge">** refused: audit_unavailable</code>).</li>
+  <li><strong>A request is captured.</strong> Each one is signed for its session (a random
+challenge the node hands out when you attach), so it runs on no other
+connection, no other node and not after the node restarts.</li>
+</ul>
+
+<p><strong>Line editing and history.</strong> On a terminal the prompt is a real line editor
+(<code class="language-plaintext highlighter-rouge">lib/repl/shell_line.ml</code>, <code class="language-plaintext highlighter-rouge">bin/shell_tty.ml</code>). When stdin or stdout is not a
+terminal (a pipe, <code class="language-plaintext highlighter-rouge">--shell-inputs</code>, <code class="language-plaintext highlighter-rouge">forge rpc</code>) none of this is active and
+input is read exactly as before.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Keys</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Up / Down, Ctrl-P / Ctrl-N</td>
+      <td>previous / next input; Down past the newest restores the line you were typing</td>
+    </tr>
+    <tr>
+      <td>Left / Right, Ctrl-B / Ctrl-F</td>
+      <td>one character (a multibyte character is one step)</td>
+    </tr>
+    <tr>
+      <td>Home / End, Ctrl-A / Ctrl-E</td>
+      <td>start / end of the line</td>
+    </tr>
+    <tr>
+      <td>Ctrl-Left / Ctrl-Right, Alt-B / Alt-F</td>
+      <td>one word</td>
+    </tr>
+    <tr>
+      <td>Backspace, Delete</td>
+      <td>delete before / under the cursor</td>
+    </tr>
+    <tr>
+      <td>Ctrl-U / Ctrl-K / Ctrl-W</td>
+      <td>kill to the start / to the end / the word before the cursor</td>
+    </tr>
+    <tr>
+      <td>Ctrl-L</td>
+      <td>clear the screen</td>
+    </tr>
+    <tr>
+      <td>Ctrl-C</td>
+      <td>discard the line and show a new prompt; the session stays attached</td>
+    </tr>
+    <tr>
+      <td>Ctrl-D</td>
+      <td>on an empty line, leave (like <code class="language-plaintext highlighter-rouge">:quit</code>); otherwise delete under the cursor</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A line longer than the terminal scrolls sideways instead of wrapping; a
+resize is picked up on the next keystroke. Unknown escape sequences (function
+keys, PageUp) are ignored.</p>
+
+<p>Inputs are kept in <code class="language-plaintext highlighter-rouge">~/.march/shell_history</code>, one per line, last 1000, loaded
+at start. A line equal to the one before it, a blank line and <code class="language-plaintext highlighter-rouge">:quit</code> are not
+recorded. <strong>The file can hold sensitive text</strong> (a connection string or token
+typed into an input is kept verbatim), so it is created <code class="language-plaintext highlighter-rouge">0600</code> in a <code class="language-plaintext highlighter-rouge">0700</code>
+directory. Delete it, or edit it, if an input should not outlive the session.</p>
+
+<p>The terminal is in raw mode only while a line is being typed and is put back
+before the input runs; it is also restored on exit, an uncaught exception, and
+SIGINT, SIGTERM and SIGHUP.</p>
+
+<p>Under the hood <code class="language-plaintext highlighter-rouge">forge shell</code> runs `march –shell <reload socket="">.shell</reload></p>
+<entry>` with the project's `MARCH_LIB_PATH`, through an ssh tunnel for a
+remote host. Running that directly works too.
+
+## Interpreter vs compiled, and what is not there yet
+
+### Interpreter differences
+
+Under the interpreter there is no socket and no `forge` access; `Recon` and
+`Diagnose` work, answered from the interpreter's actor table
+(`lib/eval/eval_observe.ml`) with the same field names. By design:
+
+- `node` is `"interpreter"`, and there is one scheduler.
+- Delivery is eager, so mailboxes are usually 0 and `held` is always 0.
+- Memory gauges (`rss_bytes`, `peak_rss_bytes`, `live_objects`) are `null`
+  (`None` in `NodeStats`), so `rc.climb` never fires.
+- There are no code epochs (always 1, no pins) and `idle_ms` is `null`.
+- There is no crash ring: `CRASHES` lists the dead actors whose death was a
+  crash, newest pid first.
+- Actor type names are always present.
+- A windowed `SCHED` or `TOP` is refused with `windowed_in_process`, as it is
+  for any in-process caller on the compiled side (`Recon`'s windowed functions
+  do not use them).
+
+### What is not there yet
+
+- **Actor type names without `--hot-reload`.** The `type` field is `null` in
+  ordinary builds (`specs/todos/2026-10-02-observe-actor-type-names-without-hot-reload.md`).
+  Register long-lived actors under names (`Actor.register`) so rows are
+  recognisable.
+- **The cluster section.** `SNAPSHOT` has no view of peers, so `diagnose`
+  reports `cluster.suspect` as unavailable
+  (`specs/todos/2026-10-02-observe-r1-cluster-section.md`).
+- **Mailbox contents (`MESSAGES`).** The rest of the debug tier: the queued
+  messages of an actor, most useful exactly when it is stuck and cannot render
+  them itself (`specs/todos/2026-10-05-observe-messages-verb.md`).
+- **The rest of the remote shell.** It works (see above), but:
+  - it has not had its security review yet (plan R5).
+- **A TUI (R7).** An interactive `forge observe` with `WATCH` and crash dumps;
+  today `forge top` is the live view.
+- **Tracing (R8).** Message and call tracing with mandatory limits.
+
+The plan for all of these is `specs/plans/2026-09-28-observe-recon-shell-plan.md`.
+
+See also: [Tooling](/docs/tooling/), [Hot Code Reload](/docs/hot-code-reload/),
+[Supervision](/docs/supervision/), [Topology](/docs/topology/),
+[Overload resilience](/docs/overload-resilience/).
+</entry>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1791553737"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>
