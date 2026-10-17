@@ -1,0 +1,537 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Config — March Docs</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+/* Dark theme (default) — deep navy with cyan accent, matching the March homepage */
+:root{--bg:#07101a;--sb:#0a1622;--bg-nav:rgba(7,16,26,.92);--card:#0c1928;--bdr:#0f2438;
+--acc:oklch(63% .12 207);--acc2:oklch(74% .11 200);--text:#cce5f5;--dim:#4a7898;
+--faint:#1e4060;--bright:#eaf4fb;--code:#0c1928;
+--fn:oklch(74% .13 165);--ty:oklch(82% .12 70);--if:oklch(78% .11 235);--prv:#3a5f7d;
+--hl-kw:oklch(74% .13 300);--hl-str:oklch(80% .12 140);--hl-num:oklch(80% .12 45);--hl-com:#5f89a8;--hl-ty:oklch(82% .1 80)}
+
+/* Light theme overrides */
+[data-theme='light']{--bg:#f0f6fc;--sb:#e3eef8;--bg-nav:rgba(240,246,252,.92);--card:#ddeaf5;--bdr:#b5cce0;
+--acc:oklch(37% .11 210);--acc2:oklch(45% .11 215);--text:#071828;--dim:#2e5c7c;
+--faint:#6a96b5;--bright:#071828;--code:#ddeaf5;
+--fn:oklch(45% .13 165);--ty:oklch(52% .12 70);--if:oklch(45% .11 235);--prv:#6a96b5;
+--hl-kw:oklch(45% .16 300);--hl-str:oklch(46% .13 145);--hl-num:oklch(50% .14 45);--hl-com:#4f7593;--hl-ty:oklch(47% .11 65)}
+
+/* Reset + base */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;font-size:15px;line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline;color:var(--acc2)}
+
+/* Top bar */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:60px;background:var(--bg-nav);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);flex-shrink:0;position:sticky;top:0;z-index:100}
+#topbar .brand{font-family:'Lora',Georgia,serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+#topbar .brand svg{width:20px;height:20px}
+#topbar .actions{display:flex;align-items:center;gap:12px}
+#theme-toggle{background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 8px;font-size:13px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;transition:all .15s}
+#theme-toggle:hover{color:var(--text);border-color:var(--acc)}
+#search-trigger{background:var(--card);border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 14px;font-size:13px;display:flex;align-items:center;gap:8px;transition:all .15s;min-width:200px}
+#search-trigger:hover{border-color:var(--acc);color:var(--text)}
+#search-trigger kbd{font-size:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:3px;padding:1px 5px;margin-left:auto;font-family:inherit}
+
+/* Content wrapper (sidebar + main) */
+.content-wrap{display:flex;flex:1;overflow:hidden}
+
+/* Typography */
+code,pre{font-family:'JetBrains Mono','Fira Code','SF Mono',monospace;font-size:13px}
+pre{background:var(--code);border:1px solid var(--bdr);border-radius:6px;padding:14px 18px;overflow-x:auto;margin:12px 0;line-height:1.5}
+code{background:var(--code);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--acc)}pre code{background:none;padding:0;color:var(--text);font-size:13px}
+/* Syntax highlighting (server-side spans from Highlight.highlight) */
+.tok-kw{color:var(--hl-kw)}.tok-str{color:var(--hl-str)}.tok-num{color:var(--hl-num)}
+.tok-com{color:var(--hl-com);font-style:italic}.tok-ty{color:var(--hl-ty)}
+h1{font-family:'Lora',Georgia,serif;font-size:2.1rem;color:var(--bright);margin-bottom:12px;font-weight:600;letter-spacing:-.02em}
+h2{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.72rem;color:var(--acc);margin:38px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bdr);font-weight:500;text-transform:uppercase;letter-spacing:.12em}
+p{margin:8px 0}
+
+/* Sidebar */
+#sb{width:248px;min-width:208px;background:var(--sb);border-right:1px solid var(--bdr);padding:8px 10px 28px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;flex-shrink:0}
+#sb::-webkit-scrollbar{width:5px}#sb::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}#sb::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+.sb-section{padding:0}
+.sb-heading{font-family:'JetBrains Mono','Fira Code',monospace;font-size:10px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.16em;padding:20px 10px 8px;user-select:none}
+
+/* Generic nav link (top-level + sub-items) */
+.sl{display:block;padding:5px 10px;border-radius:6px;font-size:13px;line-height:1.45;color:var(--dim);transition:color .12s,background .12s}
+.sl:hover{background:color-mix(in oklab,var(--acc) 9%,transparent);color:var(--text);text-decoration:none}
+.sl.active{color:var(--acc);font-weight:500}
+.sb-section>.sl.active,.sb-sub .sl.active{background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+
+/* Hierarchical sidebar groups */
+.sb-group{margin:1px 0}
+.sb-group-hdr{display:flex;align-items:center;border-radius:6px;cursor:pointer;user-select:none;transition:background .12s}
+.sb-group-hdr:hover{background:color-mix(in oklab,var(--acc) 9%,transparent)}
+.sb-group-hdr:hover .sl,.sb-group-hdr:hover .sb-chevron{color:var(--text)}
+.sb-group-hdr:has(.sl.active){background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+.sb-group-hdr .sl{flex:1;padding-left:1px}
+.sb-chevron{font-size:9px;transition:transform .15s,color .12s;width:20px;align-self:stretch;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--faint)}
+.sb-group.open>.sb-group-hdr .sb-chevron{transform:rotate(90deg);color:var(--acc)}
+.sb-sub{display:none;margin:1px 0 6px 19px;padding-left:8px;border-left:1px solid var(--bdr)}
+.sb-group.open .sb-sub{display:block}
+.sb-sub .sl{font-size:12px;padding:3px 8px;color:var(--dim)}
+.sb-sub .sl:hover{color:var(--text)}
+.sb-kind{display:inline-block;width:12px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.03em;margin-right:8px;text-transform:uppercase;text-align:center}
+
+/* Main content */
+#main{flex:1;padding:40px max(52px,calc(50% - 574px));min-width:0;overflow-y:auto;height:calc(100vh - 60px)}
+
+/* Breadcrumb */
+.breadcrumb{font-size:12px;color:var(--dim);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.breadcrumb a{color:var(--dim);font-size:12px}.breadcrumb a:hover{color:var(--acc)}
+.breadcrumb .sep{color:var(--bdr)}
+
+/* Module doc card */
+.mdoc{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:20px 24px;margin-bottom:24px;color:var(--dim);font-size:14px;line-height:1.7}
+
+/* Items */
+.item{border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px;overflow:hidden;transition:border-color .15s}
+.item:hover{border-color:color-mix(in srgb,var(--acc) 40%,var(--bdr))}
+.ih{display:flex;align-items:baseline;gap:10px;padding:12px 16px;background:var(--card);cursor:pointer;user-select:none;transition:background .1s}
+.ih:hover{background:color-mix(in srgb,var(--card) 80%,var(--acc) 20%)}
+
+/* Badges */
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.08em;padding:2px 9px;border-radius:100px;text-transform:uppercase;flex-shrink:0;border:1px solid transparent}
+.bfn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn);border-color:color-mix(in oklab,var(--fn) 24%,transparent)}
+.bpfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 30%,transparent)}
+.bty{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty);border-color:color-mix(in oklab,var(--ty) 24%,transparent)}
+.bpt{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 26%,transparent)}
+.bif{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if);border-color:color-mix(in oklab,var(--if) 24%,transparent)}
+
+/* Item content */
+.name{font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px;color:var(--bright);font-weight:600}
+.sig{font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;color:var(--dim);flex:1;margin-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{padding:18px 20px;border-top:1px solid var(--bdr);display:none;font-size:14px;color:var(--text);line-height:1.7}
+.ib.open{display:block}
+
+/* Source + anchor links */
+.src-link{font-size:10px;color:var(--dim);background:var(--bg);border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;margin-left:auto;opacity:0;transition:all .15s;text-decoration:none;flex-shrink:0}
+.ih:hover .src-link{opacity:1}.src-link:hover{color:var(--acc);border-color:var(--acc);text-decoration:none}
+.anchor-link{color:var(--bdr);font-size:14px;margin-left:6px;opacity:0;transition:opacity .15s;text-decoration:none}
+.ih:hover .anchor-link{opacity:1}.anchor-link:hover{color:var(--acc);text-decoration:none}
+
+/* Module cards (index page) */
+.mc{border:1px solid var(--bdr);border-radius:8px;padding:16px 20px;margin-bottom:12px;background:var(--card);transition:all .15s}
+.mc:hover{border-color:var(--acc);transform:translateY(-1px)}
+.mc h3{font-family:'Lora',Georgia,serif;color:var(--acc);font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+.mc p{font-size:13px;color:var(--dim);margin-top:6px}
+.st{font-size:12px;color:var(--dim);margin-top:8px;display:flex;gap:16px}
+.st span{display:flex;align-items:center;gap:4px}
+
+/* Copy button */
+.pre-wrap{position:relative}
+.copy-btn{position:absolute;top:8px;right:10px;background:var(--card);color:var(--dim);border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;font-size:11px;font-family:-apple-system,sans-serif;cursor:pointer;opacity:0;transition:all .15s}
+.pre-wrap:hover .copy-btn{opacity:1}
+.copy-btn:hover{color:var(--text);border-color:var(--acc)}
+.copy-btn.copied{color:var(--fn);border-color:var(--fn);opacity:1}
+
+/* Search overlay (Cmd+K) */
+#search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-start;justify-content:center;padding-top:min(20vh,160px)}
+#search-overlay.open{display:flex}
+#search-modal{background:var(--sb);border:1px solid var(--bdr);border-radius:12px;width:560px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+#search-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bdr);color:var(--text);padding:16px 20px;font-size:15px;outline:none;font-family:inherit}
+#search-input::placeholder{color:var(--dim)}
+#sr{max-height:50vh;overflow-y:auto;padding:8px}
+#sr:empty{display:none}
+.sr-item{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;text-decoration:none;color:var(--text);font-size:13px;transition:background .1s}
+.sr-item:hover{background:var(--card);text-decoration:none}
+.sr-kind{font-size:9px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:4px;text-transform:uppercase;flex-shrink:0;min-width:32px;text-align:center}
+.sr-fn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn)}.sr-type{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty)}
+.sr-interface{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if)}.sr-module{background:color-mix(in oklab,var(--acc) 13%,transparent);color:var(--acc)}
+.sr-pfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv)}.sr-ptype{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv)}
+.sr-name{color:var(--bright);font-family:monospace;font-weight:600;white-space:nowrap}
+.sr-mod{color:var(--dim);font-size:11px;margin-left:auto;flex-shrink:0}
+.sr-doc{color:var(--dim);font-size:11px;padding:0 12px 6px 48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-sep{border-top:1px solid var(--bdr);margin:2px 8px}
+
+/* Admonitions */
+.admonition{border-left:3px solid var(--acc);background:var(--card);border-radius:0 6px 6px 0;padding:12px 16px;margin:12px 0;font-size:14px;color:var(--text)}
+.admonition.warning{border-left-color:var(--ty)}
+.admonition.note{border-left-color:var(--acc2)}
+
+/* Lists */
+ul,ol{margin:8px 0;padding-left:24px}li{margin:4px 0;line-height:1.6}
+
+/* Guide body */
+.guide-body{line-height:1.8;font-size:15px}
+.guide-body h3{font-family:'Lora',Georgia,serif;font-size:1.4rem;margin:30px 0 12px;color:var(--bright);font-weight:600;letter-spacing:-.01em}
+.guide-body h4{font-family:'Lora',Georgia,serif;font-size:1.1rem;margin:24px 0 10px;color:var(--bright);font-weight:600}
+
+/* Code blocks follow theme tokens (light code surface in light mode, like the main page) */
+
+/* Responsive */
+@media(max-width:768px){#sb{display:none}#main{padding:24px 16px}#search-trigger{min-width:auto}}
+</style></head><body><header id="topbar"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> March Docs</div><div class="actions"><button id="search-trigger" onclick="openSearch()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Search&hellip;<kbd>&#8984;K</kbd></button><button id="theme-toggle" onclick="toggleTheme()"><svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div></header><div id="search-overlay" onclick="closeSearch()"><div id="search-modal" onclick="event.stopPropagation()"><input id="search-input" type="text" placeholder="Search modules, functions, types&hellip;" autocomplete="off"><div id="sr"></div></div></div><div class="content-wrap"><nav id="sb"><div class="sb-section"><a href="index.html" class="sl">Overview</a><div class="sb-heading">Modules</div><div class="sb-group"><div class="sb-group-hdr" data-href="Actor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Actor.html">Actor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="AhoCorasick.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="AhoCorasick.html">AhoCorasick</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Array.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Array.html">Array</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Base64.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Base64.html">Base64</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="BigInt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="BigInt.html">BigInt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Bytes.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Bytes.html">Bytes</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="CRDT.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="CRDT.html">CRDT</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Channel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Channel.html">Channel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelServer.html">ChannelServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelSocket.html">ChannelSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Char.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Char.html">Char</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Check.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Check.html">Check</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cli.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cli.html">Cli</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cluster.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cluster.html">Cluster</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterAuth.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterAuth.html">ClusterAuth</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterConn.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterConn.html">ClusterConn</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterLoad.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterLoad.html">ClusterLoad</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterNode.html">ClusterNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Compress.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Compress.html">Compress</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Config.html"><span class="sb-chevron">&#9656;</span><a class="sl" href="Config.html">Config</a></div><div class="sb-sub"><a class="sl" href="Config.html#type-Value"><span class="sb-kind" style="color:var(--ty)">T</span>Value</a>
+<a class="sl" href="Config.html#type-Codec"><span class="sb-kind" style="color:var(--ty)">T</span>Codec</a>
+<a class="sl" href="Config.html#type-Key"><span class="sb-kind" style="color:var(--ty)">T</span>Key</a>
+<a class="sl" href="Config.html#type-Error"><span class="sb-kind" style="color:var(--ty)">T</span>Error</a>
+<a class="sl" href="Config.html#fn-atom"><span class="sb-kind" style="color:var(--fn)">F</span>atom</a>
+<a class="sl" href="Config.html#fn-bool"><span class="sb-kind" style="color:var(--fn)">F</span>bool</a>
+<a class="sl" href="Config.html#fn-codec"><span class="sb-kind" style="color:var(--fn)">F</span>codec</a>
+<a class="sl" href="Config.html#fn-endpoint_host"><span class="sb-kind" style="color:var(--fn)">F</span>endpoint_host</a>
+<a class="sl" href="Config.html#fn-endpoint_host_key"><span class="sb-kind" style="color:var(--fn)">F</span>endpoint_host_key</a>
+<a class="sl" href="Config.html#fn-endpoint_port"><span class="sb-kind" style="color:var(--fn)">F</span>endpoint_port</a>
+<a class="sl" href="Config.html#fn-endpoint_port_key"><span class="sb-kind" style="color:var(--fn)">F</span>endpoint_port_key</a>
+<a class="sl" href="Config.html#fn-env"><span class="sb-kind" style="color:var(--fn)">F</span>env</a>
+<a class="sl" href="Config.html#fn-error_to_string"><span class="sb-kind" style="color:var(--fn)">F</span>error_to_string</a>
+<a class="sl" href="Config.html#fn-fetch"><span class="sb-kind" style="color:var(--fn)">F</span>fetch</a>
+<a class="sl" href="Config.html#fn-float"><span class="sb-kind" style="color:var(--fn)">F</span>float</a>
+<a class="sl" href="Config.html#fn-from_env"><span class="sb-kind" style="color:var(--fn)">F</span>from_env</a>
+<a class="sl" href="Config.html#fn-from_env_bool"><span class="sb-kind" style="color:var(--fn)">F</span>from_env_bool</a>
+<a class="sl" href="Config.html#fn-from_env_int"><span class="sb-kind" style="color:var(--fn)">F</span>from_env_int</a>
+<a class="sl" href="Config.html#fn-get"><span class="sb-kind" style="color:var(--fn)">F</span>get</a>
+<a class="sl" href="Config.html#fn-get_with_default"><span class="sb-kind" style="color:var(--fn)">F</span>get_with_default</a>
+<a class="sl" href="Config.html#fn-int"><span class="sb-kind" style="color:var(--fn)">F</span>int</a>
+<a class="sl" href="Config.html#fn-is_dev"><span class="sb-kind" style="color:var(--fn)">F</span>is_dev</a>
+<a class="sl" href="Config.html#fn-is_prod"><span class="sb-kind" style="color:var(--fn)">F</span>is_prod</a>
+<a class="sl" href="Config.html#fn-is_test"><span class="sb-kind" style="color:var(--fn)">F</span>is_test</a>
+<a class="sl" href="Config.html#fn-key"><span class="sb-kind" style="color:var(--fn)">F</span>key</a>
+<a class="sl" href="Config.html#fn-key_in"><span class="sb-kind" style="color:var(--fn)">F</span>key_in</a>
+<a class="sl" href="Config.html#fn-list"><span class="sb-kind" style="color:var(--fn)">F</span>list</a>
+<a class="sl" href="Config.html#fn-new_store"><span class="sb-kind" style="color:var(--fn)">F</span>new_store</a>
+<a class="sl" href="Config.html#fn-path"><span class="sb-kind" style="color:var(--fn)">F</span>path</a>
+<a class="sl" href="Config.html#fn-put"><span class="sb-kind" style="color:var(--fn)">F</span>put</a>
+<a class="sl" href="Config.html#fn-put_endpoint"><span class="sb-kind" style="color:var(--fn)">F</span>put_endpoint</a>
+<a class="sl" href="Config.html#fn-require"><span class="sb-kind" style="color:var(--fn)">F</span>require</a>
+<a class="sl" href="Config.html#fn-secret_key_base"><span class="sb-kind" style="color:var(--fn)">F</span>secret_key_base</a>
+<a class="sl" href="Config.html#fn-secret_key_base_key"><span class="sb-kind" style="color:var(--fn)">F</span>secret_key_base_key</a>
+<a class="sl" href="Config.html#fn-store_fetch"><span class="sb-kind" style="color:var(--fn)">F</span>store_fetch</a>
+<a class="sl" href="Config.html#fn-store_get"><span class="sb-kind" style="color:var(--fn)">F</span>store_get</a>
+<a class="sl" href="Config.html#fn-store_put"><span class="sb-kind" style="color:var(--fn)">F</span>store_put</a>
+<a class="sl" href="Config.html#fn-string"><span class="sb-kind" style="color:var(--fn)">F</span>string</a>
+<a class="sl" href="Config.html#fn-validate"><span class="sb-kind" style="color:var(--fn)">F</span>validate</a>
+<a class="sl" href="Config.html#fn-value_type_name"><span class="sb-kind" style="color:var(--fn)">F</span>value_type_name</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ConsistentHash.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ConsistentHash.html">ConsistentHash</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Control.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Control.html">Control</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Crypto.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Crypto.html">Crypto</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Csv.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Csv.html">Csv</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DataFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DataFrame.html">DataFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DateTime.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DateTime.html">DateTime</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Decimal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Decimal.html">Decimal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Deque.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Deque.html">Deque</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnose.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnose.html">Diagnose</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnostics.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnostics.html">Diagnostics</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dir.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dir.html">Dir</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistLink.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistLink.html">DistLink</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistSupervisor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistSupervisor.html">DistSupervisor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dns.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dns.html">Dns</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Duration.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Duration.html">Duration</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Enum.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Enum.html">Enum</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Env.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Env.html">Env</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="File.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="File.html">File</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Flow.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Flow.html">Flow</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Forge.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Forge.html">Forge</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Gen.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Gen.html">Gen</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalPid.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalPid.html">GlobalPid</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalRegistry.html">GlobalRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Hamt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Hamt.html">Hamt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handle.html">Handle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handshake.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handshake.html">Handshake</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HashMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HashMap.html">HashMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Html.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Html.html">Html</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Http.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Http.html">Http</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpClient.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpClient.html">HttpClient</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpServer.html">HttpServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpTransport.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpTransport.html">HttpTransport</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IO.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IO.html">IO</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IOList.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IOList.html">IOList</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Iterable.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Iterable.html">Iterable</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Audio.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Audio.html">Js.Audio</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Canvas.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Canvas.html">Js.Canvas</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Dom.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Dom.html">Js.Dom</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Json.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Json.html">Json</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="JsonStream.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="JsonStream.html">JsonStream</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LazyNicheProbe.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LazyNicheProbe.html">LazyNicheProbe</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LinearMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LinearMap.html">LinearMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="List.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="List.html">List</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Logger.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Logger.html">Logger</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Map.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Map.html">Map</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Math.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Math.html">Math</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Membership.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Membership.html">Membership</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Merkle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Merkle.html">Merkle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Msgpack.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Msgpack.html">Msgpack</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NativeArray.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NativeArray.html">NativeArray</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NetFrame.html">NetFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetKernel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NetKernel.html">NetKernel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Node.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Node.html">Node</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCall.html">NodeCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCert.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCert.html">NodeCert</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeIdentity.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeIdentity.html">NodeIdentity</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeQueue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeQueue.html">NodeQueue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeRpc.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeRpc.html">NodeRpc</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeSend.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeSend.html">NodeSend</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Option.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Option.html">Option</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="OrderedMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="OrderedMap.html">OrderedMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parallel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parallel.html">Parallel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parser.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parser.html">Parser</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Path.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Path.html">Path</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerReader.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerReader.html">PeerReader</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerRegistry.html">PeerRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Plot.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Plot.html">Plot</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Prelude.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Prelude.html">Prelude</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Presence.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Presence.html">Presence</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Process.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Process.html">Process</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PubSub.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PubSub.html">PubSub</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Queue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Queue.html">Queue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RRB.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RRB.html">RRB</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Random.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Random.html">Random</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Range.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Range.html">Range</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Recon.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Recon.html">Recon</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Regex.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Regex.html">Regex</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RemoteCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RemoteCall.html">RemoteCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Result.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Result.html">Result</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RingBuf.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RingBuf.html">RingBuf</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Scheduler.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Scheduler.html">Scheduler</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Seq.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Seq.html">Seq</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Session.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Session.html">Session</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionAP.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionAP.html">SessionAP</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionNode.html">SessionNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Set.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Set.html">Set</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ShellRender.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ShellRender.html">ShellRender</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sigil.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sigil.html">Sigil</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Signal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Signal.html">Signal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Simd.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Simd.html">Simd</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Socket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Socket.html">Socket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sort.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sort.html">Sort</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SortedSet.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SortedSet.html">SortedSet</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Stats.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Stats.html">Stats</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="String.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="String.html">String</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Swim.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Swim.html">Swim</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SwimDriver.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SwimDriver.html">SwimDriver</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="System.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="System.html">System</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Task.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Task.html">Task</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Test.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Test.html">Test</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tls.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tls.html">Tls</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Toml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Toml.html">Toml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Topology.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Topology.html">Topology</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Trace.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Trace.html">Trace</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tuple.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tuple.html">Tuple</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="UUID.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="UUID.html">UUID</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Uri.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Uri.html">Uri</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Vault.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Vault.html">Vault</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="VectorClock.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="VectorClock.html">VectorClock</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WebSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WebSocket.html">WebSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WorkDispatch.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WorkDispatch.html">WorkDispatch</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Xml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Xml.html">Xml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Yaml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Yaml.html">Yaml</a></div></div></div></nav><main id="main" data-pagefind-body data-pagefind-filter="section:Stdlib"><nav class="breadcrumb"><a href="index.html">March Docs</a><span class="sep">&rsaquo;</span><span>Config</span></nav><h1>Config</h1><div class="mdoc"><p>Config module: layered application configuration with typed keys.</p><p>Every configuration value lives under a typed KEY. A key names a path (<code>(ns, name)</code> or <code>(ns, section, name)</code>, all atoms) and carries a codec that fixes the value's type:</p><pre><code><span class="tok-kw">let</span> port = <span class="tok-ty">Config</span>.key(:myapp, :port, <span class="tok-ty">Config</span>.int())         <span class="tok-com">-- Key(Int)</span>
+<span class="tok-kw">let</span> host = <span class="tok-ty">Config</span>.key_in(:myapp, :db, :host, <span class="tok-ty">Config</span>.string()) <span class="tok-com">-- Key(String)</span>
+<span class="tok-ty">Config</span>.put(port, <span class="tok-num">4000</span>)
+<span class="tok-ty">Config</span>.get(port)                 <span class="tok-com">-- =&gt; Some(4000)</span>
+<span class="tok-ty">Config</span>.put(host, <span class="tok-str">&quot;localhost&quot;</span>)
+<span class="tok-ty">Config</span>.get(host)                 <span class="tok-com">-- =&gt; Some(&quot;localhost&quot;)</span></code></pre><p>Storage is heterogeneous (an Int port and a String host share one table), but a read can never hand back a value at the wrong type. Two things guarantee that:</p><ul><li>statically, <code>put(key : Key(v), value : v)</code> and `get(key : Key(v)) :</li></ul><pre><code>  <span class="tok-ty">Option</span>(v)` tie the value to the key's <span class="tok-kw">type</span>, so storing an <span class="tok-ty">Int</span> through
+  `port` and using the result of `get(port)` <span class="tok-kw">as</span> a <span class="tok-ty">Pid</span> is a <span class="tok-kw">type</span> error;
+* at runtime, each value is stored <span class="tok-kw">as</span> a tagged `<span class="tok-ty">Config</span>.<span class="tok-ty">Value</span>` and decoded
+  by the <span class="tok-ty">READING</span> key's codec. <span class="tok-ty">Two</span> keys minted <span class="tok-kw">for</span> the same path <span class="tok-kw">with</span>
+  different codecs (`key(:a, :b, int())` and `key(:a, :b, string())`)
+  therefore disagree safely: the read is `<span class="tok-ty">None</span>` from `get` and
+  `<span class="tok-ty">Err</span>(<span class="tok-ty">KeyWrongType</span>(...))` from `fetch`, never an unchecked value.</code></pre><p>Built-in codecs: int(), float(), string(), bool(), atom(), list(codec). Custom types: Config.codec(name, encode, decode), mapping onto Value.</p><p>Load from environment at startup: Config.from_env(Config.key(:myapp, :secret, Config.string()), &quot;SECRET_KEY_BASE&quot;, &quot;&quot;) Config.from_env_int(port, &quot;PORT&quot;, 4000)</p><p>Validate values: Config.validate(port, fn p -&gt; p &gt; 0 &amp;&amp; p &lt; 65536)</p><p>Detect current environment (reads MARCH_ENV): Config.env()   -- :dev | :test | :prod</p><p>Endpoint config shorthand (for web servers): Config.put_endpoint(4000, &quot;localhost&quot;, my_secret) Config.endpoint_port(4000) Config.endpoint_host(&quot;localhost&quot;) Config.secret_key_base()</p><p>Named stores (for isolation in tests): let store = Config.new_store(&quot;my_test_store&quot;) Config.store_put(store, port, 4000) Config.store_get(store, port)</p></div><h2>Types</h2><div class="item" id="type-Value"><div class="ih"><span class="badge bty">type</span><span class="name">Value</span><span class="sig"><a href="#type-Value">Value</a> = CfgInt(Int) | CfgFloat(Float) | CfgString(String)</span><a class="anchor-link" href="#type-Value" title="Link">#</a></div><div class="ib"><p>A stored configuration value. This closed, tagged sum is what the config table actually holds, which is what makes a heterogeneous table safe to read: a key's codec decodes a <code>Value</code> back to its own type and rejects any other tag.</p></div></div>
+<div class="item" id="type-Codec"><div class="ih"><span class="badge bty">type</span><span class="name">Codec</span><span class="sig"><a href="#type-Codec">Codec</a>(v) = <a href="#type-Codec">Codec</a>(String, v -&gt; <a href="#type-Value">Value</a>, <a href="#type-Value">Value</a> -&gt; Option(v))</span><a class="anchor-link" href="#type-Codec" title="Link">#</a></div><div class="ib"><p>How a key's values are stored and read back: a type name (used in error messages), an encoder into <code>Value</code>, and a decoder that returns <code>None</code> for a <code>Value</code> of any other shape. Build one with <code>int()</code>, <code>float()</code>, <code>string()</code>, <code>bool()</code>, <code>atom()</code>, <code>list(codec)</code>, or <code>codec(name, encode, decode)</code>.</p></div></div>
+<div class="item" id="type-Key"><div class="ih"><span class="badge bty">type</span><span class="name">Key</span><span class="sig"><a href="#type-Key">Key</a>(v) = <a href="#type-Key">Key</a>(String, <a href="#type-Codec">Codec</a>(v))</span><a class="anchor-link" href="#type-Key" title="Link">#</a></div><div class="ib"><p>A typed configuration key: a path plus the codec fixing its value type.</p></div></div>
+<div class="item" id="type-Error"><div class="ih"><span class="badge bty">type</span><span class="name">Error</span><span class="sig"><a href="Compress.html#type-Error">Error</a> = KeyMissing(String) | KeyWrongType(String, String, String)</span><a class="anchor-link" href="#type-Error" title="Link">#</a></div><div class="ib"><p>Why a typed read produced no value. <code>KeyMissing(path)</code> means nothing is stored under the path; <code>KeyWrongType(path, expected, found)</code> means a value is stored there, but it was written through a key of another type.</p></div></div><h2>Functions</h2><div class="item" id="fn-atom"><div class="ih"><span class="badge bfn">fn</span><span class="name">atom</span><span class="sig">atom() : <a href="#type-Codec">Codec</a>(Atom) do <a href="#type-Codec">Codec</a>(&quot;Atom&quot;, fn a -&gt; CfgAtom(a), decode_atom) end</span><a class="anchor-link" href="#fn-atom" title="Link">#</a></div><div class="ib"><p>Codec for <code>Atom</code> values.</p></div></div>
+<div class="item" id="fn-bool"><div class="ih"><span class="badge bfn">fn</span><span class="name">bool</span><span class="sig">bool() : <a href="#type-Codec">Codec</a>(Bool) do <a href="#type-Codec">Codec</a>(&quot;Bool&quot;, fn b -&gt; CfgBool(b), decode_bool) end</span><a class="anchor-link" href="#fn-bool" title="Link">#</a></div><div class="ib"><p>Codec for <code>Bool</code> values.</p></div></div>
+<div class="item" id="fn-codec"><div class="ih"><span class="badge bfn">fn</span><span class="name">codec</span><span class="sig">codec(name : String, encode : v -&gt; <a href="#type-Value">Value</a>, decode : <a href="#type-Value">Value</a> -&gt; Option(v)) : <a href="#type-Codec">Codec</a>(v)</span><a class="anchor-link" href="#fn-codec" title="Link">#</a></div><div class="ib"><p>A custom codec: store a <code>v</code> as a <code>Value</code> and read it back. <code>name</code> appears in <code>KeyWrongType</code> errors. Because <code>Value</code> is a closed sum, any codec that typechecks is safe; a decoder can only produce a <code>v</code> it can build from a <code>Value</code>.</p><pre><code><span class="tok-kw">type</span> <span class="tok-ty">Mode</span> = <span class="tok-ty">Fast</span> | <span class="tok-ty">Safe</span>
+
+<span class="tok-kw">fn</span> encode_mode(m : <span class="tok-ty">Mode</span>) : <span class="tok-ty">Config</span>.<span class="tok-ty">Value</span> <span class="tok-kw">do</span>
+  <span class="tok-kw">match</span> m <span class="tok-kw">do</span>
+    <span class="tok-ty">Fast</span> -&gt; <span class="tok-ty">CfgAtom</span>(:fast)
+    <span class="tok-ty">Safe</span> -&gt; <span class="tok-ty">CfgAtom</span>(:safe)
+  <span class="tok-kw">end</span>
+<span class="tok-kw">end</span>
+
+<span class="tok-kw">fn</span> decode_mode(d : <span class="tok-ty">Config</span>.<span class="tok-ty">Value</span>) : <span class="tok-ty">Option</span>(<span class="tok-ty">Mode</span>) <span class="tok-kw">do</span>
+  <span class="tok-kw">match</span> d <span class="tok-kw">do</span>
+    <span class="tok-ty">CfgAtom</span>(:fast) -&gt; <span class="tok-ty">Some</span>(<span class="tok-ty">Fast</span>)
+    <span class="tok-ty">CfgAtom</span>(:safe) -&gt; <span class="tok-ty">Some</span>(<span class="tok-ty">Safe</span>)
+    _              -&gt; <span class="tok-ty">None</span>
+  <span class="tok-kw">end</span>
+<span class="tok-kw">end</span>
+
+<span class="tok-kw">let</span> mode = <span class="tok-ty">Config</span>.key(:myapp, :mode, <span class="tok-ty">Config</span>.codec(<span class="tok-str">&quot;Mode&quot;</span>, encode_mode, decode_mode))</code></pre></div></div>
+<div class="item" id="fn-endpoint_host"><div class="ih"><span class="badge bfn">fn</span><span class="name">endpoint_host</span><span class="sig">endpoint_host(default_host : String) : String</span><a class="anchor-link" href="#fn-endpoint_host" title="Link">#</a></div><div class="ib"><p>Get the configured host. Returns default_host if not set.</p></div></div>
+<div class="item" id="fn-endpoint_host_key"><div class="ih"><span class="badge bfn">fn</span><span class="name">endpoint_host_key</span><span class="sig">endpoint_host_key() : <a href="#type-Key">Key</a>(String) do key(:bastion, :host, string()) end</span><a class="anchor-link" href="#fn-endpoint_host_key" title="Link">#</a></div><div class="ib"><p>The key <code>put_endpoint</code> stores the host under: <code>(:bastion, :host)</code>.</p></div></div>
+<div class="item" id="fn-endpoint_port"><div class="ih"><span class="badge bfn">fn</span><span class="name">endpoint_port</span><span class="sig">endpoint_port(default_port : Int) : Int</span><a class="anchor-link" href="#fn-endpoint_port" title="Link">#</a></div><div class="ib"><p>Get the configured HTTP port. Returns default_port if not set.</p></div></div>
+<div class="item" id="fn-endpoint_port_key"><div class="ih"><span class="badge bfn">fn</span><span class="name">endpoint_port_key</span><span class="sig">endpoint_port_key() : <a href="#type-Key">Key</a>(Int) do key(:bastion, :port, int()) end</span><a class="anchor-link" href="#fn-endpoint_port_key" title="Link">#</a></div><div class="ib"><p>The key <code>put_endpoint</code> stores the HTTP port under: <code>(:bastion, :port)</code>.</p></div></div>
+<div class="item" id="fn-env"><div class="ih"><span class="badge bfn">fn</span><span class="name">env</span><span class="sig">env()</span><a class="anchor-link" href="#fn-env" title="Link">#</a></div><div class="ib"><p>Returns the current application environment as an atom. Reads the MARCH_ENV environment variable; defaults to :dev. Possible values: :dev, :test, :prod.</p></div></div>
+<div class="item" id="fn-error_to_string"><div class="ih"><span class="badge bfn">fn</span><span class="name">error_to_string</span><span class="sig">error_to_string(e : <a href="Compress.html#type-Error">Error</a>) : String</span><a class="anchor-link" href="#fn-error_to_string" title="Link">#</a></div><div class="ib"><p>Render an <code>Error</code> as a one-line message.</p></div></div>
+<div class="item" id="fn-fetch"><div class="ih"><span class="badge bfn">fn</span><span class="name">fetch</span><span class="sig">fetch(k : <a href="#type-Key">Key</a>(v)) : Result(v, <a href="Compress.html#type-Error">Error</a>)</span><a class="anchor-link" href="#fn-fetch" title="Link">#</a></div><div class="ib"><p>Look up <code>key</code>, returning <code>Ok(value)</code>, <code>Err(KeyMissing(path))</code>, or <code>Err(KeyWrongType(path, expected, found))</code>.</p></div></div>
+<div class="item" id="fn-float"><div class="ih"><span class="badge bfn">fn</span><span class="name">float</span><span class="sig">float() : <a href="#type-Codec">Codec</a>(Float) do <a href="#type-Codec">Codec</a>(&quot;Float&quot;, fn f -&gt; CfgFloat(f), decode_float) end</span><a class="anchor-link" href="#fn-float" title="Link">#</a></div><div class="ib"><p>Codec for <code>Float</code> values.</p></div></div>
+<div class="item" id="fn-from_env"><div class="ih"><span class="badge bfn">fn</span><span class="name">from_env</span><span class="sig">from_env(k : <a href="#type-Key">Key</a>(String), env_var : String, default_val : String) : String</span><a class="anchor-link" href="#fn-from_env" title="Link">#</a></div><div class="ib"><p>Load a String value from an environment variable and store it under <code>key</code>. Uses default if the env var is not set. Returns the value stored.</p></div></div>
+<div class="item" id="fn-from_env_bool"><div class="ih"><span class="badge bfn">fn</span><span class="name">from_env_bool</span><span class="sig">from_env_bool(k : <a href="#type-Key">Key</a>(Bool), env_var : String, default_val : Bool) : Bool</span><a class="anchor-link" href="#fn-from_env_bool" title="Link">#</a></div><div class="ib"><p>Load a Bool value from an environment variable and store it under <code>key</code>. &quot;true&quot;, &quot;1&quot;, &quot;yes&quot; are parsed as true; uses default if absent. Returns the value stored.</p></div></div>
+<div class="item" id="fn-from_env_int"><div class="ih"><span class="badge bfn">fn</span><span class="name">from_env_int</span><span class="sig">from_env_int(k : <a href="#type-Key">Key</a>(Int), env_var : String, default_val : Int) : Int</span><a class="anchor-link" href="#fn-from_env_int" title="Link">#</a></div><div class="ib"><p>Load an Int value from an environment variable and store it under <code>key</code>. Parses the string as an integer; uses default if absent or unparseable. Returns the value stored.</p></div></div>
+<div class="item" id="fn-get"><div class="ih"><span class="badge bfn">fn</span><span class="name">get</span><span class="sig">get(k : <a href="#type-Key">Key</a>(v)) : Option(v)</span><a class="anchor-link" href="#fn-get" title="Link">#</a></div><div class="ib"><p>Look up <code>key</code>. Returns <code>Some(value)</code>, or <code>None</code> when the key is unset OR holds a value written through a key of another type. Use <code>fetch</code> to tell the two apart.</p></div></div>
+<div class="item" id="fn-get_with_default"><div class="ih"><span class="badge bfn">fn</span><span class="name">get_with_default</span><span class="sig">get_with_default(k : <a href="#type-Key">Key</a>(v), default_val : v) : v</span><a class="anchor-link" href="#fn-get_with_default" title="Link">#</a></div><div class="ib"><p>Get <code>key</code>'s value, or <code>default_val</code> when it is unset or of another type.</p></div></div>
+<div class="item" id="fn-int"><div class="ih"><span class="badge bfn">fn</span><span class="name">int</span><span class="sig">int() : <a href="#type-Codec">Codec</a>(Int) do <a href="#type-Codec">Codec</a>(&quot;Int&quot;, fn n -&gt; CfgInt(n), decode_int) end</span><a class="anchor-link" href="#fn-int" title="Link">#</a></div><div class="ib"><p>Codec for <code>Int</code> values.</p></div></div>
+<div class="item" id="fn-is_dev"><div class="ih"><span class="badge bfn">fn</span><span class="name">is_dev</span><span class="sig">is_dev()</span><a class="anchor-link" href="#fn-is_dev" title="Link">#</a></div><div class="ib"><p>True if the current environment is :dev.</p></div></div>
+<div class="item" id="fn-is_prod"><div class="ih"><span class="badge bfn">fn</span><span class="name">is_prod</span><span class="sig">is_prod()</span><a class="anchor-link" href="#fn-is_prod" title="Link">#</a></div><div class="ib"><p>True if the current environment is :prod.</p></div></div>
+<div class="item" id="fn-is_test"><div class="ih"><span class="badge bfn">fn</span><span class="name">is_test</span><span class="sig">is_test()</span><a class="anchor-link" href="#fn-is_test" title="Link">#</a></div><div class="ib"><p>True if the current environment is :test.</p></div></div>
+<div class="item" id="fn-key"><div class="ih"><span class="badge bfn">fn</span><span class="name">key</span><span class="sig">key(ns : Atom, name : Atom, c : <a href="#type-Codec">Codec</a>(v)) : <a href="#type-Key">Key</a>(v)</span><a class="anchor-link" href="#fn-key" title="Link">#</a></div><div class="ib"><p>A typed key for the 2-level path <code>(ns, name)</code>. The codec fixes the value type: <code>Config.key(:myapp, :port, Config.int()) : Key(Int)</code>.</p></div></div>
+<div class="item" id="fn-key_in"><div class="ih"><span class="badge bfn">fn</span><span class="name">key_in</span><span class="sig">key_in(ns : Atom, section : Atom, name : Atom, c : <a href="#type-Codec">Codec</a>(v)) : <a href="#type-Key">Key</a>(v)</span><a class="anchor-link" href="#fn-key_in" title="Link">#</a></div><div class="ib"><p>A typed key for the 3-level path <code>(ns, section, name)</code>: <code>Config.key_in(:myapp, :db, :host, Config.string()) : Key(String)</code>.</p></div></div>
+<div class="item" id="fn-list"><div class="ih"><span class="badge bfn">fn</span><span class="name">list</span><span class="sig">list(elem : <a href="#type-Codec">Codec</a>(v)) : <a href="#type-Codec">Codec</a>(List(v))</span><a class="anchor-link" href="#fn-list" title="Link">#</a></div><div class="ib"><p>Codec for a list whose elements use <code>elem</code>. Decoding fails (<code>None</code>) unless every element decodes.</p></div></div>
+<div class="item" id="fn-new_store"><div class="ih"><span class="badge bfn">fn</span><span class="name">new_store</span><span class="sig">new_store(name : String) : Vault(<a href="#type-Value">Value</a>)</span><a class="anchor-link" href="#fn-new_store" title="Link">#</a></div><div class="ib"><p>Create (or reopen) an isolated named config store. Useful for testing or multi-tenant configurations. Returns a store handle holding tagged <code>Value</code>s; use it with <code>store_put</code>, <code>store_get</code> and <code>store_fetch</code> and the same typed keys as the global table.</p></div></div>
+<div class="item" id="fn-path"><div class="ih"><span class="badge bfn">fn</span><span class="name">path</span><span class="sig">path(k : <a href="#type-Key">Key</a>(v)) : String</span><a class="anchor-link" href="#fn-path" title="Link">#</a></div><div class="ib"><p>The key's path as stored, e.g. `\</p></div></div>
+<div class="item" id="fn-put"><div class="ih"><span class="badge bfn">fn</span><span class="name">put</span><span class="sig">put(k : <a href="#type-Key">Key</a>(v), value : v) : Unit</span><a class="anchor-link" href="#fn-put" title="Link">#</a></div><div class="ib"><p>Store <code>value</code> under <code>key</code> in the global config table.</p></div></div>
+<div class="item" id="fn-put_endpoint"><div class="ih"><span class="badge bfn">fn</span><span class="name">put_endpoint</span><span class="sig">put_endpoint(port : Int, host : String, secret : String) : Unit</span><a class="anchor-link" href="#fn-put_endpoint" title="Link">#</a></div><div class="ib"><p>Store web endpoint configuration. Typically called during application startup. Config.put_endpoint(4000, &quot;localhost&quot;, secret)</p></div></div>
+<div class="item" id="fn-require"><div class="ih"><span class="badge bfn">fn</span><span class="name">require</span><span class="sig">require(k : <a href="#type-Key">Key</a>(v)) : v</span><a class="anchor-link" href="#fn-require" title="Link">#</a></div><div class="ib"><p>Get a required configuration value. Panics with the <code>error_to_string</code> message when the key is unset or holds a value of another type; use <code>fetch</code> for a recoverable read.</p></div></div>
+<div class="item" id="fn-secret_key_base"><div class="ih"><span class="badge bfn">fn</span><span class="name">secret_key_base</span><span class="sig">secret_key_base() : String</span><a class="anchor-link" href="#fn-secret_key_base" title="Link">#</a></div><div class="ib"><p>Get the secret key base. Returns empty string if not configured.</p></div></div>
+<div class="item" id="fn-secret_key_base_key"><div class="ih"><span class="badge bfn">fn</span><span class="name">secret_key_base_key</span><span class="sig">secret_key_base_key() : <a href="#type-Key">Key</a>(String) do key(:bastion, :secret_key_base, string()) end</span><a class="anchor-link" href="#fn-secret_key_base_key" title="Link">#</a></div><div class="ib"><p>The key <code>put_endpoint</code> stores the secret under: <code>(:bastion, :secret_key_base)</code>.</p></div></div>
+<div class="item" id="fn-store_fetch"><div class="ih"><span class="badge bfn">fn</span><span class="name">store_fetch</span><span class="sig">store_fetch(store : Vault(<a href="#type-Value">Value</a>), k : <a href="#type-Key">Key</a>(v)) : Result(v, <a href="Compress.html#type-Error">Error</a>)</span><a class="anchor-link" href="#fn-store_fetch" title="Link">#</a></div><div class="ib"><p>Look up <code>key</code> in a named config store, with an <code>Error</code> on failure (see <code>fetch</code>).</p></div></div>
+<div class="item" id="fn-store_get"><div class="ih"><span class="badge bfn">fn</span><span class="name">store_get</span><span class="sig">store_get(store : Vault(<a href="#type-Value">Value</a>), k : <a href="#type-Key">Key</a>(v)) : Option(v)</span><a class="anchor-link" href="#fn-store_get" title="Link">#</a></div><div class="ib"><p>Look up <code>key</code> in a named config store. <code>None</code> when unset or of another type (see <code>get</code>).</p></div></div>
+<div class="item" id="fn-store_put"><div class="ih"><span class="badge bfn">fn</span><span class="name">store_put</span><span class="sig">store_put(store : Vault(<a href="#type-Value">Value</a>), k : <a href="#type-Key">Key</a>(v), value : v) : Unit</span><a class="anchor-link" href="#fn-store_put" title="Link">#</a></div><div class="ib"><p>Store <code>value</code> under <code>key</code> in a named config store.</p></div></div>
+<div class="item" id="fn-string"><div class="ih"><span class="badge bfn">fn</span><span class="name">string</span><span class="sig">string() : <a href="#type-Codec">Codec</a>(String) do <a href="#type-Codec">Codec</a>(&quot;String&quot;, fn s -&gt; CfgString(s), decode_string) end</span><a class="anchor-link" href="#fn-string" title="Link">#</a></div><div class="ib"><p>Codec for <code>String</code> values.</p></div></div>
+<div class="item" id="fn-validate"><div class="ih"><span class="badge bfn">fn</span><span class="name">validate</span><span class="sig">validate(k : <a href="#type-Key">Key</a>(v), predicate : v -&gt; Bool) : Result(v, String)</span><a class="anchor-link" href="#fn-validate" title="Link">#</a></div><div class="ib"><p>Validate a config value with a predicate function. Returns Ok(value) if the key is set and the predicate returns true; otherwise Err with the <code>error_to_string</code> message for an unset or wrong-typed key, or &quot;Config: validation failed&quot;.</p></div></div>
+<div class="item" id="fn-value_type_name"><div class="ih"><span class="badge bfn">fn</span><span class="name">value_type_name</span><span class="sig">value_type_name(d : <a href="#type-Value">Value</a>) : String</span><a class="anchor-link" href="#fn-value_type_name" title="Link">#</a></div><div class="ib"><p>The type name of a stored <code>Value</code>, as shown in <code>KeyWrongType</code>.</p></div></div></main></div><script>
+/* Theme toggle */
+/* localStorage throws in sandboxed (opaque-origin) pages, e.g. registry-hosted docs */
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function getTheme(){var t=lsGet('march-doc-theme');
+if(t)return t;return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);
+var moon=document.getElementById('icon-moon'),sun=document.getElementById('icon-sun');
+if(moon&&sun){moon.style.display=t==='dark'?'block':'none';sun.style.display=t==='light'?'block':'none';}}
+function toggleTheme(){var t=getTheme()==='dark'?'light':'dark';lsSet('march-doc-theme',t);applyTheme(t);}
+applyTheme(getTheme());
+
+/* Search overlay */
+function openSearch(){loadSI();document.getElementById('search-overlay').classList.add('open');
+var inp=document.getElementById('search-input');if(inp){inp.value='';inp.focus();}}
+function closeSearch(){document.getElementById('search-overlay').classList.remove('open');
+var sr=document.getElementById('sr');if(sr)sr.innerHTML='';}
+
+/* DOMContentLoaded */
+document.addEventListener('DOMContentLoaded',function(){
+
+/* Collapsible items */
+document.querySelectorAll('.ih').forEach(function(h){h.addEventListener('click',function(e){
+if(e.target.classList.contains('anchor-link'))return;
+var b=this.nextElementSibling;if(b)b.classList.toggle('open');});});
+
+/* Active sidebar link + auto-expand current module group */
+var path=window.location.pathname;
+document.querySelectorAll('.sl').forEach(function(a){var h=a.getAttribute('href');if(h&&path.endsWith(h)){a.classList.add('active');var g=a.closest('.sb-group');if(g)g.classList.add('open');}});
+
+/* Sidebar group toggle (chevron click expands/collapses) */
+document.querySelectorAll('.sb-group-hdr').forEach(function(hdr){hdr.addEventListener('click',function(e){
+if(e.target.tagName==='A')return;e.preventDefault();this.parentElement.classList.toggle('open');});});
+
+/* Copy buttons on pre blocks */
+document.querySelectorAll('.ib pre').forEach(function(pre){
+var wrap=document.createElement('div');wrap.className='pre-wrap';
+pre.parentNode.insertBefore(wrap,pre);wrap.appendChild(pre);
+var btn=document.createElement('button');btn.className='copy-btn';btn.textContent='Copy';
+btn.addEventListener('click',function(e){e.stopPropagation();
+var code=pre.querySelector('code');var text=code?code.textContent:pre.textContent;
+navigator.clipboard.writeText(text).then(function(){
+btn.textContent='Copied!';btn.classList.add('copied');
+setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+}).catch(function(){btn.textContent='!';setTimeout(function(){btn.textContent='Copy';},1500);});});
+wrap.appendChild(btn);});
+
+/* Open anchor from URL hash */
+if(window.location.hash){var el=document.querySelector(window.location.hash);if(el){var ib=el.querySelector('.ib');if(ib)ib.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'start'});}}
+
+/* Cmd+K search shortcut */
+document.addEventListener('keydown',function(e){
+if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch();}
+if(e.key==='Escape')closeSearch();});
+
+});
+
+/* Cross-module search: loads search-index.json, fuzzy matches, renders results */
+/* The index covers every module (~400 KB for the stdlib), so it is fetched the
+   first time search is opened (or the search button is hovered), not with every
+   page. A query typed before it arrives is re-run when it lands. */
+var SI=null,SIloading=false;
+function loadSI(){if(SI||SIloading)return;SIloading=true;
+fetch('search-index.json').then(function(r){return r.json();}).then(function(d){SI=d;
+var q=document.getElementById('search-input');if(q&&q.value.trim())q.dispatchEvent(new Event('input'));})
+.catch(function(){SIloading=false;});}
+var STR=document.getElementById('search-trigger');if(STR)STR.addEventListener('mouseenter',loadSI);
+
+/* Levenshtein distance */
+function ld(a,b){
+if(!a.length)return b.length;if(!b.length)return a.length;
+var m=[];for(var i=0;i<=b.length;i++)m[i]=[i];
+for(var j=0;j<=a.length;j++)m[0][j]=j;
+for(i=1;i<=b.length;i++)for(j=1;j<=a.length;j++){
+m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+}return m[b.length][a.length];}
+
+/* Fuzzy scoring: returns 0 if no match */
+function fs(q,t){
+if(!t)return 0;var ql=q.toLowerCase(),tl=t.toLowerCase();
+/* Exact match */
+if(tl===ql)return 10000;
+/* Starts with */
+if(tl.indexOf(ql)===0)return 5000-tl.length;
+/* Substring */
+var idx=tl.indexOf(ql);if(idx>0)return 3000-idx;
+/* Word boundary match (camelCase, snake_case) */
+var words=tl.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/_/g,' ').split(' ');
+for(var w=0;w<words.length;w++){if(words[w].indexOf(ql)===0)return 2000-w*100;}
+/* Levenshtein for short queries */
+if(ql.length<=8&&tl.length<=40){var d=ld(ql,tl.substring(0,Math.max(ql.length+2,8)));
+if(d<=Math.ceil(ql.length*0.35))return 1000-d*100;}
+return 0;}
+
+/* Score an entry against a query */
+function scoreEntry(q,e){
+return Math.max(
+fs(q,e.n)*4, /* name match (highest weight) */
+fs(q,e.s)*2, /* signature match */
+fs(q,e.m)*2, /* module name match */
+fs(q,e.d) /* doc string match (lowest weight) */
+);}
+
+/* Render search results */
+function renderSR(results){
+var el=document.getElementById('sr');if(!el)return;
+if(!results.length){el.className='';el.innerHTML='';return;}
+el.className='open';var h='';
+for(var i=0;i<results.length;i++){
+var e=results[i].entry,k=e.k,href=e.m+'.html';
+if(k==='fn'||k==='pfn')href+='#fn-'+encodeURIComponent(e.n);
+else if(k==='type'||k==='ptype')href+='#type-'+encodeURIComponent(e.n);
+else if(k==='interface')href+='#iface-'+encodeURIComponent(e.n);
+var kc='sr-'+k;
+h+='<a class="sr-item" href="'+href+'">'+
+'<span class="sr-kind '+kc+'">'+k+'</span>'+
+'<span class="sr-name">'+esc(e.n)+'</span>'+
+'<span class="sr-mod">'+esc(e.m)+'</span></a>';
+if(e.d)h+='<div class="sr-doc">'+esc(e.d.substring(0,100))+'</div>';
+if(i<results.length-1)h+='<div class="sr-sep"></div>';
+}el.innerHTML=h;}
+
+/* HTML escape helper */
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+/* Search handler — uses the modal search input */
+var si=document.getElementById('search-input');
+if(si)si.addEventListener('input',function(){
+var q=this.value.trim();
+if(!q||!SI){renderSR([]);return;}
+var results=[];
+for(var i=0;i<SI.length;i++){
+var sc=scoreEntry(q,SI[i]);
+if(sc>0)results.push({entry:SI[i],score:sc});
+}
+results.sort(function(a,b){return b.score-a.score;});
+renderSR(results.slice(0,25));
+});
+</script></body></html>
