@@ -1,0 +1,645 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DateTime — March Docs</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+/* Dark theme (default) — deep navy with cyan accent, matching the March homepage */
+:root{--bg:#07101a;--sb:#0a1622;--bg-nav:rgba(7,16,26,.92);--card:#0c1928;--bdr:#0f2438;
+--acc:oklch(63% .12 207);--acc2:oklch(74% .11 200);--text:#cce5f5;--dim:#4a7898;
+--faint:#1e4060;--bright:#eaf4fb;--code:#0c1928;
+--fn:oklch(74% .13 165);--ty:oklch(82% .12 70);--if:oklch(78% .11 235);--prv:#3a5f7d;
+--hl-kw:oklch(74% .13 300);--hl-str:oklch(80% .12 140);--hl-num:oklch(80% .12 45);--hl-com:#5f89a8;--hl-ty:oklch(82% .1 80)}
+
+/* Light theme overrides */
+[data-theme='light']{--bg:#f0f6fc;--sb:#e3eef8;--bg-nav:rgba(240,246,252,.92);--card:#ddeaf5;--bdr:#b5cce0;
+--acc:oklch(37% .11 210);--acc2:oklch(45% .11 215);--text:#071828;--dim:#2e5c7c;
+--faint:#6a96b5;--bright:#071828;--code:#ddeaf5;
+--fn:oklch(45% .13 165);--ty:oklch(52% .12 70);--if:oklch(45% .11 235);--prv:#6a96b5;
+--hl-kw:oklch(45% .16 300);--hl-str:oklch(46% .13 145);--hl-num:oklch(50% .14 45);--hl-com:#4f7593;--hl-ty:oklch(47% .11 65)}
+
+/* Reset + base */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;font-size:15px;line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline;color:var(--acc2)}
+
+/* Top bar */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:60px;background:var(--bg-nav);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);flex-shrink:0;position:sticky;top:0;z-index:100}
+#topbar .brand{font-family:'Lora',Georgia,serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+#topbar .brand svg{width:20px;height:20px}
+#topbar .actions{display:flex;align-items:center;gap:12px}
+#theme-toggle{background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 8px;font-size:13px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;transition:all .15s}
+#theme-toggle:hover{color:var(--text);border-color:var(--acc)}
+#search-trigger{background:var(--card);border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 14px;font-size:13px;display:flex;align-items:center;gap:8px;transition:all .15s;min-width:200px}
+#search-trigger:hover{border-color:var(--acc);color:var(--text)}
+#search-trigger kbd{font-size:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:3px;padding:1px 5px;margin-left:auto;font-family:inherit}
+
+/* Content wrapper (sidebar + main) */
+.content-wrap{display:flex;flex:1;overflow:hidden}
+
+/* Typography */
+code,pre{font-family:'JetBrains Mono','Fira Code','SF Mono',monospace;font-size:13px}
+pre{background:var(--code);border:1px solid var(--bdr);border-radius:6px;padding:14px 18px;overflow-x:auto;margin:12px 0;line-height:1.5}
+code{background:var(--code);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--acc)}pre code{background:none;padding:0;color:var(--text);font-size:13px}
+/* Syntax highlighting (server-side spans from Highlight.highlight) */
+.tok-kw{color:var(--hl-kw)}.tok-str{color:var(--hl-str)}.tok-num{color:var(--hl-num)}
+.tok-com{color:var(--hl-com);font-style:italic}.tok-ty{color:var(--hl-ty)}
+h1{font-family:'Lora',Georgia,serif;font-size:2.1rem;color:var(--bright);margin-bottom:12px;font-weight:600;letter-spacing:-.02em}
+h2{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.72rem;color:var(--acc);margin:38px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bdr);font-weight:500;text-transform:uppercase;letter-spacing:.12em}
+p{margin:8px 0}
+
+/* Sidebar */
+#sb{width:248px;min-width:208px;background:var(--sb);border-right:1px solid var(--bdr);padding:8px 10px 28px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;flex-shrink:0}
+#sb::-webkit-scrollbar{width:5px}#sb::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}#sb::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+.sb-section{padding:0}
+.sb-heading{font-family:'JetBrains Mono','Fira Code',monospace;font-size:10px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.16em;padding:20px 10px 8px;user-select:none}
+
+/* Generic nav link (top-level + sub-items) */
+.sl{display:block;padding:5px 10px;border-radius:6px;font-size:13px;line-height:1.45;color:var(--dim);transition:color .12s,background .12s}
+.sl:hover{background:color-mix(in oklab,var(--acc) 9%,transparent);color:var(--text);text-decoration:none}
+.sl.active{color:var(--acc);font-weight:500}
+.sb-section>.sl.active,.sb-sub .sl.active{background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+
+/* Hierarchical sidebar groups */
+.sb-group{margin:1px 0}
+.sb-group-hdr{display:flex;align-items:center;border-radius:6px;cursor:pointer;user-select:none;transition:background .12s}
+.sb-group-hdr:hover{background:color-mix(in oklab,var(--acc) 9%,transparent)}
+.sb-group-hdr:hover .sl,.sb-group-hdr:hover .sb-chevron{color:var(--text)}
+.sb-group-hdr:has(.sl.active){background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+.sb-group-hdr .sl{flex:1;padding-left:1px}
+.sb-chevron{font-size:9px;transition:transform .15s,color .12s;width:20px;align-self:stretch;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--faint)}
+.sb-group.open>.sb-group-hdr .sb-chevron{transform:rotate(90deg);color:var(--acc)}
+.sb-sub{display:none;margin:1px 0 6px 19px;padding-left:8px;border-left:1px solid var(--bdr)}
+.sb-group.open .sb-sub{display:block}
+.sb-sub .sl{font-size:12px;padding:3px 8px;color:var(--dim)}
+.sb-sub .sl:hover{color:var(--text)}
+.sb-kind{display:inline-block;width:12px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.03em;margin-right:8px;text-transform:uppercase;text-align:center}
+
+/* Main content */
+#main{flex:1;padding:40px max(52px,calc(50% - 574px));min-width:0;overflow-y:auto;height:calc(100vh - 60px)}
+
+/* Breadcrumb */
+.breadcrumb{font-size:12px;color:var(--dim);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.breadcrumb a{color:var(--dim);font-size:12px}.breadcrumb a:hover{color:var(--acc)}
+.breadcrumb .sep{color:var(--bdr)}
+
+/* Module doc card */
+.mdoc{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:20px 24px;margin-bottom:24px;color:var(--dim);font-size:14px;line-height:1.7}
+
+/* Items */
+.item{border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px;overflow:hidden;transition:border-color .15s}
+.item:hover{border-color:color-mix(in srgb,var(--acc) 40%,var(--bdr))}
+.ih{display:flex;align-items:baseline;gap:10px;padding:12px 16px;background:var(--card);cursor:pointer;user-select:none;transition:background .1s}
+.ih:hover{background:color-mix(in srgb,var(--card) 80%,var(--acc) 20%)}
+
+/* Badges */
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.08em;padding:2px 9px;border-radius:100px;text-transform:uppercase;flex-shrink:0;border:1px solid transparent}
+.bfn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn);border-color:color-mix(in oklab,var(--fn) 24%,transparent)}
+.bpfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 30%,transparent)}
+.bty{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty);border-color:color-mix(in oklab,var(--ty) 24%,transparent)}
+.bpt{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 26%,transparent)}
+.bif{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if);border-color:color-mix(in oklab,var(--if) 24%,transparent)}
+
+/* Item content */
+.name{font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px;color:var(--bright);font-weight:600}
+.sig{font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;color:var(--dim);flex:1;margin-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{padding:18px 20px;border-top:1px solid var(--bdr);display:none;font-size:14px;color:var(--text);line-height:1.7}
+.ib.open{display:block}
+
+/* Source + anchor links */
+.src-link{font-size:10px;color:var(--dim);background:var(--bg);border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;margin-left:auto;opacity:0;transition:all .15s;text-decoration:none;flex-shrink:0}
+.ih:hover .src-link{opacity:1}.src-link:hover{color:var(--acc);border-color:var(--acc);text-decoration:none}
+.anchor-link{color:var(--bdr);font-size:14px;margin-left:6px;opacity:0;transition:opacity .15s;text-decoration:none}
+.ih:hover .anchor-link{opacity:1}.anchor-link:hover{color:var(--acc);text-decoration:none}
+
+/* Module cards (index page) */
+.mc{border:1px solid var(--bdr);border-radius:8px;padding:16px 20px;margin-bottom:12px;background:var(--card);transition:all .15s}
+.mc:hover{border-color:var(--acc);transform:translateY(-1px)}
+.mc h3{font-family:'Lora',Georgia,serif;color:var(--acc);font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+.mc p{font-size:13px;color:var(--dim);margin-top:6px}
+.st{font-size:12px;color:var(--dim);margin-top:8px;display:flex;gap:16px}
+.st span{display:flex;align-items:center;gap:4px}
+
+/* Copy button */
+.pre-wrap{position:relative}
+.copy-btn{position:absolute;top:8px;right:10px;background:var(--card);color:var(--dim);border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;font-size:11px;font-family:-apple-system,sans-serif;cursor:pointer;opacity:0;transition:all .15s}
+.pre-wrap:hover .copy-btn{opacity:1}
+.copy-btn:hover{color:var(--text);border-color:var(--acc)}
+.copy-btn.copied{color:var(--fn);border-color:var(--fn);opacity:1}
+
+/* Search overlay (Cmd+K) */
+#search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-start;justify-content:center;padding-top:min(20vh,160px)}
+#search-overlay.open{display:flex}
+#search-modal{background:var(--sb);border:1px solid var(--bdr);border-radius:12px;width:560px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+#search-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bdr);color:var(--text);padding:16px 20px;font-size:15px;outline:none;font-family:inherit}
+#search-input::placeholder{color:var(--dim)}
+#sr{max-height:50vh;overflow-y:auto;padding:8px}
+#sr:empty{display:none}
+.sr-item{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;text-decoration:none;color:var(--text);font-size:13px;transition:background .1s}
+.sr-item:hover{background:var(--card);text-decoration:none}
+.sr-kind{font-size:9px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:4px;text-transform:uppercase;flex-shrink:0;min-width:32px;text-align:center}
+.sr-fn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn)}.sr-type{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty)}
+.sr-interface{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if)}.sr-module{background:color-mix(in oklab,var(--acc) 13%,transparent);color:var(--acc)}
+.sr-pfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv)}.sr-ptype{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv)}
+.sr-name{color:var(--bright);font-family:monospace;font-weight:600;white-space:nowrap}
+.sr-mod{color:var(--dim);font-size:11px;margin-left:auto;flex-shrink:0}
+.sr-doc{color:var(--dim);font-size:11px;padding:0 12px 6px 48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-sep{border-top:1px solid var(--bdr);margin:2px 8px}
+
+/* Admonitions */
+.admonition{border-left:3px solid var(--acc);background:var(--card);border-radius:0 6px 6px 0;padding:12px 16px;margin:12px 0;font-size:14px;color:var(--text)}
+.admonition.warning{border-left-color:var(--ty)}
+.admonition.note{border-left-color:var(--acc2)}
+
+/* Lists */
+ul,ol{margin:8px 0;padding-left:24px}li{margin:4px 0;line-height:1.6}
+
+/* Guide body */
+.guide-body{line-height:1.8;font-size:15px}
+.guide-body h3{font-family:'Lora',Georgia,serif;font-size:1.4rem;margin:30px 0 12px;color:var(--bright);font-weight:600;letter-spacing:-.01em}
+.guide-body h4{font-family:'Lora',Georgia,serif;font-size:1.1rem;margin:24px 0 10px;color:var(--bright);font-weight:600}
+
+/* Code blocks follow theme tokens (light code surface in light mode, like the main page) */
+
+/* Responsive */
+@media(max-width:768px){#sb{display:none}#main{padding:24px 16px}#search-trigger{min-width:auto}}
+</style></head><body><header id="topbar"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> March Docs</div><div class="actions"><button id="search-trigger" onclick="openSearch()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Search&hellip;<kbd>&#8984;K</kbd></button><button id="theme-toggle" onclick="toggleTheme()"><svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div></header><div id="search-overlay" onclick="closeSearch()"><div id="search-modal" onclick="event.stopPropagation()"><input id="search-input" type="text" placeholder="Search modules, functions, types&hellip;" autocomplete="off"><div id="sr"></div></div></div><div class="content-wrap"><nav id="sb"><div class="sb-section"><a href="index.html" class="sl">Overview</a><div class="sb-heading">Modules</div><div class="sb-group"><div class="sb-group-hdr" data-href="Actor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Actor.html">Actor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="AhoCorasick.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="AhoCorasick.html">AhoCorasick</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Array.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Array.html">Array</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Base64.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Base64.html">Base64</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="BigInt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="BigInt.html">BigInt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Bytes.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Bytes.html">Bytes</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="CRDT.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="CRDT.html">CRDT</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Channel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Channel.html">Channel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelServer.html">ChannelServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelSocket.html">ChannelSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Char.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Char.html">Char</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Check.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Check.html">Check</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cli.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cli.html">Cli</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cluster.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cluster.html">Cluster</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterAuth.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterAuth.html">ClusterAuth</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterConn.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterConn.html">ClusterConn</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterLoad.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterLoad.html">ClusterLoad</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterNode.html">ClusterNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Compress.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Compress.html">Compress</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Config.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Config.html">Config</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ConsistentHash.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ConsistentHash.html">ConsistentHash</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Control.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Control.html">Control</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Crypto.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Crypto.html">Crypto</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Csv.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Csv.html">Csv</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DataFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DataFrame.html">DataFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DateTime.html"><span class="sb-chevron">&#9656;</span><a class="sl" href="DateTime.html">DateTime</a></div><div class="sb-sub"><a class="sl" href="DateTime.html#type-Date"><span class="sb-kind" style="color:var(--ty)">T</span>Date</a>
+<a class="sl" href="DateTime.html#type-Time"><span class="sb-kind" style="color:var(--ty)">T</span>Time</a>
+<a class="sl" href="DateTime.html#type-DateTime"><span class="sb-kind" style="color:var(--ty)">T</span>DateTime</a>
+<a class="sl" href="DateTime.html#type-Tz"><span class="sb-kind" style="color:var(--ty)">T</span>Tz</a>
+<a class="sl" href="DateTime.html#type-LocalDateTime"><span class="sb-kind" style="color:var(--ty)">T</span>LocalDateTime</a>
+<a class="sl" href="DateTime.html#fn-add"><span class="sb-kind" style="color:var(--fn)">F</span>add</a>
+<a class="sl" href="DateTime.html#fn-add_days"><span class="sb-kind" style="color:var(--fn)">F</span>add_days</a>
+<a class="sl" href="DateTime.html#fn-add_hours"><span class="sb-kind" style="color:var(--fn)">F</span>add_hours</a>
+<a class="sl" href="DateTime.html#fn-add_ms"><span class="sb-kind" style="color:var(--fn)">F</span>add_ms</a>
+<a class="sl" href="DateTime.html#fn-add_seconds"><span class="sb-kind" style="color:var(--fn)">F</span>add_seconds</a>
+<a class="sl" href="DateTime.html#fn-compare"><span class="sb-kind" style="color:var(--fn)">F</span>compare</a>
+<a class="sl" href="DateTime.html#fn-day_of_week"><span class="sb-kind" style="color:var(--fn)">F</span>day_of_week</a>
+<a class="sl" href="DateTime.html#fn-diff_seconds"><span class="sb-kind" style="color:var(--fn)">F</span>diff_seconds</a>
+<a class="sl" href="DateTime.html#fn-fixed_zone"><span class="sb-kind" style="color:var(--fn)">F</span>fixed_zone</a>
+<a class="sl" href="DateTime.html#fn-fixed_zone_hm"><span class="sb-kind" style="color:var(--fn)">F</span>fixed_zone_hm</a>
+<a class="sl" href="DateTime.html#fn-fixed_zone_hours"><span class="sb-kind" style="color:var(--fn)">F</span>fixed_zone_hours</a>
+<a class="sl" href="DateTime.html#fn-format"><span class="sb-kind" style="color:var(--fn)">F</span>format</a>
+<a class="sl" href="DateTime.html#fn-format_offset"><span class="sb-kind" style="color:var(--fn)">F</span>format_offset</a>
+<a class="sl" href="DateTime.html#fn-from_timestamp"><span class="sb-kind" style="color:var(--fn)">F</span>from_timestamp</a>
+<a class="sl" href="DateTime.html#fn-local_datetime"><span class="sb-kind" style="color:var(--fn)">F</span>local_datetime</a>
+<a class="sl" href="DateTime.html#fn-local_format"><span class="sb-kind" style="color:var(--fn)">F</span>local_format</a>
+<a class="sl" href="DateTime.html#fn-local_from_timestamp"><span class="sb-kind" style="color:var(--fn)">F</span>local_from_timestamp</a>
+<a class="sl" href="DateTime.html#fn-local_from_utc"><span class="sb-kind" style="color:var(--fn)">F</span>local_from_utc</a>
+<a class="sl" href="DateTime.html#fn-local_now"><span class="sb-kind" style="color:var(--fn)">F</span>local_now</a>
+<a class="sl" href="DateTime.html#fn-local_of"><span class="sb-kind" style="color:var(--fn)">F</span>local_of</a>
+<a class="sl" href="DateTime.html#fn-local_to_timestamp"><span class="sb-kind" style="color:var(--fn)">F</span>local_to_timestamp</a>
+<a class="sl" href="DateTime.html#fn-local_to_utc"><span class="sb-kind" style="color:var(--fn)">F</span>local_to_utc</a>
+<a class="sl" href="DateTime.html#fn-local_with_zone"><span class="sb-kind" style="color:var(--fn)">F</span>local_with_zone</a>
+<a class="sl" href="DateTime.html#fn-local_zone"><span class="sb-kind" style="color:var(--fn)">F</span>local_zone</a>
+<a class="sl" href="DateTime.html#fn-now"><span class="sb-kind" style="color:var(--fn)">F</span>now</a>
+<a class="sl" href="DateTime.html#fn-parse"><span class="sb-kind" style="color:var(--fn)">F</span>parse</a>
+<a class="sl" href="DateTime.html#fn-parse_offset"><span class="sb-kind" style="color:var(--fn)">F</span>parse_offset</a>
+<a class="sl" href="DateTime.html#fn-to_timestamp"><span class="sb-kind" style="color:var(--fn)">F</span>to_timestamp</a>
+<a class="sl" href="DateTime.html#fn-utc_zone"><span class="sb-kind" style="color:var(--fn)">F</span>utc_zone</a>
+<a class="sl" href="DateTime.html#fn-zone_name"><span class="sb-kind" style="color:var(--fn)">F</span>zone_name</a>
+<a class="sl" href="DateTime.html#fn-zone_offset_seconds"><span class="sb-kind" style="color:var(--fn)">F</span>zone_offset_seconds</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Decimal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Decimal.html">Decimal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Deque.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Deque.html">Deque</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnose.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnose.html">Diagnose</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnostics.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnostics.html">Diagnostics</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dir.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dir.html">Dir</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistLink.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistLink.html">DistLink</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistSupervisor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistSupervisor.html">DistSupervisor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dns.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dns.html">Dns</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Duration.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Duration.html">Duration</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Enum.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Enum.html">Enum</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Env.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Env.html">Env</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="File.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="File.html">File</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Flow.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Flow.html">Flow</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Forge.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Forge.html">Forge</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Gen.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Gen.html">Gen</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalPid.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalPid.html">GlobalPid</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalRegistry.html">GlobalRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Hamt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Hamt.html">Hamt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handle.html">Handle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handshake.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handshake.html">Handshake</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HashMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HashMap.html">HashMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Html.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Html.html">Html</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Http.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Http.html">Http</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpClient.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpClient.html">HttpClient</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpServer.html">HttpServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpTransport.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpTransport.html">HttpTransport</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IO.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IO.html">IO</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IOList.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IOList.html">IOList</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Iterable.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Iterable.html">Iterable</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Audio.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Audio.html">Js.Audio</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Canvas.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Canvas.html">Js.Canvas</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Dom.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Dom.html">Js.Dom</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Json.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Json.html">Json</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="JsonStream.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="JsonStream.html">JsonStream</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LazyNicheProbe.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LazyNicheProbe.html">LazyNicheProbe</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LinearMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LinearMap.html">LinearMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="List.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="List.html">List</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Logger.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Logger.html">Logger</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Map.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Map.html">Map</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Math.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Math.html">Math</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Membership.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Membership.html">Membership</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Merkle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Merkle.html">Merkle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="MlDsa.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="MlDsa.html">MlDsa</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="MlKem.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="MlKem.html">MlKem</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Msgpack.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Msgpack.html">Msgpack</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NativeArray.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NativeArray.html">NativeArray</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NetFrame.html">NetFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetKernel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NetKernel.html">NetKernel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Node.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Node.html">Node</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCall.html">NodeCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCert.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCert.html">NodeCert</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeIdentity.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeIdentity.html">NodeIdentity</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeQueue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeQueue.html">NodeQueue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeRpc.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeRpc.html">NodeRpc</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeSend.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeSend.html">NodeSend</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Option.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Option.html">Option</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="OrderedMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="OrderedMap.html">OrderedMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parallel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parallel.html">Parallel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parser.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parser.html">Parser</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Path.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Path.html">Path</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerReader.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerReader.html">PeerReader</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerRegistry.html">PeerRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Plot.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Plot.html">Plot</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Prelude.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Prelude.html">Prelude</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Presence.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Presence.html">Presence</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Process.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Process.html">Process</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PubSub.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PubSub.html">PubSub</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Queue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Queue.html">Queue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RRB.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RRB.html">RRB</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Random.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Random.html">Random</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Range.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Range.html">Range</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Recon.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Recon.html">Recon</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Regex.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Regex.html">Regex</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RemoteCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RemoteCall.html">RemoteCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Result.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Result.html">Result</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RingBuf.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RingBuf.html">RingBuf</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Scheduler.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Scheduler.html">Scheduler</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Seq.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Seq.html">Seq</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Session.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Session.html">Session</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionAP.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionAP.html">SessionAP</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionNode.html">SessionNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Set.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Set.html">Set</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ShellRender.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ShellRender.html">ShellRender</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sigil.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sigil.html">Sigil</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Signal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Signal.html">Signal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Simd.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Simd.html">Simd</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Socket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Socket.html">Socket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sort.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sort.html">Sort</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SortedSet.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SortedSet.html">SortedSet</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Stats.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Stats.html">Stats</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="String.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="String.html">String</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Swim.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Swim.html">Swim</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SwimDriver.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SwimDriver.html">SwimDriver</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="System.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="System.html">System</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Task.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Task.html">Task</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Test.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Test.html">Test</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tls.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tls.html">Tls</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Toml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Toml.html">Toml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Topology.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Topology.html">Topology</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Trace.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Trace.html">Trace</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tuple.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tuple.html">Tuple</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="UUID.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="UUID.html">UUID</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Uri.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Uri.html">Uri</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Vault.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Vault.html">Vault</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="VectorClock.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="VectorClock.html">VectorClock</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WebSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WebSocket.html">WebSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WorkDispatch.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WorkDispatch.html">WorkDispatch</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Xml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Xml.html">Xml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Yaml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Yaml.html">Yaml</a></div></div></div></nav><main id="main" data-pagefind-body data-pagefind-filter="section:Stdlib"><nav class="breadcrumb"><a href="index.html">March Docs</a><span class="sep">&rsaquo;</span><span>DateTime</span></nav><h1>DateTime</h1><div class="mdoc"><p>DateTime module: date/time types and arithmetic.</p><p>Types: Date(year, month, day)   -- Gregorian calendar, month 1-12, day 1-31 Time(hour, min, sec)     -- 24-hour clock, all zero-based except day DateTime(date, time)     -- combined date and time</p><p>Timestamps are Unix timestamps: integer seconds since 1970-01-01 00:00:00 UTC. now() returns the current time as a Unix timestamp (Int).</p><p>Calendar arithmetic assumes the proleptic Gregorian calendar throughout. Day-of-week encoding: 0 = Sunday, 1 = Monday, ..., 6 = Saturday.</p></div><h2>Types</h2><div class="item" id="type-Date"><div class="ih"><span class="badge bty">type</span><span class="name">Date</span><span class="sig"><a href="#type-Date">Date</a> = <a href="#type-Date">Date</a>(Int, Int, Int)         -- year, month (1-12), day (1-31)</span><a class="anchor-link" href="#type-Date" title="Link">#</a></div><div class="ib"></div></div>
+<div class="item" id="type-Time"><div class="ih"><span class="badge bty">type</span><span class="name">Time</span><span class="sig"><a href="#type-Time">Time</a> = <a href="#type-Time">Time</a>(Int, Int, Int)         -- hour (0-23), min (0-59), sec (0-59)</span><a class="anchor-link" href="#type-Time" title="Link">#</a></div><div class="ib"></div></div>
+<div class="item" id="type-DateTime"><div class="ih"><span class="badge bty">type</span><span class="name">DateTime</span><span class="sig"><a href="#type-DateTime">DateTime</a> = <a href="#type-DateTime">DateTime</a>(<a href="#type-Date">Date</a>, <a href="#type-Time">Time</a>)</span><a class="anchor-link" href="#type-DateTime" title="Link">#</a></div><div class="ib"></div></div>
+<div class="item" id="type-Tz"><div class="ih"><span class="badge bty">type</span><span class="name">Tz</span><span class="sig"><a href="#type-Tz">Tz</a> = <a href="#type-Tz">Tz</a>(String, Int)</span><a class="anchor-link" href="#type-Tz" title="Link">#</a></div><div class="ib"><p><code>Tz(name, offset_seconds)</code> represents a zone with a constant offset east of UTC.  <code>offset_seconds</code> is positive for zones east of UTC (UTC+05:30 → +19800) and negative for zones west (UTC−08:00 → −28800).</p><p>DST-aware zones (America/New_York, Europe/London, Pacific/Auckland, …) are deliberately out of scope for this phase — they require loading IANA tzdata or hard-coding transition rules, and the ecosystem pattern is to layer that on top of a fixed-offset primitive rather than bake it in.  For now any zone you need must be modeled as a fixed offset; a future phase can add IANA support and keep this primitive.</p><p><code>LocalDateTime(civil, tz)</code> pairs a calendar &quot;wall clock&quot; DateTime with its zone.  <code>local_to_utc</code> and <code>local_from_utc</code> convert back and forth; <code>local_with_zone</code> shifts to another zone preserving the instant.</p></div></div>
+<div class="item" id="type-LocalDateTime"><div class="ih"><span class="badge bty">type</span><span class="name">LocalDateTime</span><span class="sig"><a href="#type-LocalDateTime">LocalDateTime</a> = <a href="#type-LocalDateTime">LocalDateTime</a>(<a href="#type-DateTime">DateTime</a>, <a href="#type-Tz">Tz</a>)</span><a class="anchor-link" href="#type-LocalDateTime" title="Link">#</a></div><div class="ib"></div></div><h2>Functions</h2><div class="item" id="fn-add"><div class="ih"><span class="badge bfn">fn</span><span class="name">add</span><span class="sig">add(dt : <a href="#type-DateTime">DateTime</a>, dur : Int) : <a href="#type-DateTime">DateTime</a></span><a class="anchor-link" href="#fn-add" title="Link">#</a></div><div class="ib"><p>Add a span of <code>dur</code> milliseconds to a DateTime; same as <code>add_ms</code>. Despite the name it takes a plain Int, not a <code>Duration.Duration</code> value: convert with <code>Duration.to_milliseconds</code> first.</p><h3>Examples</h3><pre data-try="DateTime.add(DateTime(Date(2024, 1, 1), Time(0, 0, 0)), Duration.to_milliseconds(Duration.minutes(90)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.add(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">Duration</span>.to_milliseconds(<span class="tok-ty">Duration</span>.minutes(<span class="tok-num">90</span>)))
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">1</span>, <span class="tok-num">30</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-add_days"><div class="ih"><span class="badge bfn">fn</span><span class="name">add_days</span><span class="sig">add_days(dt, n)</span><a class="anchor-link" href="#fn-add_days" title="Link">#</a></div><div class="ib"><p>Add n days (of exactly 86400 seconds) to a DateTime. n may be negative. Month, year and leap-day rollover are handled.</p><h3>Examples</h3><pre data-try="DateTime.add_days(DateTime(Date(2024, 2, 28), Time(12, 0, 0)), 1)
+DateTime.add_days(DateTime(Date(2024, 3, 1), Time(0, 0, 0)), -1)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.add_days(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">2</span>, <span class="tok-num">28</span>), <span class="tok-ty">Time</span>(<span class="tok-num">12</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-num">1</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">2</span>, <span class="tok-num">29</span>), <span class="tok-ty">Time</span>(<span class="tok-num">12</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))
+march&gt; <span class="tok-ty">DateTime</span>.add_days(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">3</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), -<span class="tok-num">1</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">2</span>, <span class="tok-num">29</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-add_hours"><div class="ih"><span class="badge bfn">fn</span><span class="name">add_hours</span><span class="sig">add_hours(dt, n)</span><a class="anchor-link" href="#fn-add_hours" title="Link">#</a></div><div class="ib"><p>Add n hours to a DateTime. n may be negative.</p><h3>Examples</h3><pre data-try="DateTime.add_hours(DateTime(Date(2024, 12, 31), Time(23, 0, 0)), 2)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.add_hours(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">12</span>, <span class="tok-num">31</span>), <span class="tok-ty">Time</span>(<span class="tok-num">23</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-num">2</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2025</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">1</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-add_ms"><div class="ih"><span class="badge bfn">fn</span><span class="name">add_ms</span><span class="sig">add_ms(dt : <a href="#type-DateTime">DateTime</a>, n : Int) : <a href="#type-DateTime">DateTime</a></span><a class="anchor-link" href="#fn-add_ms" title="Link">#</a></div><div class="ib"><p>Add n milliseconds to a DateTime. n may be negative. DateTime has whole-second resolution, so n is truncated toward zero to whole seconds first (2500 adds 2 s, -1500 subtracts 1 s, 999 adds nothing).</p><h3>Examples</h3><pre data-try="DateTime.add_ms(DateTime(Date(2024, 1, 1), Time(0, 0, 0)), 2500)
+DateTime.add_ms(DateTime(Date(2024, 1, 1), Time(0, 0, 0)), -1500)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.add_ms(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-num">2500</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">2</span>))
+march&gt; <span class="tok-ty">DateTime</span>.add_ms(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), -<span class="tok-num">1500</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2023</span>, <span class="tok-num">12</span>, <span class="tok-num">31</span>), <span class="tok-ty">Time</span>(<span class="tok-num">23</span>, <span class="tok-num">59</span>, <span class="tok-num">59</span>))</code></pre></div></div>
+<div class="item" id="fn-add_seconds"><div class="ih"><span class="badge bfn">fn</span><span class="name">add_seconds</span><span class="sig">add_seconds(dt, n)</span><a class="anchor-link" href="#fn-add_seconds" title="Link">#</a></div><div class="ib"><p>Add n seconds to a DateTime. n may be negative.</p><h3>Examples</h3><pre data-try="DateTime.add_seconds(DateTime(Date(1970, 1, 1), Time(0, 0, 0)), -1)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.add_seconds(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), -<span class="tok-num">1</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1969</span>, <span class="tok-num">12</span>, <span class="tok-num">31</span>), <span class="tok-ty">Time</span>(<span class="tok-num">23</span>, <span class="tok-num">59</span>, <span class="tok-num">59</span>))</code></pre></div></div>
+<div class="item" id="fn-compare"><div class="ih"><span class="badge bfn">fn</span><span class="name">compare</span><span class="sig">compare(a, b)</span><a class="anchor-link" href="#fn-compare" title="Link">#</a></div><div class="ib"><p>Compare two DateTimes chronologically. Returns -1 if a &lt; b, 0 if a == b, 1 if a &gt; b.</p><h3>Examples</h3><pre data-try="DateTime.compare(DateTime(Date(2024, 1, 2), Time(0, 0, 0)), DateTime(Date(2024, 1, 1), Time(12, 0, 0)))
+DateTime.compare(DateTime(Date(2024, 1, 1), Time(0, 0, 0)), DateTime(Date(2024, 1, 1), Time(0, 0, 0)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.compare(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">2</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">12</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">1</span>
+march&gt; <span class="tok-ty">DateTime</span>.compare(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">0</span></code></pre></div></div>
+<div class="item" id="fn-day_of_week"><div class="ih"><span class="badge bfn">fn</span><span class="name">day_of_week</span><span class="sig">day_of_week(dt)</span><a class="anchor-link" href="#fn-day_of_week" title="Link">#</a></div><div class="ib"><p>Return the day of the week for the date component of a DateTime. 0 = Sunday, 1 = Monday, ..., 6 = Saturday. (January 1, 1970 was a Thursday = 4.) The time component is ignored. Note: dates more than four days before 1970-01-01 currently return a negative number (the remainder is not floored).</p><h3>Examples</h3><pre data-try="DateTime.day_of_week(DateTime(Date(1970, 1, 1), Time(0, 0, 0)))
+DateTime.day_of_week(DateTime(Date(2024, 1, 15), Time(18, 0, 0)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.day_of_week(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">4</span>
+march&gt; <span class="tok-ty">DateTime</span>.day_of_week(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">18</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">1</span></code></pre></div></div>
+<div class="item" id="fn-diff_seconds"><div class="ih"><span class="badge bfn">fn</span><span class="name">diff_seconds</span><span class="sig">diff_seconds(a, b)</span><a class="anchor-link" href="#fn-diff_seconds" title="Link">#</a></div><div class="ib"><p>Difference between two DateTimes in seconds: <code>to_timestamp(a) - to_timestamp(b)</code>, so negative when <code>a</code> is earlier.</p><h3>Examples</h3><pre data-try="DateTime.diff_seconds(DateTime(Date(2024, 1, 2), Time(0, 0, 0)), DateTime(Date(2024, 1, 1), Time(12, 0, 0)))
+DateTime.diff_seconds(DateTime(Date(2024, 1, 1), Time(0, 0, 0)), DateTime(Date(2024, 1, 1), Time(0, 1, 0)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.diff_seconds(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">2</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">12</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">43200</span>
+march&gt; <span class="tok-ty">DateTime</span>.diff_seconds(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">1</span>, <span class="tok-num">0</span>)))
+-<span class="tok-num">60</span></code></pre></div></div>
+<div class="item" id="fn-fixed_zone"><div class="ih"><span class="badge bfn">fn</span><span class="name">fixed_zone</span><span class="sig">fixed_zone(name : String, offset_seconds : {Int | _ &gt;= -50400 &amp;&amp; _ &lt;= 50400}) : <a href="#type-Tz">Tz</a></span><a class="anchor-link" href="#fn-fixed_zone" title="Link">#</a></div><div class="ib"><p>Build a fixed-offset zone from an explicit label and second offset. <code>offset_seconds</code> is positive east of UTC, negative west.  Panics if the offset is outside ±14 hours (the widest real-world legal range).</p><h3>Examples</h3><pre data-try="DateTime.fixed_zone(&quot;IST&quot;, 19800)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.fixed_zone(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-num">19800</span>)
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-num">19800</span>)</code></pre></div></div>
+<div class="item" id="fn-fixed_zone_hm"><div class="ih"><span class="badge bfn">fn</span><span class="name">fixed_zone_hm</span><span class="sig">fixed_zone_hm(hours : Int, minutes : {Int | _ &gt;= 0 &amp;&amp; _ &lt; 60}) : <a href="#type-Tz">Tz</a></span><a class="anchor-link" href="#fn-fixed_zone_hm" title="Link">#</a></div><div class="ib"><p>Convenience constructor: fixed offset as <code>(hours, minutes)</code> with a single sign applied by <code>hours</code> (per ISO convention).  For UTC+05:30 pass <code>(5, 30)</code>; for UTC−03:30 pass <code>(-3, 30)</code> (minutes always positive, sign comes from <code>hours</code>).  Name is auto-derived.  Because the sign comes from <code>hours</code>, a negative offset under one hour (such as -00:30) cannot be built here; use <code>fixed_zone</code> for that.  Panics if <code>minutes</code> is outside [0, 60).</p><h3>Examples</h3><pre data-try="DateTime.fixed_zone_hm(5, 30)
+DateTime.fixed_zone_hm(-3, 30)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.fixed_zone_hm(<span class="tok-num">5</span>, <span class="tok-num">30</span>)
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;+05:30&quot;</span>, <span class="tok-num">19800</span>)
+march&gt; <span class="tok-ty">DateTime</span>.fixed_zone_hm(-<span class="tok-num">3</span>, <span class="tok-num">30</span>)
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;-03:30&quot;</span>, -<span class="tok-num">12600</span>)</code></pre></div></div>
+<div class="item" id="fn-fixed_zone_hours"><div class="ih"><span class="badge bfn">fn</span><span class="name">fixed_zone_hours</span><span class="sig">fixed_zone_hours(hours : Int) : <a href="#type-Tz">Tz</a></span><a class="anchor-link" href="#fn-fixed_zone_hours" title="Link">#</a></div><div class="ib"><p>Convenience constructor: fixed offset in whole hours.  The name is auto-derived in ISO 8601 form (e.g. <code>&quot;+05:00&quot;</code>, <code>&quot;-08:00&quot;</code>, <code>&quot;Z&quot;</code>). For custom labels use <code>fixed_zone(name, seconds)</code>.  Unlike <code>fixed_zone</code>, the ±14 h range is not checked.</p><h3>Examples</h3><pre data-try="DateTime.fixed_zone_hours(-8)
+DateTime.fixed_zone_hours(0)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.fixed_zone_hours(-<span class="tok-num">8</span>)
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;-08:00&quot;</span>, -<span class="tok-num">28800</span>)
+march&gt; <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">0</span>)
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;Z&quot;</span>, <span class="tok-num">0</span>)</code></pre></div></div>
+<div class="item" id="fn-format"><div class="ih"><span class="badge bfn">fn</span><span class="name">format</span><span class="sig">format(dt, fmt)</span><a class="anchor-link" href="#fn-format" title="Link">#</a></div><div class="ib"><p>Format a DateTime as a string by replacing the specifiers <code>%Y</code> (4-digit year) and <code>%m %d %H %M %S</code> (2-digit, zero-padded). Any other text, including <code>%%</code>, is copied through unchanged (<code>%%</code> is not collapsed to <code>%</code>).</p><pre data-try="DateTime.format(DateTime.from_timestamp(1700000000), &quot;%Y-%m-%d %H:%M:%S&quot;)
+DateTime.format(DateTime(Date(2024, 1, 5), Time(9, 5, 0)), &quot;%d/%m/%Y&quot;)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.format(<span class="tok-ty">DateTime</span>.from_timestamp(<span class="tok-num">1700000000</span>), <span class="tok-str">&quot;%Y-%m-%d %H:%M:%S&quot;</span>)
+<span class="tok-str">&quot;2023-11-14 22:13:20&quot;</span>
+march&gt; <span class="tok-ty">DateTime</span>.format(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">5</span>), <span class="tok-ty">Time</span>(<span class="tok-num">9</span>, <span class="tok-num">5</span>, <span class="tok-num">0</span>)), <span class="tok-str">&quot;%d/%m/%Y&quot;</span>)
+<span class="tok-str">&quot;05/01/2024&quot;</span></code></pre></div></div>
+<div class="item" id="fn-format_offset"><div class="ih"><span class="badge bfn">fn</span><span class="name">format_offset</span><span class="sig">format_offset(tz : <a href="#type-Tz">Tz</a>) : String</span><a class="anchor-link" href="#fn-format_offset" title="Link">#</a></div><div class="ib"><p>Format a zone's offset as ISO 8601: \&quot;Z\&quot; for UTC, \&quot;+HH:MM\&quot; or \&quot;-HH:MM\&quot; otherwise.  Seconds-of-offset are ignored (no real zone uses sub-minute offsets since 1972).  The name is not consulted: any zone with offset 0 renders as <code>&quot;Z&quot;</code>.</p><h3>Examples</h3><pre data-try="DateTime.format_offset(DateTime.fixed_zone(&quot;PST&quot;, -28800))
+DateTime.format_offset(DateTime.utc_zone())" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.format_offset(<span class="tok-ty">DateTime</span>.fixed_zone(<span class="tok-str">&quot;PST&quot;</span>, -<span class="tok-num">28800</span>))
+<span class="tok-str">&quot;-08:00&quot;</span>
+march&gt; <span class="tok-ty">DateTime</span>.format_offset(<span class="tok-ty">DateTime</span>.utc_zone())
+<span class="tok-str">&quot;Z&quot;</span></code></pre></div></div>
+<div class="item" id="fn-from_timestamp"><div class="ih"><span class="badge bfn">fn</span><span class="name">from_timestamp</span><span class="sig">from_timestamp(ts)</span><a class="anchor-link" href="#fn-from_timestamp" title="Link">#</a></div><div class="ib"><p>Convert a Unix timestamp (Int seconds) to a DateTime.</p><pre data-try="DateTime.from_timestamp(0)
+DateTime.from_timestamp(86400)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.from_timestamp(<span class="tok-num">0</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))
+march&gt; <span class="tok-ty">DateTime</span>.from_timestamp(<span class="tok-num">86400</span>)
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">2</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-local_datetime"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_datetime</span><span class="sig">local_datetime(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>) : <a href="#type-DateTime">DateTime</a></span><a class="anchor-link" href="#fn-local_datetime" title="Link">#</a></div><div class="ib"><p>Return the civil (wall-clock) <code>DateTime</code> component.</p><h3>Examples</h3><pre data-try="DateTime.local_datetime(DateTime.local_from_timestamp(0, DateTime.fixed_zone_hours(-5)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_datetime(<span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">0</span>, <span class="tok-ty">DateTime</span>.fixed_zone_hours(-<span class="tok-num">5</span>)))
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1969</span>, <span class="tok-num">12</span>, <span class="tok-num">31</span>), <span class="tok-ty">Time</span>(<span class="tok-num">19</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-local_format"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_format</span><span class="sig">local_format(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>, fmt : String) : String</span><a class="anchor-link" href="#fn-local_format" title="Link">#</a></div><div class="ib"><p>Format a <code>LocalDateTime</code>'s civil time.  All <code>DateTime.format</code> specifiers are supported (<code>%Y %m %d %H %M %S</code>) plus: <code>%z</code>  — offset without colon, e.g. <code>+0530</code>, <code>-0800</code>, <code>+0000</code> <code>%:z</code> — ISO 8601 offset, e.g. <code>+05:30</code>, <code>-08:00</code>, <code>Z</code> for UTC <code>%Z</code>  — zone name (whatever was passed to the Tz constructor)</p><h3>Examples</h3><pre data-try="DateTime.local_format(DateTime.local_from_timestamp(0, DateTime.fixed_zone_hm(5, 30)), &quot;%Y-%m-%dT%H:%M:%S%:z&quot;)
+DateTime.local_format(DateTime.local_from_timestamp(0, DateTime.fixed_zone(&quot;PST&quot;, -28800)), &quot;%H:%M %z %Z&quot;)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_format(<span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">0</span>, <span class="tok-ty">DateTime</span>.fixed_zone_hm(<span class="tok-num">5</span>, <span class="tok-num">30</span>)), <span class="tok-str">&quot;%Y-%m-%dT%H:%M:%S%:z&quot;</span>)
+<span class="tok-str">&quot;1970-01-01T05:30:00+05:30&quot;</span>
+march&gt; <span class="tok-ty">DateTime</span>.local_format(<span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">0</span>, <span class="tok-ty">DateTime</span>.fixed_zone(<span class="tok-str">&quot;PST&quot;</span>, -<span class="tok-num">28800</span>)), <span class="tok-str">&quot;%H:%M %z %Z&quot;</span>)
+<span class="tok-str">&quot;16:00 -0800 PST&quot;</span></code></pre></div></div>
+<div class="item" id="fn-local_from_timestamp"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_from_timestamp</span><span class="sig">local_from_timestamp(ts : Int, tz : <a href="#type-Tz">Tz</a>) : <a href="#type-LocalDateTime">LocalDateTime</a></span><a class="anchor-link" href="#fn-local_from_timestamp" title="Link">#</a></div><div class="ib"><p>Build a <code>LocalDateTime</code> from a UTC instant expressed as a Unix timestamp (Int seconds): the civil part is the wall-clock time in <code>tz</code> at that instant.</p><h3>Examples</h3><pre data-try="DateTime.local_from_timestamp(0, DateTime.fixed_zone_hm(5, 30))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">0</span>, <span class="tok-ty">DateTime</span>.fixed_zone_hm(<span class="tok-num">5</span>, <span class="tok-num">30</span>))
+<span class="tok-ty">LocalDateTime</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">5</span>, <span class="tok-num">30</span>, <span class="tok-num">0</span>)), <span class="tok-ty">Tz</span>(<span class="tok-str">&quot;+05:30&quot;</span>, <span class="tok-num">19800</span>))</code></pre></div></div>
+<div class="item" id="fn-local_from_utc"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_from_utc</span><span class="sig">local_from_utc(utc_dt : <a href="#type-DateTime">DateTime</a>, tz : <a href="#type-Tz">Tz</a>) : <a href="#type-LocalDateTime">LocalDateTime</a></span><a class="anchor-link" href="#fn-local_from_utc" title="Link">#</a></div><div class="ib"><p>Reinterpret a UTC <code>DateTime</code> as the same instant in zone <code>tz</code> (the civil part is shifted by the zone's offset).</p><h3>Examples</h3><pre data-try="DateTime.local_from_utc(DateTime(Date(2024, 1, 15), Time(22, 0, 0)), DateTime.fixed_zone_hours(3))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_from_utc(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">22</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">3</span>))
+<span class="tok-ty">LocalDateTime</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">16</span>), <span class="tok-ty">Time</span>(<span class="tok-num">1</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">Tz</span>(<span class="tok-str">&quot;+03:00&quot;</span>, <span class="tok-num">10800</span>))</code></pre></div></div>
+<div class="item" id="fn-local_now"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_now</span><span class="sig">local_now(tz : <a href="#type-Tz">Tz</a>) : <a href="#type-LocalDateTime">LocalDateTime</a></span><a class="anchor-link" href="#fn-local_now" title="Link">#</a></div><div class="ib"><p>Return the current wall-clock time in zone <code>tz</code> (see <code>now</code>). Nondeterministic, so there is no runnable example.</p><pre><code><span class="tok-ty">DateTime</span>.local_format(<span class="tok-ty">DateTime</span>.local_now(<span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">9</span>)), <span class="tok-str">&quot;%H:%M%:z&quot;</span>)</code></pre></div></div>
+<div class="item" id="fn-local_of"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_of</span><span class="sig">local_of(dt : <a href="#type-DateTime">DateTime</a>, tz : <a href="#type-Tz">Tz</a>) : <a href="#type-LocalDateTime">LocalDateTime</a></span><a class="anchor-link" href="#fn-local_of" title="Link">#</a></div><div class="ib"><p>Pair a civil <code>DateTime</code> (interpreted as the wall-clock time in <code>tz</code>) with its zone.  No conversion happens — <code>dt</code> is used as-is.  Use <code>local_from_utc</code> if you start from a UTC instant.</p><h3>Examples</h3><pre data-try="DateTime.local_of(DateTime(Date(2024, 1, 15), Time(10, 0, 0)), DateTime.fixed_zone_hours(2))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_of(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">2</span>))
+<span class="tok-ty">LocalDateTime</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">Tz</span>(<span class="tok-str">&quot;+02:00&quot;</span>, <span class="tok-num">7200</span>))</code></pre></div></div>
+<div class="item" id="fn-local_to_timestamp"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_to_timestamp</span><span class="sig">local_to_timestamp(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>) : Int</span><a class="anchor-link" href="#fn-local_to_timestamp" title="Link">#</a></div><div class="ib"><p>Unix timestamp (UTC seconds) of the instant this <code>LocalDateTime</code> denotes.</p><h3>Examples</h3><pre data-try="DateTime.local_to_timestamp(DateTime.local_from_timestamp(86400, DateTime.fixed_zone_hours(9)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_to_timestamp(<span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">86400</span>, <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">9</span>)))
+<span class="tok-num">86400</span></code></pre></div></div>
+<div class="item" id="fn-local_to_utc"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_to_utc</span><span class="sig">local_to_utc(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>) : <a href="#type-DateTime">DateTime</a></span><a class="anchor-link" href="#fn-local_to_utc" title="Link">#</a></div><div class="ib"><p>Convert a <code>LocalDateTime</code> to the corresponding UTC <code>DateTime</code>. Subtracts the zone's offset from the civil time.</p><h3>Examples</h3><pre data-try="DateTime.local_to_utc(DateTime.local_of(DateTime(Date(2024, 1, 15), Time(1, 0, 0)), DateTime.fixed_zone_hours(2)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_to_utc(<span class="tok-ty">DateTime</span>.local_of(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">1</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">2</span>)))
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">14</span>), <span class="tok-ty">Time</span>(<span class="tok-num">23</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-local_with_zone"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_with_zone</span><span class="sig">local_with_zone(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>, new_tz : <a href="#type-Tz">Tz</a>) : <a href="#type-LocalDateTime">LocalDateTime</a></span><a class="anchor-link" href="#fn-local_with_zone" title="Link">#</a></div><div class="ib"><p>Return the same instant rendered in a different zone. <code>local_with_zone(ldt, z)</code> satisfies <code>local_to_timestamp(result) == local_to_timestamp(ldt)</code> (same instant, different wall-clock).</p><h3>Examples</h3><pre data-try="DateTime.local_datetime(DateTime.local_with_zone(DateTime.local_of(DateTime(Date(2024, 1, 15), Time(10, 0, 0)), DateTime.fixed_zone_hours(2)), DateTime.fixed_zone_hours(-5)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_datetime(<span class="tok-ty">DateTime</span>.local_with_zone(<span class="tok-ty">DateTime</span>.local_of(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)), <span class="tok-ty">DateTime</span>.fixed_zone_hours(<span class="tok-num">2</span>)), <span class="tok-ty">DateTime</span>.fixed_zone_hours(-<span class="tok-num">5</span>)))
+<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">3</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>))</code></pre></div></div>
+<div class="item" id="fn-local_zone"><div class="ih"><span class="badge bfn">fn</span><span class="name">local_zone</span><span class="sig">local_zone(ldt : <a href="#type-LocalDateTime">LocalDateTime</a>) : <a href="#type-Tz">Tz</a></span><a class="anchor-link" href="#fn-local_zone" title="Link">#</a></div><div class="ib"><p>Return the zone of a <code>LocalDateTime</code>.</p><h3>Examples</h3><pre data-try="DateTime.local_zone(DateTime.local_from_timestamp(0, DateTime.fixed_zone_hours(-5)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.local_zone(<span class="tok-ty">DateTime</span>.local_from_timestamp(<span class="tok-num">0</span>, <span class="tok-ty">DateTime</span>.fixed_zone_hours(-<span class="tok-num">5</span>)))
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;-05:00&quot;</span>, -<span class="tok-num">18000</span>)</code></pre></div></div>
+<div class="item" id="fn-now"><div class="ih"><span class="badge bfn">fn</span><span class="name">now</span><span class="sig">now()</span><a class="anchor-link" href="#fn-now" title="Link">#</a></div><div class="ib"><p>Return the current Unix timestamp as an Int (whole seconds since 1970-01-01 UTC; the fractional part of the clock is truncated). Nondeterministic, so there is no runnable example.</p><pre><code><span class="tok-kw">let</span> started = <span class="tok-ty">DateTime</span>.now()
+<span class="tok-ty">DateTime</span>.format(<span class="tok-ty">DateTime</span>.from_timestamp(started), <span class="tok-str">&quot;%H:%M:%S&quot;</span>)</code></pre></div></div>
+<div class="item" id="fn-parse"><div class="ih"><span class="badge bfn">fn</span><span class="name">parse</span><span class="sig">parse(s)</span><a class="anchor-link" href="#fn-parse" title="Link">#</a></div><div class="ib"><p>Parse a UTC DateTime from a string.  Accepts <code>&quot;YYYY-MM-DD&quot;</code> and <code>&quot;YYYY-MM-DD HH:MM:SS&quot;</code>.  Returns <code>Ok(DateTime)</code> or <code>Err(message)</code> — rejects out-of-range fields (month 13, day 32, hour 25, …) rather than constructing a garbage calendar value.</p><p>This entry point is timezone-naive: the returned <code>DateTime</code> always represents UTC.  For ISO 8601 strings with an explicit offset (<code>Z</code>, <code>+HH:MM</code>, <code>-HHMM</code>, …) use <code>parse_offset</code> to get a <code>LocalDateTime</code> whose zone is recovered from the suffix. Anything after the seconds field is currently ignored, so <code>&quot;2024-01-15 10:30:45xyz&quot;</code> parses as <code>10:30:45</code>.</p><h3>Examples</h3><pre data-try="DateTime.parse(&quot;2024-01-15&quot;)
+DateTime.parse(&quot;2024-01-15 10:30:45&quot;)
+DateTime.parse(&quot;2024-02-30&quot;)
+DateTime.parse(&quot;2024-01-15T10:30:45&quot;)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.parse(<span class="tok-str">&quot;2024-01-15&quot;</span>)
+<span class="tok-ty">Ok</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+march&gt; <span class="tok-ty">DateTime</span>.parse(<span class="tok-str">&quot;2024-01-15 10:30:45&quot;</span>)
+<span class="tok-ty">Ok</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">30</span>, <span class="tok-num">45</span>)))
+march&gt; <span class="tok-ty">DateTime</span>.parse(<span class="tok-str">&quot;2024-02-30&quot;</span>)
+<span class="tok-ty">Err</span>(<span class="tok-str">&quot;invalid day 30 for 2024-02&quot;</span>)
+march&gt; <span class="tok-ty">DateTime</span>.parse(<span class="tok-str">&quot;2024-01-15T10:30:45&quot;</span>)
+<span class="tok-ty">Err</span>(<span class="tok-str">&quot;expected ' ' or end after date&quot;</span>)</code></pre></div></div>
+<div class="item" id="fn-parse_offset"><div class="ih"><span class="badge bfn">fn</span><span class="name">parse_offset</span><span class="sig">parse_offset(s : String) : Result(<a href="#type-LocalDateTime">LocalDateTime</a>, String)</span><a class="anchor-link" href="#fn-parse_offset" title="Link">#</a></div><div class="ib"><p>Parse an ISO 8601 datetime with explicit offset, e.g. <code>&quot;2024-01-15T10:30:45Z&quot;</code> or <code>&quot;2024-01-15 10:30:45+05:30&quot;</code>. Returns <code>Ok(LocalDateTime)</code> or <code>Err(msg)</code>.</p><p>The offset suffix is required: a string without one is an <code>Err</code> (use <code>parse</code> for offset-less UTC strings).  The <code>T</code>/space separator is required, and trailing text after the offset is an <code>Err</code>.  Offsets may use <code>:</code> (ISO form) or the compact <code>+HHMM</code> form.  Civil fields are range-validated, as is the offset itself: an hour outside <code>[0, 24)</code> or a minute outside <code>[0, 60)</code> (e.g. <code>&quot;+01:60&quot;</code>) is an <code>Err</code>, not a panic. The parsed civil time is kept as-is (not converted to UTC).</p><h3>Examples</h3><pre data-try="DateTime.parse_offset(&quot;2024-01-15T10:30:45Z&quot;)
+DateTime.parse_offset(&quot;2024-01-15 10:30:45-0800&quot;)
+DateTime.parse_offset(&quot;2024-01-15T10:30:45&quot;)" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.parse_offset(<span class="tok-str">&quot;2024-01-15T10:30:45Z&quot;</span>)
+<span class="tok-ty">Ok</span>(<span class="tok-ty">LocalDateTime</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">30</span>, <span class="tok-num">45</span>)), <span class="tok-ty">Tz</span>(<span class="tok-str">&quot;UTC&quot;</span>, <span class="tok-num">0</span>)))
+march&gt; <span class="tok-ty">DateTime</span>.parse_offset(<span class="tok-str">&quot;2024-01-15 10:30:45-0800&quot;</span>)
+<span class="tok-ty">Ok</span>(<span class="tok-ty">LocalDateTime</span>(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">2024</span>, <span class="tok-num">1</span>, <span class="tok-num">15</span>), <span class="tok-ty">Time</span>(<span class="tok-num">10</span>, <span class="tok-num">30</span>, <span class="tok-num">45</span>)), <span class="tok-ty">Tz</span>(<span class="tok-str">&quot;-08:00&quot;</span>, -<span class="tok-num">28800</span>)))
+march&gt; <span class="tok-ty">DateTime</span>.parse_offset(<span class="tok-str">&quot;2024-01-15T10:30:45&quot;</span>)
+<span class="tok-ty">Err</span>(<span class="tok-str">&quot;expected offset (Z / +HH:MM / -HH:MM) after time&quot;</span>)</code></pre></div></div>
+<div class="item" id="fn-to_timestamp"><div class="ih"><span class="badge bfn">fn</span><span class="name">to_timestamp</span><span class="sig">to_timestamp(dt)</span><a class="anchor-link" href="#fn-to_timestamp" title="Link">#</a></div><div class="ib"><p>Convert a DateTime to a Unix timestamp (Int seconds since 1970-01-01 UTC).</p><pre data-try="DateTime.to_timestamp(DateTime(Date(1970, 1, 1), Time(0, 0, 0)))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.to_timestamp(<span class="tok-ty">DateTime</span>(<span class="tok-ty">Date</span>(<span class="tok-num">1970</span>, <span class="tok-num">1</span>, <span class="tok-num">1</span>), <span class="tok-ty">Time</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)))
+<span class="tok-num">0</span></code></pre></div></div>
+<div class="item" id="fn-utc_zone"><div class="ih"><span class="badge bfn">fn</span><span class="name">utc_zone</span><span class="sig">utc_zone() : <a href="#type-Tz">Tz</a></span><a class="anchor-link" href="#fn-utc_zone" title="Link">#</a></div><div class="ib"><p>The UTC zone (offset 0, name <code>&quot;UTC&quot;</code>).  <code>format_offset</code> renders it as <code>&quot;Z&quot;</code>.</p><h3>Examples</h3><pre data-try="DateTime.utc_zone()" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.utc_zone()
+<span class="tok-ty">Tz</span>(<span class="tok-str">&quot;UTC&quot;</span>, <span class="tok-num">0</span>)</code></pre></div></div>
+<div class="item" id="fn-zone_name"><div class="ih"><span class="badge bfn">fn</span><span class="name">zone_name</span><span class="sig">zone_name(tz : <a href="#type-Tz">Tz</a>) : String</span><a class="anchor-link" href="#fn-zone_name" title="Link">#</a></div><div class="ib"><p>Return the zone's human label (e.g. <code>&quot;UTC&quot;</code>, <code>&quot;+05:30&quot;</code>, <code>&quot;PST&quot;</code>).</p><h3>Examples</h3><pre data-try="DateTime.zone_name(DateTime.fixed_zone_hm(5, 30))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.zone_name(<span class="tok-ty">DateTime</span>.fixed_zone_hm(<span class="tok-num">5</span>, <span class="tok-num">30</span>))
+<span class="tok-str">&quot;+05:30&quot;</span></code></pre></div></div>
+<div class="item" id="fn-zone_offset_seconds"><div class="ih"><span class="badge bfn">fn</span><span class="name">zone_offset_seconds</span><span class="sig">zone_offset_seconds(tz : <a href="#type-Tz">Tz</a>) : Int</span><a class="anchor-link" href="#fn-zone_offset_seconds" title="Link">#</a></div><div class="ib"><p>Return the zone's offset from UTC in seconds (east is positive).</p><h3>Examples</h3><pre data-try="DateTime.zone_offset_seconds(DateTime.fixed_zone_hm(-3, 30))" data-try-kind="transcript"><code>march&gt; <span class="tok-ty">DateTime</span>.zone_offset_seconds(<span class="tok-ty">DateTime</span>.fixed_zone_hm(-<span class="tok-num">3</span>, <span class="tok-num">30</span>))
+-<span class="tok-num">12600</span></code></pre></div></div><style>
+/* Try it */
+.try-btn{position:absolute;top:8px;right:70px;background:var(--card);color:var(--acc);border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;font-size:11px;font-family:-apple-system,sans-serif;cursor:pointer;transition:all .15s;z-index:1}
+.try-btn:hover{color:var(--bright);border-color:var(--acc)}
+.pre-wrap.try-only .try-btn{right:10px}
+/* march-repl.js colours input with the site's --syn-* tokens: map them to this page's highlight tokens */
+#try-panel{--syn-kw:var(--hl-kw);--syn-tp:var(--hl-ty);--syn-st:var(--hl-str);--syn-nm:var(--hl-num);--syn-cm:var(--hl-com);--syn-id:var(--text);--syn-op:var(--dim)}
+#try-panel{position:fixed;top:60px;right:0;bottom:0;width:440px;max-width:100vw;background:var(--sb);border-left:1px solid var(--bdr);display:none;flex-direction:column;z-index:90}
+#try-panel.open{display:flex}
+body.try-open .content-wrap{margin-right:440px}
+.try-head{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.try-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.04em}
+.try-hbtn{background:none;border:1px solid var(--bdr);color:var(--dim);border-radius:4px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace}
+.try-hbtn:hover{border-color:var(--acc);color:var(--text)}
+#try-history{flex:1;overflow-y:auto;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55}
+.try-entry{white-space:pre-wrap;word-break:break-word}
+.try-iline{color:var(--text);white-space:pre-wrap!important}.try-iline::before{content:'march> ';color:var(--dim)}
+.try-out{color:var(--fn)}.try-err{color:oklch(68% .17 25)}.try-info{color:var(--dim);font-style:italic}
+.try-input-row{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-top:1px solid var(--bdr);flex-shrink:0}
+.try-prompt{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--dim);padding-top:3px}
+#try-input{flex:1;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55}
+@media(max-width:900px){#try-panel{width:100vw}body.try-open .content-wrap{margin-right:0}}
+</style><aside id="try-panel" data-base="" aria-label="March REPL"><div class="try-head"><span class="try-title">march — try it</span><button class="try-hbtn" id="try-clear" type="button" title="Clear the screen; definitions stay (Ctrl+L)">clear</button><button class="try-hbtn" id="try-reset" type="button" title="Clear the screen and forget every definition">reset</button><button class="try-hbtn" id="try-close" type="button">close</button></div><div id="try-history"><div class="try-entry"><span class="try-info" id="try-loading"></span></div></div><div class="try-input-row"><span class="try-prompt">march&gt;</span><textarea id="try-input" rows="1" placeholder="try something…" autocomplete="off" spellcheck="false"></textarea><button class="try-hbtn" id="try-run" type="button">run</button></div></aside><script>
+(function(){
+function init(){
+var panel=document.getElementById('try-panel');if(!panel)return;
+var base=panel.getAttribute('data-base')||'';
+var repl=null,loading=false,waiting=[];
+var status=document.getElementById('try-loading');
+function open(){panel.classList.add('open');document.body.classList.add('try-open');}
+function close(){panel.classList.remove('open');document.body.classList.remove('try-open');}
+document.getElementById('try-close').addEventListener('click',close);
+document.getElementById('try-clear').addEventListener('click',function(){if(repl)repl.clear();});
+document.getElementById('try-reset').addEventListener('click',function(){if(repl)repl.reset();});
+function withRepl(cb){
+if(repl){cb();return;}
+waiting.push(cb);if(loading)return;loading=true;
+status.textContent='Loading the March REPL…';
+var s=document.createElement('script');s.src=base+'/assets/march-repl.js';
+s.onload=function(){
+repl=new MarchRepl({wrapId:'try-panel',historyId:'try-history',inputId:'try-input',loadingId:'try-loading',
+cls:{entry:'try-entry',inputLine:'try-iline',output:'try-out',error:'try-err',info:'try-info'}});
+document.getElementById('try-run').addEventListener('click',function(){repl.submit();});
+var w=waiting;waiting=[];w.forEach(function(f){f();});};
+s.onerror=function(){loading=false;waiting=[];status.textContent='Could not load the March REPL.';};
+document.head.appendChild(s);}
+function run(pre){
+open();
+withRepl(function(){
+var src=pre.getAttribute('data-try')||'';
+if(pre.getAttribute('data-try-kind')==='transcript'){src.split(String.fromCharCode(10)).forEach(function(l){if(l.trim())repl.run(l);});}
+else{repl.run(src);}});}
+document.querySelectorAll('pre[data-try]').forEach(function(pre){
+var wrap=pre.parentNode;
+if(!wrap||!wrap.classList||!wrap.classList.contains('pre-wrap')){
+wrap=document.createElement('div');wrap.className='pre-wrap try-only';
+pre.parentNode.insertBefore(wrap,pre);wrap.appendChild(pre);}
+var b=document.createElement('button');b.type='button';b.className='try-btn';
+b.textContent='Try it';b.title='Run this example in the March REPL';
+b.addEventListener('click',function(){run(pre);});
+wrap.appendChild(b);});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script></main></div><script>
+/* Theme toggle */
+/* localStorage throws in sandboxed (opaque-origin) pages, e.g. registry-hosted docs */
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function getTheme(){var t=lsGet('march-doc-theme');
+if(t)return t;return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);
+var moon=document.getElementById('icon-moon'),sun=document.getElementById('icon-sun');
+if(moon&&sun){moon.style.display=t==='dark'?'block':'none';sun.style.display=t==='light'?'block':'none';}}
+function toggleTheme(){var t=getTheme()==='dark'?'light':'dark';lsSet('march-doc-theme',t);applyTheme(t);}
+applyTheme(getTheme());
+
+/* Search overlay */
+function openSearch(){loadSI();document.getElementById('search-overlay').classList.add('open');
+var inp=document.getElementById('search-input');if(inp){inp.value='';inp.focus();}}
+function closeSearch(){document.getElementById('search-overlay').classList.remove('open');
+var sr=document.getElementById('sr');if(sr)sr.innerHTML='';}
+
+/* DOMContentLoaded */
+document.addEventListener('DOMContentLoaded',function(){
+
+/* Collapsible items */
+document.querySelectorAll('.ih').forEach(function(h){h.addEventListener('click',function(e){
+if(e.target.classList.contains('anchor-link'))return;
+var b=this.nextElementSibling;if(b)b.classList.toggle('open');});});
+
+/* Active sidebar link + auto-expand current module group */
+var path=window.location.pathname;
+document.querySelectorAll('.sl').forEach(function(a){var h=a.getAttribute('href');if(h&&path.endsWith(h)){a.classList.add('active');var g=a.closest('.sb-group');if(g)g.classList.add('open');}});
+
+/* Sidebar group toggle (chevron click expands/collapses) */
+document.querySelectorAll('.sb-group-hdr').forEach(function(hdr){hdr.addEventListener('click',function(e){
+if(e.target.tagName==='A')return;e.preventDefault();this.parentElement.classList.toggle('open');});});
+
+/* Copy buttons on pre blocks */
+document.querySelectorAll('.ib pre').forEach(function(pre){
+var wrap=document.createElement('div');wrap.className='pre-wrap';
+pre.parentNode.insertBefore(wrap,pre);wrap.appendChild(pre);
+var btn=document.createElement('button');btn.className='copy-btn';btn.textContent='Copy';
+btn.addEventListener('click',function(e){e.stopPropagation();
+var code=pre.querySelector('code');var text=code?code.textContent:pre.textContent;
+navigator.clipboard.writeText(text).then(function(){
+btn.textContent='Copied!';btn.classList.add('copied');
+setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+}).catch(function(){btn.textContent='!';setTimeout(function(){btn.textContent='Copy';},1500);});});
+wrap.appendChild(btn);});
+
+/* Open anchor from URL hash */
+if(window.location.hash){var el=document.querySelector(window.location.hash);if(el){var ib=el.querySelector('.ib');if(ib)ib.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'start'});}}
+
+/* Cmd+K search shortcut */
+document.addEventListener('keydown',function(e){
+if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch();}
+if(e.key==='Escape')closeSearch();});
+
+});
+
+/* Cross-module search: loads search-index.json, fuzzy matches, renders results */
+/* The index covers every module (~400 KB for the stdlib), so it is fetched the
+   first time search is opened (or the search button is hovered), not with every
+   page. A query typed before it arrives is re-run when it lands. */
+var SI=null,SIloading=false;
+function loadSI(){if(SI||SIloading)return;SIloading=true;
+fetch('search-index.json').then(function(r){return r.json();}).then(function(d){SI=d;
+var q=document.getElementById('search-input');if(q&&q.value.trim())q.dispatchEvent(new Event('input'));})
+.catch(function(){SIloading=false;});}
+var STR=document.getElementById('search-trigger');if(STR)STR.addEventListener('mouseenter',loadSI);
+
+/* Levenshtein distance */
+function ld(a,b){
+if(!a.length)return b.length;if(!b.length)return a.length;
+var m=[];for(var i=0;i<=b.length;i++)m[i]=[i];
+for(var j=0;j<=a.length;j++)m[0][j]=j;
+for(i=1;i<=b.length;i++)for(j=1;j<=a.length;j++){
+m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+}return m[b.length][a.length];}
+
+/* Fuzzy scoring: returns 0 if no match */
+function fs(q,t){
+if(!t)return 0;var ql=q.toLowerCase(),tl=t.toLowerCase();
+/* Exact match */
+if(tl===ql)return 10000;
+/* Starts with */
+if(tl.indexOf(ql)===0)return 5000-tl.length;
+/* Substring */
+var idx=tl.indexOf(ql);if(idx>0)return 3000-idx;
+/* Word boundary match (camelCase, snake_case) */
+var words=tl.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/_/g,' ').split(' ');
+for(var w=0;w<words.length;w++){if(words[w].indexOf(ql)===0)return 2000-w*100;}
+/* Levenshtein for short queries */
+if(ql.length<=8&&tl.length<=40){var d=ld(ql,tl.substring(0,Math.max(ql.length+2,8)));
+if(d<=Math.ceil(ql.length*0.35))return 1000-d*100;}
+return 0;}
+
+/* Score an entry against a query */
+function scoreEntry(q,e){
+return Math.max(
+fs(q,e.n)*4, /* name match (highest weight) */
+fs(q,e.s)*2, /* signature match */
+fs(q,e.m)*2, /* module name match */
+fs(q,e.d) /* doc string match (lowest weight) */
+);}
+
+/* Render search results */
+function renderSR(results){
+var el=document.getElementById('sr');if(!el)return;
+if(!results.length){el.className='';el.innerHTML='';return;}
+el.className='open';var h='';
+for(var i=0;i<results.length;i++){
+var e=results[i].entry,k=e.k,href=e.m+'.html';
+if(k==='fn'||k==='pfn')href+='#fn-'+encodeURIComponent(e.n);
+else if(k==='type'||k==='ptype')href+='#type-'+encodeURIComponent(e.n);
+else if(k==='interface')href+='#iface-'+encodeURIComponent(e.n);
+var kc='sr-'+k;
+h+='<a class="sr-item" href="'+href+'">'+
+'<span class="sr-kind '+kc+'">'+k+'</span>'+
+'<span class="sr-name">'+esc(e.n)+'</span>'+
+'<span class="sr-mod">'+esc(e.m)+'</span></a>';
+if(e.d)h+='<div class="sr-doc">'+esc(e.d.substring(0,100))+'</div>';
+if(i<results.length-1)h+='<div class="sr-sep"></div>';
+}el.innerHTML=h;}
+
+/* HTML escape helper */
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+/* Search handler — uses the modal search input */
+var si=document.getElementById('search-input');
+if(si)si.addEventListener('input',function(){
+var q=this.value.trim();
+if(!q||!SI){renderSR([]);return;}
+var results=[];
+for(var i=0;i<SI.length;i++){
+var sc=scoreEntry(q,SI[i]);
+if(sc>0)results.push({entry:SI[i],score:sc});
+}
+results.sort(function(a,b){return b.score-a.score;});
+renderSR(results.slice(0,25));
+});
+</script></body></html>

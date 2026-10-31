@@ -1,0 +1,504 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NetKernel — March Docs</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+/* Dark theme (default) — deep navy with cyan accent, matching the March homepage */
+:root{--bg:#07101a;--sb:#0a1622;--bg-nav:rgba(7,16,26,.92);--card:#0c1928;--bdr:#0f2438;
+--acc:oklch(63% .12 207);--acc2:oklch(74% .11 200);--text:#cce5f5;--dim:#4a7898;
+--faint:#1e4060;--bright:#eaf4fb;--code:#0c1928;
+--fn:oklch(74% .13 165);--ty:oklch(82% .12 70);--if:oklch(78% .11 235);--prv:#3a5f7d;
+--hl-kw:oklch(74% .13 300);--hl-str:oklch(80% .12 140);--hl-num:oklch(80% .12 45);--hl-com:#5f89a8;--hl-ty:oklch(82% .1 80)}
+
+/* Light theme overrides */
+[data-theme='light']{--bg:#f0f6fc;--sb:#e3eef8;--bg-nav:rgba(240,246,252,.92);--card:#ddeaf5;--bdr:#b5cce0;
+--acc:oklch(37% .11 210);--acc2:oklch(45% .11 215);--text:#071828;--dim:#2e5c7c;
+--faint:#6a96b5;--bright:#071828;--code:#ddeaf5;
+--fn:oklch(45% .13 165);--ty:oklch(52% .12 70);--if:oklch(45% .11 235);--prv:#6a96b5;
+--hl-kw:oklch(45% .16 300);--hl-str:oklch(46% .13 145);--hl-num:oklch(50% .14 45);--hl-com:#4f7593;--hl-ty:oklch(47% .11 65)}
+
+/* Reset + base */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;font-size:15px;line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline;color:var(--acc2)}
+
+/* Top bar */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:60px;background:var(--bg-nav);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);flex-shrink:0;position:sticky;top:0;z-index:100}
+#topbar .brand{font-family:'Lora',Georgia,serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+#topbar .brand svg{width:20px;height:20px}
+#topbar .actions{display:flex;align-items:center;gap:12px}
+#theme-toggle{background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 8px;font-size:13px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;transition:all .15s}
+#theme-toggle:hover{color:var(--text);border-color:var(--acc)}
+#search-trigger{background:var(--card);border:1px solid var(--bdr);border-radius:6px;color:var(--dim);cursor:pointer;padding:5px 14px;font-size:13px;display:flex;align-items:center;gap:8px;transition:all .15s;min-width:200px}
+#search-trigger:hover{border-color:var(--acc);color:var(--text)}
+#search-trigger kbd{font-size:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:3px;padding:1px 5px;margin-left:auto;font-family:inherit}
+
+/* Content wrapper (sidebar + main) */
+.content-wrap{display:flex;flex:1;overflow:hidden}
+
+/* Typography */
+code,pre{font-family:'JetBrains Mono','Fira Code','SF Mono',monospace;font-size:13px}
+pre{background:var(--code);border:1px solid var(--bdr);border-radius:6px;padding:14px 18px;overflow-x:auto;margin:12px 0;line-height:1.5}
+code{background:var(--code);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--acc)}pre code{background:none;padding:0;color:var(--text);font-size:13px}
+/* Syntax highlighting (server-side spans from Highlight.highlight) */
+.tok-kw{color:var(--hl-kw)}.tok-str{color:var(--hl-str)}.tok-num{color:var(--hl-num)}
+.tok-com{color:var(--hl-com);font-style:italic}.tok-ty{color:var(--hl-ty)}
+h1{font-family:'Lora',Georgia,serif;font-size:2.1rem;color:var(--bright);margin-bottom:12px;font-weight:600;letter-spacing:-.02em}
+h2{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.72rem;color:var(--acc);margin:38px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bdr);font-weight:500;text-transform:uppercase;letter-spacing:.12em}
+p{margin:8px 0}
+
+/* Sidebar */
+#sb{width:248px;min-width:208px;background:var(--sb);border-right:1px solid var(--bdr);padding:8px 10px 28px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;flex-shrink:0}
+#sb::-webkit-scrollbar{width:5px}#sb::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}#sb::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+.sb-section{padding:0}
+.sb-heading{font-family:'JetBrains Mono','Fira Code',monospace;font-size:10px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.16em;padding:20px 10px 8px;user-select:none}
+
+/* Generic nav link (top-level + sub-items) */
+.sl{display:block;padding:5px 10px;border-radius:6px;font-size:13px;line-height:1.45;color:var(--dim);transition:color .12s,background .12s}
+.sl:hover{background:color-mix(in oklab,var(--acc) 9%,transparent);color:var(--text);text-decoration:none}
+.sl.active{color:var(--acc);font-weight:500}
+.sb-section>.sl.active,.sb-sub .sl.active{background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+
+/* Hierarchical sidebar groups */
+.sb-group{margin:1px 0}
+.sb-group-hdr{display:flex;align-items:center;border-radius:6px;cursor:pointer;user-select:none;transition:background .12s}
+.sb-group-hdr:hover{background:color-mix(in oklab,var(--acc) 9%,transparent)}
+.sb-group-hdr:hover .sl,.sb-group-hdr:hover .sb-chevron{color:var(--text)}
+.sb-group-hdr:has(.sl.active){background:color-mix(in oklab,var(--acc) 12%,transparent);box-shadow:inset 2px 0 0 var(--acc)}
+.sb-group-hdr .sl{flex:1;padding-left:1px}
+.sb-chevron{font-size:9px;transition:transform .15s,color .12s;width:20px;align-self:stretch;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--faint)}
+.sb-group.open>.sb-group-hdr .sb-chevron{transform:rotate(90deg);color:var(--acc)}
+.sb-sub{display:none;margin:1px 0 6px 19px;padding-left:8px;border-left:1px solid var(--bdr)}
+.sb-group.open .sb-sub{display:block}
+.sb-sub .sl{font-size:12px;padding:3px 8px;color:var(--dim)}
+.sb-sub .sl:hover{color:var(--text)}
+.sb-kind{display:inline-block;width:12px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.03em;margin-right:8px;text-transform:uppercase;text-align:center}
+
+/* Main content */
+#main{flex:1;padding:40px max(52px,calc(50% - 574px));min-width:0;overflow-y:auto;height:calc(100vh - 60px)}
+
+/* Breadcrumb */
+.breadcrumb{font-size:12px;color:var(--dim);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.breadcrumb a{color:var(--dim);font-size:12px}.breadcrumb a:hover{color:var(--acc)}
+.breadcrumb .sep{color:var(--bdr)}
+
+/* Module doc card */
+.mdoc{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:20px 24px;margin-bottom:24px;color:var(--dim);font-size:14px;line-height:1.7}
+
+/* Items */
+.item{border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px;overflow:hidden;transition:border-color .15s}
+.item:hover{border-color:color-mix(in srgb,var(--acc) 40%,var(--bdr))}
+.ih{display:flex;align-items:baseline;gap:10px;padding:12px 16px;background:var(--card);cursor:pointer;user-select:none;transition:background .1s}
+.ih:hover{background:color-mix(in srgb,var(--card) 80%,var(--acc) 20%)}
+
+/* Badges */
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.08em;padding:2px 9px;border-radius:100px;text-transform:uppercase;flex-shrink:0;border:1px solid transparent}
+.bfn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn);border-color:color-mix(in oklab,var(--fn) 24%,transparent)}
+.bpfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 30%,transparent)}
+.bty{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty);border-color:color-mix(in oklab,var(--ty) 24%,transparent)}
+.bpt{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv);border-color:color-mix(in oklab,var(--prv) 26%,transparent)}
+.bif{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if);border-color:color-mix(in oklab,var(--if) 24%,transparent)}
+
+/* Item content */
+.name{font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px;color:var(--bright);font-weight:600}
+.sig{font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;color:var(--dim);flex:1;margin-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{padding:18px 20px;border-top:1px solid var(--bdr);display:none;font-size:14px;color:var(--text);line-height:1.7}
+.ib.open{display:block}
+
+/* Source + anchor links */
+.src-link{font-size:10px;color:var(--dim);background:var(--bg);border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;margin-left:auto;opacity:0;transition:all .15s;text-decoration:none;flex-shrink:0}
+.ih:hover .src-link{opacity:1}.src-link:hover{color:var(--acc);border-color:var(--acc);text-decoration:none}
+.anchor-link{color:var(--bdr);font-size:14px;margin-left:6px;opacity:0;transition:opacity .15s;text-decoration:none}
+.ih:hover .anchor-link{opacity:1}.anchor-link:hover{color:var(--acc);text-decoration:none}
+
+/* Module cards (index page) */
+.mc{border:1px solid var(--bdr);border-radius:8px;padding:16px 20px;margin-bottom:12px;background:var(--card);transition:all .15s}
+.mc:hover{border-color:var(--acc);transform:translateY(-1px)}
+.mc h3{font-family:'Lora',Georgia,serif;color:var(--acc);font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+.mc p{font-size:13px;color:var(--dim);margin-top:6px}
+.st{font-size:12px;color:var(--dim);margin-top:8px;display:flex;gap:16px}
+.st span{display:flex;align-items:center;gap:4px}
+
+/* Copy button */
+.pre-wrap{position:relative}
+.copy-btn{position:absolute;top:8px;right:10px;background:var(--card);color:var(--dim);border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;font-size:11px;font-family:-apple-system,sans-serif;cursor:pointer;opacity:0;transition:all .15s}
+.pre-wrap:hover .copy-btn{opacity:1}
+.copy-btn:hover{color:var(--text);border-color:var(--acc)}
+.copy-btn.copied{color:var(--fn);border-color:var(--fn);opacity:1}
+
+/* Search overlay (Cmd+K) */
+#search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-start;justify-content:center;padding-top:min(20vh,160px)}
+#search-overlay.open{display:flex}
+#search-modal{background:var(--sb);border:1px solid var(--bdr);border-radius:12px;width:560px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+#search-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bdr);color:var(--text);padding:16px 20px;font-size:15px;outline:none;font-family:inherit}
+#search-input::placeholder{color:var(--dim)}
+#sr{max-height:50vh;overflow-y:auto;padding:8px}
+#sr:empty{display:none}
+.sr-item{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;text-decoration:none;color:var(--text);font-size:13px;transition:background .1s}
+.sr-item:hover{background:var(--card);text-decoration:none}
+.sr-kind{font-size:9px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:4px;text-transform:uppercase;flex-shrink:0;min-width:32px;text-align:center}
+.sr-fn{background:color-mix(in oklab,var(--fn) 13%,transparent);color:var(--fn)}.sr-type{background:color-mix(in oklab,var(--ty) 12%,transparent);color:var(--ty)}
+.sr-interface{background:color-mix(in oklab,var(--if) 12%,transparent);color:var(--if)}.sr-module{background:color-mix(in oklab,var(--acc) 13%,transparent);color:var(--acc)}
+.sr-pfn{background:color-mix(in oklab,var(--prv) 18%,transparent);color:var(--prv)}.sr-ptype{background:color-mix(in oklab,var(--prv) 15%,transparent);color:var(--prv)}
+.sr-name{color:var(--bright);font-family:monospace;font-weight:600;white-space:nowrap}
+.sr-mod{color:var(--dim);font-size:11px;margin-left:auto;flex-shrink:0}
+.sr-doc{color:var(--dim);font-size:11px;padding:0 12px 6px 48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-sep{border-top:1px solid var(--bdr);margin:2px 8px}
+
+/* Admonitions */
+.admonition{border-left:3px solid var(--acc);background:var(--card);border-radius:0 6px 6px 0;padding:12px 16px;margin:12px 0;font-size:14px;color:var(--text)}
+.admonition.warning{border-left-color:var(--ty)}
+.admonition.note{border-left-color:var(--acc2)}
+
+/* Lists */
+ul,ol{margin:8px 0;padding-left:24px}li{margin:4px 0;line-height:1.6}
+
+/* Guide body */
+.guide-body{line-height:1.8;font-size:15px}
+.guide-body h3{font-family:'Lora',Georgia,serif;font-size:1.4rem;margin:30px 0 12px;color:var(--bright);font-weight:600;letter-spacing:-.01em}
+.guide-body h4{font-family:'Lora',Georgia,serif;font-size:1.1rem;margin:24px 0 10px;color:var(--bright);font-weight:600}
+
+/* Code blocks follow theme tokens (light code surface in light mode, like the main page) */
+
+/* Responsive */
+@media(max-width:768px){#sb{display:none}#main{padding:24px 16px}#search-trigger{min-width:auto}}
+</style></head><body><header id="topbar"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> March Docs</div><div class="actions"><button id="search-trigger" onclick="openSearch()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Search&hellip;<kbd>&#8984;K</kbd></button><button id="theme-toggle" onclick="toggleTheme()"><svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div></header><div id="search-overlay" onclick="closeSearch()"><div id="search-modal" onclick="event.stopPropagation()"><input id="search-input" type="text" placeholder="Search modules, functions, types&hellip;" autocomplete="off"><div id="sr"></div></div></div><div class="content-wrap"><nav id="sb"><div class="sb-section"><a href="index.html" class="sl">Overview</a><div class="sb-heading">Modules</div><div class="sb-group"><div class="sb-group-hdr" data-href="Actor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Actor.html">Actor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="AhoCorasick.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="AhoCorasick.html">AhoCorasick</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Array.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Array.html">Array</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Base64.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Base64.html">Base64</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="BigInt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="BigInt.html">BigInt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Bytes.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Bytes.html">Bytes</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="CRDT.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="CRDT.html">CRDT</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Channel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Channel.html">Channel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelServer.html">ChannelServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ChannelSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ChannelSocket.html">ChannelSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Char.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Char.html">Char</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Check.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Check.html">Check</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cli.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cli.html">Cli</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Cluster.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Cluster.html">Cluster</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterAuth.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterAuth.html">ClusterAuth</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterConn.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterConn.html">ClusterConn</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterLoad.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterLoad.html">ClusterLoad</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ClusterNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ClusterNode.html">ClusterNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Compress.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Compress.html">Compress</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Config.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Config.html">Config</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ConsistentHash.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ConsistentHash.html">ConsistentHash</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Control.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Control.html">Control</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Crypto.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Crypto.html">Crypto</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Csv.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Csv.html">Csv</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DataFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DataFrame.html">DataFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DateTime.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DateTime.html">DateTime</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Decimal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Decimal.html">Decimal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Deque.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Deque.html">Deque</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnose.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnose.html">Diagnose</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Diagnostics.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Diagnostics.html">Diagnostics</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dir.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dir.html">Dir</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistLink.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistLink.html">DistLink</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="DistSupervisor.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="DistSupervisor.html">DistSupervisor</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Dns.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Dns.html">Dns</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Duration.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Duration.html">Duration</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Enum.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Enum.html">Enum</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Env.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Env.html">Env</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="File.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="File.html">File</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Flow.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Flow.html">Flow</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Forge.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Forge.html">Forge</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Gen.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Gen.html">Gen</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalPid.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalPid.html">GlobalPid</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="GlobalRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="GlobalRegistry.html">GlobalRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Hamt.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Hamt.html">Hamt</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handle.html">Handle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Handshake.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Handshake.html">Handshake</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HashMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HashMap.html">HashMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Html.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Html.html">Html</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Http.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Http.html">Http</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpClient.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpClient.html">HttpClient</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpServer.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpServer.html">HttpServer</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="HttpTransport.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="HttpTransport.html">HttpTransport</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IO.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IO.html">IO</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="IOList.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="IOList.html">IOList</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Iterable.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Iterable.html">Iterable</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Audio.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Audio.html">Js.Audio</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Canvas.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Canvas.html">Js.Canvas</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Js.Dom.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Js.Dom.html">Js.Dom</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Json.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Json.html">Json</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="JsonStream.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="JsonStream.html">JsonStream</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LazyNicheProbe.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LazyNicheProbe.html">LazyNicheProbe</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="LinearMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="LinearMap.html">LinearMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="List.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="List.html">List</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Logger.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Logger.html">Logger</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Map.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Map.html">Map</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Math.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Math.html">Math</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Membership.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Membership.html">Membership</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Merkle.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Merkle.html">Merkle</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="MlDsa.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="MlDsa.html">MlDsa</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="MlKem.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="MlKem.html">MlKem</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Msgpack.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Msgpack.html">Msgpack</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NativeArray.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NativeArray.html">NativeArray</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetFrame.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NetFrame.html">NetFrame</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NetKernel.html"><span class="sb-chevron">&#9656;</span><a class="sl" href="NetKernel.html">NetKernel</a></div><div class="sb-sub"><a class="sl" href="NetKernel.html#type-MacKeys"><span class="sb-kind" style="color:var(--ty)">T</span>MacKeys</a>
+<a class="sl" href="NetKernel.html#type-Authed"><span class="sb-kind" style="color:var(--ty)">T</span>Authed</a>
+<a class="sl" href="NetKernel.html#fn-bytes_to_str"><span class="sb-kind" style="color:var(--fn)">F</span>bytes_to_str</a>
+<a class="sl" href="NetKernel.html#fn-decode_monitor_fire"><span class="sb-kind" style="color:var(--fn)">F</span>decode_monitor_fire</a>
+<a class="sl" href="NetKernel.html#fn-decode_monitor_req"><span class="sb-kind" style="color:var(--fn)">F</span>decode_monitor_req</a>
+<a class="sl" href="NetKernel.html#fn-decode_registry_sync_req"><span class="sb-kind" style="color:var(--fn)">F</span>decode_registry_sync_req</a>
+<a class="sl" href="NetKernel.html#fn-decode_registry_sync_resp"><span class="sb-kind" style="color:var(--fn)">F</span>decode_registry_sync_resp</a>
+<a class="sl" href="NetKernel.html#fn-encode_monitor_fire"><span class="sb-kind" style="color:var(--fn)">F</span>encode_monitor_fire</a>
+<a class="sl" href="NetKernel.html#fn-encode_monitor_req"><span class="sb-kind" style="color:var(--fn)">F</span>encode_monitor_req</a>
+<a class="sl" href="NetKernel.html#fn-encode_registry_sync_req"><span class="sb-kind" style="color:var(--fn)">F</span>encode_registry_sync_req</a>
+<a class="sl" href="NetKernel.html#fn-encode_registry_sync_resp"><span class="sb-kind" style="color:var(--fn)">F</span>encode_registry_sync_resp</a>
+<a class="sl" href="NetKernel.html#fn-forget"><span class="sb-kind" style="color:var(--fn)">F</span>forget</a>
+<a class="sl" href="NetKernel.html#fn-frame_tag"><span class="sb-kind" style="color:var(--fn)">F</span>frame_tag</a>
+<a class="sl" href="NetKernel.html#fn-frames_rejected"><span class="sb-kind" style="color:var(--fn)">F</span>frames_rejected</a>
+<a class="sl" href="NetKernel.html#fn-fresh_nonce"><span class="sb-kind" style="color:var(--fn)">F</span>fresh_nonce</a>
+<a class="sl" href="NetKernel.html#fn-handshake"><span class="sb-kind" style="color:var(--fn)">F</span>handshake</a>
+<a class="sl" href="NetKernel.html#fn-handshake_addr"><span class="sb-kind" style="color:var(--fn)">F</span>handshake_addr</a>
+<a class="sl" href="NetKernel.html#fn-handshake_auth"><span class="sb-kind" style="color:var(--fn)">F</span>handshake_auth</a>
+<a class="sl" href="NetKernel.html#fn-handshake_role"><span class="sb-kind" style="color:var(--fn)">F</span>handshake_role</a>
+<a class="sl" href="NetKernel.html#fn-link_binding"><span class="sb-kind" style="color:var(--fn)">F</span>link_binding</a>
+<a class="sl" href="NetKernel.html#fn-mac_failure_limit"><span class="sb-kind" style="color:var(--fn)">F</span>mac_failure_limit</a>
+<a class="sl" href="NetKernel.html#fn-note_raw_refused"><span class="sb-kind" style="color:var(--fn)">F</span>note_raw_refused</a>
+<a class="sl" href="NetKernel.html#fn-off_frame_rejected"><span class="sb-kind" style="color:var(--fn)">F</span>off_frame_rejected</a>
+<a class="sl" href="NetKernel.html#fn-on_frame_rejected"><span class="sb-kind" style="color:var(--fn)">F</span>on_frame_rejected</a>
+<a class="sl" href="NetKernel.html#fn-raw_allowed"><span class="sb-kind" style="color:var(--fn)">F</span>raw_allowed</a>
+<a class="sl" href="NetKernel.html#fn-raw_refused"><span class="sb-kind" style="color:var(--fn)">F</span>raw_refused</a>
+<a class="sl" href="NetKernel.html#fn-recv_frame_until"><span class="sb-kind" style="color:var(--fn)">F</span>recv_frame_until</a>
+<a class="sl" href="NetKernel.html#fn-sealed"><span class="sb-kind" style="color:var(--fn)">F</span>sealed</a>
+<a class="sl" href="NetKernel.html#fn-send_frame"><span class="sb-kind" style="color:var(--fn)">F</span>send_frame</a>
+<a class="sl" href="NetKernel.html#fn-str_to_bytes"><span class="sb-kind" style="color:var(--fn)">F</span>str_to_bytes</a>
+<a class="sl" href="NetKernel.html#fn-to_wire"><span class="sb-kind" style="color:var(--fn)">F</span>to_wire</a>
+<a class="sl" href="NetKernel.html#fn-write_framed"><span class="sb-kind" style="color:var(--fn)">F</span>write_framed</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Node.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Node.html">Node</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCall.html">NodeCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeCert.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeCert.html">NodeCert</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeIdentity.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeIdentity.html">NodeIdentity</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeQueue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeQueue.html">NodeQueue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeRpc.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeRpc.html">NodeRpc</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="NodeSend.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="NodeSend.html">NodeSend</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Option.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Option.html">Option</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="OrderedMap.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="OrderedMap.html">OrderedMap</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parallel.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parallel.html">Parallel</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Parser.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Parser.html">Parser</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Path.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Path.html">Path</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerReader.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerReader.html">PeerReader</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PeerRegistry.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PeerRegistry.html">PeerRegistry</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Plot.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Plot.html">Plot</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Prelude.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Prelude.html">Prelude</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Presence.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Presence.html">Presence</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Process.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Process.html">Process</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="PubSub.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="PubSub.html">PubSub</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Queue.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Queue.html">Queue</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RRB.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RRB.html">RRB</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Random.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Random.html">Random</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Range.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Range.html">Range</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Recon.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Recon.html">Recon</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Regex.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Regex.html">Regex</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RemoteCall.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RemoteCall.html">RemoteCall</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Result.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Result.html">Result</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="RingBuf.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="RingBuf.html">RingBuf</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Scheduler.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Scheduler.html">Scheduler</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Seq.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Seq.html">Seq</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Session.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Session.html">Session</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionAP.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionAP.html">SessionAP</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SessionNode.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SessionNode.html">SessionNode</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Set.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Set.html">Set</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="ShellRender.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="ShellRender.html">ShellRender</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sigil.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sigil.html">Sigil</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Signal.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Signal.html">Signal</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Simd.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Simd.html">Simd</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Socket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Socket.html">Socket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Sort.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Sort.html">Sort</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SortedSet.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SortedSet.html">SortedSet</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Stats.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Stats.html">Stats</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="String.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="String.html">String</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Swim.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Swim.html">Swim</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="SwimDriver.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="SwimDriver.html">SwimDriver</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="System.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="System.html">System</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Task.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Task.html">Task</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Test.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Test.html">Test</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tls.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tls.html">Tls</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Toml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Toml.html">Toml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Topology.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Topology.html">Topology</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Trace.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Trace.html">Trace</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Tuple.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Tuple.html">Tuple</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="UUID.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="UUID.html">UUID</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Uri.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Uri.html">Uri</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Vault.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Vault.html">Vault</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="VectorClock.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="VectorClock.html">VectorClock</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WebSocket.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WebSocket.html">WebSocket</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="WorkDispatch.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="WorkDispatch.html">WorkDispatch</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Xml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Xml.html">Xml</a></div></div>
+<div class="sb-group"><div class="sb-group-hdr" data-href="Yaml.html"><span class="sb-chevron" style="visibility:hidden">&#9656;</span><a class="sl" href="Yaml.html">Yaml</a></div></div></div></nav><main id="main" data-pagefind-body data-pagefind-filter="section:Stdlib"><nav class="breadcrumb"><a href="index.html">March Docs</a><span class="sep">&rsaquo;</span><span>NetKernel</span></nav><h1>NetKernel</h1><div class="mdoc"><p>NetKernel: the socket-level transport for distributed OTP (P1).</p><p>Bridges the pure protocol layer (NetFrame / NodeIdentity / ClusterAuth / Handshake, all over List(Int) bytes) to real TCP sockets (Socket, over String). It frames messages, reads complete frames off a byte stream (partial-read safe), and runs the authenticated handshake that gates a peer into the cluster.</p><p>The pure bridge (to_wire / str_to_bytes / bytes_to_str) is unit-tested; the socket handshake is runtime-exercised (sockets/scheduler are not run by the eval-based stdlib test harness, matching ChannelServer's convention).</p><p>P5 frame types (tag byte prepended before the msgpack payload): 0x05 REGISTRY_SYNC_REQ  [tag=5, root_hash:Str] 0x06 REGISTRY_SYNC_RESP [tag=6, root_hash:Str, leaves:[[name,nid,pid,present,clock,creation],...]] clock: [[actor_id:Str, ts:Int],...]; a 4-element leaf (no clock, the original encoding) still decodes, with an empty clock, and a 5-element one (no creation) with creation 0 0x07 MONITOR_REQ        [tag=7, watcher_node:Str, watcher_pid:Int, target_pid:Int] 0x08 MONITOR_FIRE       [tag=8, target_pid:Int, reason_tag:Int, reason_msg:Str] reason_tag: 0=Normal, 1=Killed, 2=Crash, 3=NodeDown</p></div><h2>Types</h2><div class="item" id="type-MacKeys"><div class="ih"><span class="badge bty">type</span><span class="name">MacKeys</span><span class="sig"><a href="#type-MacKeys">MacKeys</a> = { tx_key : <a href="Bytes.html#type-Bytes">Bytes</a>, rx_key : <a href="Bytes.html#type-Bytes">Bytes</a> }</span><a class="anchor-link" href="#type-MacKeys" title="Link">#</a></div><div class="ib"></div></div>
+<div class="item" id="type-Authed"><div class="ih"><span class="badge bty">type</span><span class="name">Authed</span><span class="sig"><a href="#type-Authed">Authed</a> = { identity : NodeIdentity.Identity, role : String, addr : String,</span><a class="anchor-link" href="#type-Authed" title="Link">#</a></div><div class="ib"><p>What a finished handshake knows about the peer: its identity, the role it announced for this connection, its advertised address (&quot;&quot; when it sent none), its VERIFIED certificate (certificate mode) and whether the connection's frames are sealed from here on.</p></div></div><h2>Functions</h2><div class="item" id="fn-bytes_to_str"><div class="ih"><span class="badge bfn">fn</span><span class="name">bytes_to_str</span><span class="sig">bytes_to_str(b : List(Int)) : String do Bytes.to_string(Bytes.from_list(b)) end</span><a class="anchor-link" href="#fn-bytes_to_str" title="Link">#</a></div><div class="ib"><p>The String whose bytes are [b] (the inverse of <code>str_to_bytes</code>): what the socket layer writes.</p></div></div>
+<div class="item" id="fn-decode_monitor_fire"><div class="ih"><span class="badge bfn">fn</span><span class="name">decode_monitor_fire</span><span class="sig">decode_monitor_fire(bytes : List(Int)) : Result((Int, Int, String), String)</span><a class="anchor-link" href="#fn-decode_monitor_fire" title="Link">#</a></div><div class="ib"><p>Decode a MONITOR_FIRE frame payload into (target_pid, reason_tag, reason_msg). <code>Err</code> for bytes that are not MessagePack or not a MONITOR_FIRE.</p></div></div>
+<div class="item" id="fn-decode_monitor_req"><div class="ih"><span class="badge bfn">fn</span><span class="name">decode_monitor_req</span><span class="sig">decode_monitor_req(bytes : List(Int)) : Result((String, Int, Int), String)</span><a class="anchor-link" href="#fn-decode_monitor_req" title="Link">#</a></div><div class="ib"><p>Decode a MONITOR_REQ frame payload into (watcher_node, watcher_pid, target_pid). <code>Err</code> for bytes that are not MessagePack or not a MONITOR_REQ.</p></div></div>
+<div class="item" id="fn-decode_registry_sync_req"><div class="ih"><span class="badge bfn">fn</span><span class="name">decode_registry_sync_req</span><span class="sig">decode_registry_sync_req(bytes : List(Int)) : Result(String, String)</span><a class="anchor-link" href="#fn-decode_registry_sync_req" title="Link">#</a></div><div class="ib"><p>Decode a REGISTRY_SYNC_REQ frame payload into its root hash. <code>Err</code> for bytes that are not MessagePack or not a REGISTRY_SYNC_REQ.</p></div></div>
+<div class="item" id="fn-decode_registry_sync_resp"><div class="ih"><span class="badge bfn">fn</span><span class="name">decode_registry_sync_resp</span><span class="sig">decode_registry_sync_resp(bytes : List(Int)) : Result((String, List((String, GlobalRegistry.Entry))), String)</span><a class="anchor-link" href="#fn-decode_registry_sync_resp" title="Link">#</a></div><div class="ib"><p>Decode a REGISTRY_SYNC_RESP frame payload into (root hash, leaves). Older leaf shapes still decode: a 4-element leaf with an empty clock, a</p><ol><li>A malformed leaf is skipped and a malformed</li></ol><p>clock pair ignored; a decoded entry's <code>registrant</code> is &quot;&quot;, and a present entry never carries a tombstone stamp. <code>Err</code> for bytes that are not MessagePack or not a REGISTRY_SYNC_RESP.</p></div></div>
+<div class="item" id="fn-encode_monitor_fire"><div class="ih"><span class="badge bfn">fn</span><span class="name">encode_monitor_fire</span><span class="sig">encode_monitor_fire(target_pid : Int, reason_tag : Int, reason_msg : String) : List(Int)</span><a class="anchor-link" href="#fn-encode_monitor_fire" title="Link">#</a></div><div class="ib"><p>A MONITOR_FIRE frame payload (MessagePack, tag 8): the watched process [target_pid] died, for [reason_tag] (0 = Normal, 1 = Killed, 2 = Crash, 3 = NodeDown) with [reason_msg]; the receiver notifies its local watcher.</p></div></div>
+<div class="item" id="fn-encode_monitor_req"><div class="ih"><span class="badge bfn">fn</span><span class="name">encode_monitor_req</span><span class="sig">encode_monitor_req(watcher_node : String, watcher_pid : Int, target_pid : Int) : List(Int)</span><a class="anchor-link" href="#fn-encode_monitor_req" title="Link">#</a></div><div class="ib"><p>A MONITOR_REQ frame payload (MessagePack, tag 7): [watcher_pid] on node [watcher_node] asks to watch the receiver's local process [target_pid].</p></div></div>
+<div class="item" id="fn-encode_registry_sync_req"><div class="ih"><span class="badge bfn">fn</span><span class="name">encode_registry_sync_req</span><span class="sig">encode_registry_sync_req(root_hash : String) : List(Int)</span><a class="anchor-link" href="#fn-encode_registry_sync_req" title="Link">#</a></div><div class="ib"><p>A REGISTRY_SYNC_REQ frame payload (MessagePack, tag 5): our registry's Merkle [root_hash], asking the peer to diff.</p></div></div>
+<div class="item" id="fn-encode_registry_sync_resp"><div class="ih"><span class="badge bfn">fn</span><span class="name">encode_registry_sync_resp</span><span class="sig">encode_registry_sync_resp(root_hash : String,</span><a class="anchor-link" href="#fn-encode_registry_sync_resp" title="Link">#</a></div><div class="ib"><p>A REGISTRY_SYNC_RESP frame payload (MessagePack, tag 6): our [root_hash] and the [leaves] that differ. Each leaf is [name, node_id, pid, present (1/0), clock, creation], clock the entry's VectorClock as [[actor_id, ts], ...], plus a [0, retired_at] pair for a tombstone.</p></div></div>
+<div class="item" id="fn-forget"><div class="ih"><span class="badge bfn">fn</span><span class="name">forget</span><span class="sig">forget(fd : Int) : ()</span><a class="anchor-link" href="#fn-forget" title="Link">#</a></div><div class="ib"><p>Drop [fd]'s MAC state: its frames are plain again (see the rule above).</p></div></div>
+<div class="item" id="fn-frame_tag"><div class="ih"><span class="badge bfn">fn</span><span class="name">frame_tag</span><span class="sig">frame_tag(bytes : List(Int)) : Option(Int)</span><a class="anchor-link" href="#fn-frame_tag" title="Link">#</a></div><div class="ib"><p>The tag of a frame payload: the first element of its outer MessagePack array, when that is an Int. None for bytes that do not decode, or another shape. It decodes the whole payload (it is not a cheap peek).</p><pre><code><span class="tok-kw">match</span> <span class="tok-ty">NetKernel</span>.frame_tag(frame) <span class="tok-kw">do</span>
+  <span class="tok-ty">Some</span>(<span class="tok-num">7</span>) -&gt; handle_monitor_req(frame)
+  _ -&gt; ()
+<span class="tok-kw">end</span></code></pre></div></div>
+<div class="item" id="fn-frames_rejected"><div class="ih"><span class="badge bfn">fn</span><span class="name">frames_rejected</span><span class="sig">frames_rejected() : Int do Vault.get_or(mac_counts(), &quot;bad_total&quot;, 0) end</span><a class="anchor-link" href="#fn-frames_rejected" title="Link">#</a></div><div class="ib"><p>Frames dropped for a failed MAC, in this process, since it started.</p></div></div>
+<div class="item" id="fn-fresh_nonce"><div class="ih"><span class="badge bfn">fn</span><span class="name">fresh_nonce</span><span class="sig">fresh_nonce() : String do Crypto.random_hex(16) end</span><a class="anchor-link" href="#fn-fresh_nonce" title="Link">#</a></div><div class="ib"><p>A fresh random nonce for a handshake challenge: 16 random bytes as 32 hex digits (<code>Crypto.random_hex(16)</code>).</p></div></div>
+<div class="item" id="fn-handshake"><div class="ih"><span class="badge bfn">fn</span><span class="name">handshake</span><span class="sig">handshake(fd : Int, my_id : NodeIdentity.Identity, secret : String,</span><a class="anchor-link" href="#fn-handshake" title="Link">#</a></div><div class="ib"><p>The shared-secret handshake on [fd], opening a control connection. Both peers run the same sequence: send hello, read the peer's, send a proof bound to the peer's nonce, read the peer's proof, authenticate (it must bind to the nonce WE issued, [my_nonce]). Returns the authenticated peer's identity, or why it was refused. Blocks with no timeout; <code>handshake_auth</code> is the general form.</p><pre><code><span class="tok-kw">match</span> <span class="tok-ty">NetKernel</span>.handshake(fd, me, secret, <span class="tok-ty">NetKernel</span>.fresh_nonce()) <span class="tok-kw">do</span>
+  <span class="tok-ty">Ok</span>(peer) -&gt; println(<span class="tok-str">&quot;joined by &quot;</span> ++ peer.name)
+  <span class="tok-ty">Err</span>(e) -&gt; println(<span class="tok-str">&quot;refused: &quot;</span> ++ e)
+<span class="tok-kw">end</span></code></pre></div></div>
+<div class="item" id="fn-handshake_addr"><div class="ih"><span class="badge bfn">fn</span><span class="name">handshake_addr</span><span class="sig">handshake_addr(fd : Int, my_id : NodeIdentity.Identity, secret : String, my_nonce : String,</span><a class="anchor-link" href="#fn-handshake_addr" title="Link">#</a></div><div class="ib"><p>The shared-secret handshake of <code>handshake_role</code>, sending [addr] (this node's advertised listen address) in the hello, with the whole exchange bounded by [timeout_ms] (&lt;= 0: no bound). Returns the peer's identity, the role it announced and the address it advertised (&quot;&quot; from a peer that sends none).</p></div></div>
+<div class="item" id="fn-handshake_auth"><div class="ih"><span class="badge bfn">fn</span><span class="name">handshake_auth</span><span class="sig">handshake_auth(fd : Int, my_id : NodeIdentity.Identity, auth : ClusterAuth.Auth, my_nonce : String,</span><a class="anchor-link" href="#fn-handshake_auth" title="Link">#</a></div><div class="ib"><p>The handshake, in either mode ([auth]): send a hello, read the peer's, check the modes agree, prove ourselves bound to the peer's nonce, check the peer's proof bound to ours. Shared-secret mode: an HMAC of the nonce under the secret (wire-compatible with pre-11a nodes). Certificate mode: the hello carries our certificate and an ephemeral X25519 key; we verify the peer's certificate (operator signature, expiry, revocation, name) and its ed25519 signature over our nonce and the transcript. When both sides support it, the connection's frames are sealed from then on (NetFrame.seal; <code>mac</code> in the result). [role] names the connection (&quot;control&quot;/&quot;data&quot;), [addr] is our advertised address (&quot;&quot; for none), [timeout_ms] bounds the whole exchange (&lt;= 0: no bound).</p></div></div>
+<div class="item" id="fn-handshake_role"><div class="ih"><span class="badge bfn">fn</span><span class="name">handshake_role</span><span class="sig">handshake_role(fd : Int, my_id : NodeIdentity.Identity, secret : String,</span><a class="anchor-link" href="#fn-handshake_role" title="Link">#</a></div><div class="ib"><p><code>handshake</code>, opening a connection of [role] (&quot;control&quot; or &quot;data&quot;, <code>Handshake.role_*</code>); returns the peer's identity AND the role the peer announced, so an acceptor knows which of a peer's two connections it just took. A pre-split peer announces no role and reads as control. Reads are exact: nothing past the handshake's own two frames is consumed, so the connection is handed over with the peer's first real frame still unread.</p></div></div>
+<div class="item" id="fn-link_binding"><div class="ih"><span class="badge bfn">fn</span><span class="name">link_binding</span><span class="sig">link_binding(fd : Int) : <a href="Bytes.html#type-Bytes">Bytes</a></span><a class="anchor-link" href="#fn-link_binding" title="Link">#</a></div><div class="ib"><p>The handshake transcript of [fd]'s sealed connection (empty when it has none: unsealed, or never handshaked here).</p></div></div>
+<div class="item" id="fn-mac_failure_limit"><div class="ih"><span class="badge bfn">fn</span><span class="name">mac_failure_limit</span><span class="sig">mac_failure_limit() : Int do 3 end</span><a class="anchor-link" href="#fn-mac_failure_limit" title="Link">#</a></div><div class="ib"><p>Frames that may fail their MAC on one connection before it is closed.</p></div></div>
+<div class="item" id="fn-note_raw_refused"><div class="ih"><span class="badge bfn">fn</span><span class="name">note_raw_refused</span><span class="sig">note_raw_refused(_fd : Int) : ()</span><a class="anchor-link" href="#fn-note_raw_refused" title="Link">#</a></div><div class="ib"><p>Record a raw frame refused on a connection (<code>raw_allowed</code> false): counted in <code>raw_refused()</code>.</p></div></div>
+<div class="item" id="fn-off_frame_rejected"><div class="ih"><span class="badge bfn">fn</span><span class="name">off_frame_rejected</span><span class="sig">off_frame_rejected(id : Int) : () do Vault.drop(mac_hooks(), int_to_string(id)) end</span><a class="anchor-link" href="#fn-off_frame_rejected" title="Link">#</a></div><div class="ib"><p>Remove the hook <code>on_frame_rejected</code> returned [id] for; an unknown id is ignored.</p></div></div>
+<div class="item" id="fn-on_frame_rejected"><div class="ih"><span class="badge bfn">fn</span><span class="name">on_frame_rejected</span><span class="sig">on_frame_rejected(f : Int -&gt; Int -&gt; Unit) : Int</span><a class="anchor-link" href="#fn-on_frame_rejected" title="Link">#</a></div><div class="ib"><p>Call <a href="fd, failures_on_that_connection">f</a> whenever a frame fails its MAC (the connection's reader calls it, in its own task). Returns an id for <code>off_frame_rejected</code>.</p></div></div>
+<div class="item" id="fn-raw_allowed"><div class="ih"><span class="badge bfn">fn</span><span class="name">raw_allowed</span><span class="sig">raw_allowed(fd : Int) : Bool do Vault.get_or(raw_table(), fk(fd), 1) == 1 end</span><a class="anchor-link" href="#fn-raw_allowed" title="Link">#</a></div><div class="ib"><p>May raw frames (anything but session traffic) cross [fd]? False only on a certificate-mode connection where this node's or the peer's certificate lacks <code>raw_send</code>. Checked by <code>NodeSend</code> (Node.send) and <code>NodeCall</code> (RemoteCall); ClusterNode checks its own connections by certificate.</p></div></div>
+<div class="item" id="fn-raw_refused"><div class="ih"><span class="badge bfn">fn</span><span class="name">raw_refused</span><span class="sig">raw_refused() : Int do Vault.get_or(mac_counts(), &quot;raw_refused_total&quot;, 0) end</span><a class="anchor-link" href="#fn-raw_refused" title="Link">#</a></div><div class="ib"><p>Raw frames refused on connections this process handshaked, in either direction.</p></div></div>
+<div class="item" id="fn-recv_frame_until"><div class="ih"><span class="badge bfn">fn</span><span class="name">recv_frame_until</span><span class="sig">recv_frame_until(fd : Int, deadline : Int) : Result(List(Int), String)</span><a class="anchor-link" href="#fn-recv_frame_until" title="Link">#</a></div><div class="ib"><p>One frame off [fd], exactly (never over-read, as <code>recv_frame_exact</code>, but never MAC-checked: for the handshake's own frames), before [deadline] (absolute unix ms). <code>Err(&quot;net-kernel: handshake timed out&quot;)</code> when the deadline passes first, or an error when the read fails or the connection closes.</p></div></div>
+<div class="item" id="fn-sealed"><div class="ih"><span class="badge bfn">fn</span><span class="name">sealed</span><span class="sig">sealed(fd : Int) : Bool do Option.is_some(Vault.get(mac_table(), fk(fd))) end</span><a class="anchor-link" href="#fn-sealed" title="Link">#</a></div><div class="ib"><p>Are [fd]'s frames sealed?</p></div></div>
+<div class="item" id="fn-send_frame"><div class="ih"><span class="badge bfn">fn</span><span class="name">send_frame</span><span class="sig">send_frame(fd : Int, payload : List(Int)) : Result((), String)</span><a class="anchor-link" href="#fn-send_frame" title="Link">#</a></div><div class="ib"><p>Frame [payload] and write it to [fd]; sealed (<code>NetFrame.seal</code>, with the connection's next frame number) when the connection's handshake agreed a MAC key. <code>Err</code> with the socket's message when the write fails.</p><pre><code><span class="tok-kw">match</span> <span class="tok-ty">NetKernel</span>.send_frame(fd, <span class="tok-ty">NodeSend</span>.encode_failed(seq, <span class="tok-str">&quot;no such actor&quot;</span>)) <span class="tok-kw">do</span>
+  <span class="tok-ty">Ok</span>(_) -&gt; ()
+  <span class="tok-ty">Err</span>(e) -&gt; println(<span class="tok-str">&quot;write failed: &quot;</span> ++ e)
+<span class="tok-kw">end</span></code></pre></div></div>
+<div class="item" id="fn-str_to_bytes"><div class="ih"><span class="badge bfn">fn</span><span class="name">str_to_bytes</span><span class="sig">str_to_bytes(s : String) : List(Int) do Bytes.to_list(Bytes.from_string(s)) end</span><a class="anchor-link" href="#fn-str_to_bytes" title="Link">#</a></div><div class="ib"><p>The bytes of [s] (its UTF-8 encoding) as a List(Int), each 0..255.</p></div></div>
+<div class="item" id="fn-to_wire"><div class="ih"><span class="badge bfn">fn</span><span class="name">to_wire</span><span class="sig">to_wire(payload : List(Int)) : String</span><a class="anchor-link" href="#fn-to_wire" title="Link">#</a></div><div class="ib"><p>Frame [payload] (<code>NetFrame.encode</code>) and render it as the String the socket layer sends. Never sealed.</p><pre><code><span class="tok-ty">NetKernel</span>.str_to_bytes(<span class="tok-ty">NetKernel</span>.to_wire([<span class="tok-num">104</span>, <span class="tok-num">105</span>]))   <span class="tok-com">-- [0, 0, 0, 2, 104, 105]</span></code></pre></div></div>
+<div class="item" id="fn-write_framed"><div class="ih"><span class="badge bfn">fn</span><span class="name">write_framed</span><span class="sig">write_framed(fd : Int, framed : <a href="Bytes.html#type-Bytes">Bytes</a>) : Result((), String)</span><a class="anchor-link" href="#fn-write_framed" title="Link">#</a></div><div class="ib"><p>Write an already-framed (length-prefixed, unsealed) frame, sealing it first when [fd] is sealed: NodeQueue frames its messages when they are queued, before it knows when they will be written.</p></div></div></main></div><script>
+/* Theme toggle */
+/* localStorage throws in sandboxed (opaque-origin) pages, e.g. registry-hosted docs */
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function getTheme(){var t=lsGet('march-doc-theme');
+if(t)return t;return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);
+var moon=document.getElementById('icon-moon'),sun=document.getElementById('icon-sun');
+if(moon&&sun){moon.style.display=t==='dark'?'block':'none';sun.style.display=t==='light'?'block':'none';}}
+function toggleTheme(){var t=getTheme()==='dark'?'light':'dark';lsSet('march-doc-theme',t);applyTheme(t);}
+applyTheme(getTheme());
+
+/* Search overlay */
+function openSearch(){loadSI();document.getElementById('search-overlay').classList.add('open');
+var inp=document.getElementById('search-input');if(inp){inp.value='';inp.focus();}}
+function closeSearch(){document.getElementById('search-overlay').classList.remove('open');
+var sr=document.getElementById('sr');if(sr)sr.innerHTML='';}
+
+/* DOMContentLoaded */
+document.addEventListener('DOMContentLoaded',function(){
+
+/* Collapsible items */
+document.querySelectorAll('.ih').forEach(function(h){h.addEventListener('click',function(e){
+if(e.target.classList.contains('anchor-link'))return;
+var b=this.nextElementSibling;if(b)b.classList.toggle('open');});});
+
+/* Active sidebar link + auto-expand current module group */
+var path=window.location.pathname;
+document.querySelectorAll('.sl').forEach(function(a){var h=a.getAttribute('href');if(h&&path.endsWith(h)){a.classList.add('active');var g=a.closest('.sb-group');if(g)g.classList.add('open');}});
+
+/* Sidebar group toggle (chevron click expands/collapses) */
+document.querySelectorAll('.sb-group-hdr').forEach(function(hdr){hdr.addEventListener('click',function(e){
+if(e.target.tagName==='A')return;e.preventDefault();this.parentElement.classList.toggle('open');});});
+
+/* Copy buttons on pre blocks */
+document.querySelectorAll('.ib pre').forEach(function(pre){
+var wrap=document.createElement('div');wrap.className='pre-wrap';
+pre.parentNode.insertBefore(wrap,pre);wrap.appendChild(pre);
+var btn=document.createElement('button');btn.className='copy-btn';btn.textContent='Copy';
+btn.addEventListener('click',function(e){e.stopPropagation();
+var code=pre.querySelector('code');var text=code?code.textContent:pre.textContent;
+navigator.clipboard.writeText(text).then(function(){
+btn.textContent='Copied!';btn.classList.add('copied');
+setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+}).catch(function(){btn.textContent='!';setTimeout(function(){btn.textContent='Copy';},1500);});});
+wrap.appendChild(btn);});
+
+/* Open anchor from URL hash */
+if(window.location.hash){var el=document.querySelector(window.location.hash);if(el){var ib=el.querySelector('.ib');if(ib)ib.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'start'});}}
+
+/* Cmd+K search shortcut */
+document.addEventListener('keydown',function(e){
+if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch();}
+if(e.key==='Escape')closeSearch();});
+
+});
+
+/* Cross-module search: loads search-index.json, fuzzy matches, renders results */
+/* The index covers every module (~400 KB for the stdlib), so it is fetched the
+   first time search is opened (or the search button is hovered), not with every
+   page. A query typed before it arrives is re-run when it lands. */
+var SI=null,SIloading=false;
+function loadSI(){if(SI||SIloading)return;SIloading=true;
+fetch('search-index.json').then(function(r){return r.json();}).then(function(d){SI=d;
+var q=document.getElementById('search-input');if(q&&q.value.trim())q.dispatchEvent(new Event('input'));})
+.catch(function(){SIloading=false;});}
+var STR=document.getElementById('search-trigger');if(STR)STR.addEventListener('mouseenter',loadSI);
+
+/* Levenshtein distance */
+function ld(a,b){
+if(!a.length)return b.length;if(!b.length)return a.length;
+var m=[];for(var i=0;i<=b.length;i++)m[i]=[i];
+for(var j=0;j<=a.length;j++)m[0][j]=j;
+for(i=1;i<=b.length;i++)for(j=1;j<=a.length;j++){
+m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+}return m[b.length][a.length];}
+
+/* Fuzzy scoring: returns 0 if no match */
+function fs(q,t){
+if(!t)return 0;var ql=q.toLowerCase(),tl=t.toLowerCase();
+/* Exact match */
+if(tl===ql)return 10000;
+/* Starts with */
+if(tl.indexOf(ql)===0)return 5000-tl.length;
+/* Substring */
+var idx=tl.indexOf(ql);if(idx>0)return 3000-idx;
+/* Word boundary match (camelCase, snake_case) */
+var words=tl.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/_/g,' ').split(' ');
+for(var w=0;w<words.length;w++){if(words[w].indexOf(ql)===0)return 2000-w*100;}
+/* Levenshtein for short queries */
+if(ql.length<=8&&tl.length<=40){var d=ld(ql,tl.substring(0,Math.max(ql.length+2,8)));
+if(d<=Math.ceil(ql.length*0.35))return 1000-d*100;}
+return 0;}
+
+/* Score an entry against a query */
+function scoreEntry(q,e){
+return Math.max(
+fs(q,e.n)*4, /* name match (highest weight) */
+fs(q,e.s)*2, /* signature match */
+fs(q,e.m)*2, /* module name match */
+fs(q,e.d) /* doc string match (lowest weight) */
+);}
+
+/* Render search results */
+function renderSR(results){
+var el=document.getElementById('sr');if(!el)return;
+if(!results.length){el.className='';el.innerHTML='';return;}
+el.className='open';var h='';
+for(var i=0;i<results.length;i++){
+var e=results[i].entry,k=e.k,href=e.m+'.html';
+if(k==='fn'||k==='pfn')href+='#fn-'+encodeURIComponent(e.n);
+else if(k==='type'||k==='ptype')href+='#type-'+encodeURIComponent(e.n);
+else if(k==='interface')href+='#iface-'+encodeURIComponent(e.n);
+var kc='sr-'+k;
+h+='<a class="sr-item" href="'+href+'">'+
+'<span class="sr-kind '+kc+'">'+k+'</span>'+
+'<span class="sr-name">'+esc(e.n)+'</span>'+
+'<span class="sr-mod">'+esc(e.m)+'</span></a>';
+if(e.d)h+='<div class="sr-doc">'+esc(e.d.substring(0,100))+'</div>';
+if(i<results.length-1)h+='<div class="sr-sep"></div>';
+}el.innerHTML=h;}
+
+/* HTML escape helper */
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+/* Search handler — uses the modal search input */
+var si=document.getElementById('search-input');
+if(si)si.addEventListener('input',function(){
+var q=this.value.trim();
+if(!q||!SI){renderSR([]);return;}
+var results=[];
+for(var i=0;i<SI.length;i++){
+var sc=scoreEntry(q,SI[i]);
+if(sc>0)results.push({entry:SI[i],score:sc});
+}
+results.sort(function(a,b){return b.score-a.score;});
+renderSR(results.slice(0,25));
+});
+</script></body></html>
