@@ -1,0 +1,5538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error Messages — March</title>
+  <meta name="description" content="A tour of March&#39;s compiler errors, from a misplaced keyword to a protocol a role breaks, with a playground pre-loaded with each one.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07101a;
+      --bg-code: #0c1928;
+      --bg-sidebar: #060d16;
+      --bg-nav: rgba(7,16,26,0.92);
+      --border: #0f2438;
+      --text: #cce5f5;
+      --text-muted: #6b9bbe;
+      --text-faint: #3f6f94;
+      --accent: oklch(63% 0.12 207);
+      --active-bg: rgba(18,145,167,0.15);
+      --active-color: oklch(63% 0.12 207);
+      /* syntax */
+      --syn-kw: oklch(74% 0.11 200);
+      --syn-tp: oklch(82% 0.12 70);
+      --syn-st: oklch(82% 0.11 200);
+      --syn-nm: oklch(78% 0.09 265);
+      --syn-cm: oklch(42% 0.07 215);
+      --syn-op: oklch(57% 0.09 205);
+      --syn-id: oklch(95% 0.02 207);
+    }
+    :root.light {
+      --bg: #f0f6fc;
+      --bg-code: #ddeaf5;
+      --bg-sidebar: #e6f0f8;
+      --bg-nav: rgba(240,246,252,0.92);
+      --border: #b5cce0;
+      --text: #071828;
+      --text-muted: #2e5c7c;
+      --text-faint: #6a96b5;
+      --accent: oklch(37% 0.11 210);
+      --active-bg: rgba(14,91,130,0.1);
+      --active-color: oklch(37% 0.11 210);
+      /* syntax */
+      --syn-kw: oklch(32% 0.11 215);
+      --syn-tp: oklch(42% 0.12 55);
+      --syn-st: oklch(28% 0.11 215);
+      --syn-nm: oklch(36% 0.09 265);
+      --syn-cm: oklch(62% 0.06 215);
+      --syn-op: oklch(38% 0.07 215);
+      --syn-id: oklch(18% 0.04 215);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    .d-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 60px; border-bottom: 1px solid var(--border);
+      background: var(--bg-nav);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .d-nav-inner {
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .d-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .d-nav-logo img { width: 32px; height: 32px; object-fit: contain; }
+    .d-nav-logo .logo-name { font-family: 'Lora', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+    .d-nav-logo .logo-slug { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-left: 2px; }
+    .d-nav-right { display: flex; align-items: center; gap: 20px; }
+    .d-nav-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+    .d-nav-link:hover { color: var(--text); }
+    .d-theme-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; line-height: 0;
+    }
+
+    /* Search/Home/GitHub/theme move here on narrow screens — see the
+       .d-mobile-extra rules under the 900px media query below. */
+    .d-mobile-extra { display: none; }
+    .d-mobile-search-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .d-mobile-search-btn kbd {
+      margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--border); color: inherit;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .d-layout { display: flex; padding-top: 60px; min-height: 100vh; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .d-sidebar {
+      width: 248px; flex-shrink: 0;
+      position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; border-right: 1px solid var(--border);
+      background: var(--bg-sidebar); padding: 20px 0;
+      transition: transform 0.25s ease;
+    }
+    .d-sidebar-inner { padding: 0 8px; }
+    .d-sidebar-section {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 12px; margin-top: 14px; margin-bottom: 2px;
+    }
+    .d-sidebar-section:first-child { margin-top: 0; }
+    .d-sidebar-link {
+      display: block; padding: 7px 12px; border-radius: 5px; font-size: 14px;
+      color: var(--text-muted); text-decoration: none; margin-bottom: 1px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .d-sidebar-link:hover { background: rgba(18,145,167,0.06); color: var(--text); }
+    .d-sidebar-link.active { background: var(--active-bg); color: var(--active-color); font-weight: 500; }
+
+    /* ── MAIN ────────────────────────────────────────────────────────────── */
+    /* 740px suits prose but cramps wide reference tables (see Capability
+       Enforcement's OS-primitive tables) into tall, heavily-wrapped rows.
+       Widen on screens with room to spare; prose readability is unaffected
+       below 1280px, where this never applies. */
+    .d-main { flex: 1; min-width: 0; padding: 52px 64px; max-width: 740px; }
+    @media (min-width: 1280px) { .d-main { max-width: 960px; } }
+    @media (min-width: 1600px) { .d-main { max-width: 1100px; } }
+
+    /* ── PROSE ───────────────────────────────────────────────────────────── */
+    .d-content { line-height: 1.8; }
+    .d-content h1 {
+      font-family: 'Lora', Georgia, serif; font-size: 38px; font-weight: 600;
+      letter-spacing: -0.025em; color: var(--text); margin: 0 0 14px; line-height: 1.15;
+    }
+    .d-content h2 {
+      font-family: 'Lora', Georgia, serif; font-size: 26px; font-weight: 600;
+      color: var(--text); margin: 48px 0 14px; letter-spacing: -0.015em;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border); line-height: 1.25;
+    }
+    .d-content h3 { font-size: 17px; font-weight: 600; color: var(--text); margin: 32px 0 10px; letter-spacing: -0.01em; }
+    .d-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+    /* Hover-reveal permalink anchors on section headings. */
+    .d-content h2, .d-content h3, .d-content h4 { position: relative; scroll-margin-top: 78px; }
+    .d-anchor {
+      position: absolute; left: -0.85em; top: 0; opacity: 0; padding-right: 0.35em;
+      color: var(--text-faint); text-decoration: none; font-weight: 400; transition: opacity .12s;
+    }
+    .d-content h2:hover .d-anchor, .d-content h3:hover .d-anchor,
+    .d-content h4:hover .d-anchor, .d-anchor:focus { opacity: 1; }
+    @media (max-width: 640px) { .d-anchor { position: static; margin-left: 0.3em; opacity: 0.45; } }
+    .d-content p { font-size: 16px; line-height: 1.82; color: var(--text-muted); margin: 0 0 18px; }
+    .d-content ul, .d-content ol { margin: 0 0 18px 22px; color: var(--text-muted); }
+    .d-content li { font-size: 15px; line-height: 1.8; margin-bottom: 4px; }
+    .d-content li > p { margin: 0; }
+    .d-content strong { color: var(--text); font-weight: 600; }
+    .d-content em { font-style: italic; }
+    .d-content a { color: var(--accent); text-decoration: none; }
+    .d-content a:hover { text-decoration: underline; }
+    .d-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .d-content blockquote {
+      border-left: 3px solid var(--accent); padding: 14px 18px;
+      background: var(--bg-code); border-radius: 0 6px 6px 0;
+      margin: 20px 0; font-size: 15px; line-height: 1.75; color: var(--text-muted);
+    }
+    .d-content blockquote p { margin: 0; font-size: 15px; }
+
+    /* inline code */
+    .d-content :not(pre) > code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.875em;
+      color: var(--accent); background: var(--bg-code);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    /* fenced code blocks */
+    .d-content .highlight,
+    .d-content pre {
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 6px; margin: 20px 0; overflow-x: auto;
+    }
+    /* typography for all pre elements */
+    .d-content pre {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
+      line-height: 1.72; tab-size: 2;
+    }
+    /* inner pre inside Rouge .highlight wrapper — outer div provides the box */
+    .d-content .highlight pre {
+      margin: 0; border: none; border-radius: 0; background: transparent;
+    }
+    .d-content pre code { background: none; color: var(--text); padding: 0; font-size: inherit; }
+
+    /* Rouge syntax tokens */
+    .d-content .highlight .c,  .d-content .highlight .c1,
+    .d-content .highlight .cm, .d-content .highlight .cp,
+    .d-content .highlight .cs  { color: var(--syn-cm); font-style: italic; }
+    .d-content .highlight .k,  .d-content .highlight .kd,
+    .d-content .highlight .kn, .d-content .highlight .kp,
+    .d-content .highlight .kr, .d-content .highlight .kc { color: var(--syn-kw); }
+    .d-content .highlight .kt  { color: var(--syn-tp); }
+    .d-content .highlight .s,  .d-content .highlight .s1,
+    .d-content .highlight .s2, .d-content .highlight .sb,
+    .d-content .highlight .sd, .d-content .highlight .sh { color: var(--syn-st); }
+    .d-content .highlight .m,  .d-content .highlight .mi,
+    .d-content .highlight .mf, .d-content .highlight .mh { color: var(--syn-nm); }
+    .d-content .highlight .o,  .d-content .highlight .ow  { color: var(--syn-op); }
+    .d-content .highlight .nc, .d-content .highlight .nn  { color: var(--syn-tp); }
+    .d-content .highlight .nf, .d-content .highlight .fm  { color: var(--syn-kw); }
+    .d-content .highlight .n,  .d-content .highlight .nx,
+    .d-content .highlight .na  { color: var(--text); }
+    .d-content .highlight .p   { color: var(--text-muted); }
+    .d-content .highlight .gd  { color: #f87272; }
+    .d-content .highlight .gi  { color: oklch(74% 0.18 145); }
+    .d-content .highlight .err { color: #f87272; background: none; }
+
+    /* tables */
+    .d-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; display: block; overflow-x: auto; }
+    .d-content th {
+      text-align: left; padding: 9px 14px; background: var(--bg-code);
+      color: var(--text); font-weight: 600; font-size: 11px;
+      letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .d-content td { padding: 9px 14px; color: var(--text-muted); border-top: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    .d-content td code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: var(--accent); }
+
+    /* ── MOBILE ──────────────────────────────────────────────────────────── */
+    .d-overlay {
+      display: none; position: fixed; inset: 0; top: 60px;
+      background: rgba(0,0,0,0.5); z-index: 80;
+    }
+    .d-overlay.show { display: block; }
+
+    @media (max-width: 900px) {
+      .d-sidebar {
+        position: fixed; left: 0; top: 60px; z-index: 90;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+      }
+      .d-sidebar.open { transform: translateX(0); }
+      .d-hamburger { display: block; }
+      .d-main { padding: 32px 24px; max-width: 100%; }
+
+      /* Crowd relief: search/Home/GitHub/theme move into the sidebar drawer so
+         the nav row never has to fit more than the logo + hamburger. */
+      .d-nav-right > *:not(#d-hamburger) { display: none; }
+      .d-mobile-extra {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+      }
+      .d-mobile-extra .d-theme-btn { align-self: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .d-nav-inner { padding: 0 16px; }
+      .d-main { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="d-nav">
+  <div class="d-nav-inner">
+    <a href="/" class="d-nav-logo">
+      <img src="/assets/logo.webp" alt="March">
+      <span class="logo-name">March</span>
+      <span class="logo-slug">/ docs</span>
+    </a>
+    <div class="d-nav-right">
+      <!--
+  search.html — site-wide ⌘K full-text search, powered by Pagefind.
+
+  The index is NOT built by Jekyll. Pagefind is a post-build step that crawls the
+  generated `_site/` and emits `_site/pagefind/` (see .github/workflows/deploy-pages.yml
+  and scripts/serve-docs.sh). That is deliberate: roughly two thirds of the searchable
+  site — the 114 stdlib API pages under /docs/stdlib/ — are pre-generated static HTML
+  from the external `march_doc` tool, not Jekyll markdown. Indexing the *output* is the
+  only way one search covers both families.
+
+  Consequence: in a plain `jekyll serve` there is no /pagefind/ directory, so the modal
+  opens and reports that the index is missing rather than throwing. Use
+  scripts/serve-docs.sh to exercise search locally.
+
+  Pages opt IN to the index by carrying `data-pagefind-body`. Pagefind's rule is that
+  once *any* page has that attribute, only pages with it are indexed — which is why the
+  playground / Tetris / perihelion / graph pages need no exclusion rules to stay out.
+-->
+
+<!--
+  The modal binds every `[data-ms-open]` element, not just this one, so a layout can
+  place additional triggers (e.g. one in a desktop sidebar and one in a mobile topbar)
+  without duplicating the modal markup or its element ids.
+-->
+<button id="ms-trigger" data-ms-open type="button" aria-label="Search docs (Command K)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="ms-trigger-label">Search</span>
+  <kbd id="ms-trigger-kbd">⌘K</kbd>
+</button>
+
+<div id="ms-overlay" role="dialog" aria-modal="true" aria-label="Search docs" hidden>
+  <div id="ms-modal">
+    <div id="ms-inputrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="ms-input" type="text" placeholder="Search the docs…" autocomplete="off"
+             spellcheck="false" role="combobox" aria-expanded="false"
+             aria-controls="ms-results" aria-autocomplete="list"/>
+      <kbd class="ms-esc">Esc</kbd>
+    </div>
+    <div id="ms-results" role="listbox" aria-label="Search results"></div>
+    <div id="ms-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span class="ms-credit">Search by <a href="https://pagefind.app/" target="_blank" rel="noopener">Pagefind</a></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /*
+    Colours are declared as custom properties on #ms-overlay so the one component can
+    live in every theming regime on the site: `default.html` hardcodes a dark palette,
+    while `docs.html` / `cookbook.html` / `landing.html` toggle a `.light` CLASS on
+    <html>. The generated stdlib pages instead use `data-theme='light'` — they don't
+    embed this modal today, but matching both spellings costs nothing and means the
+    component still themes correctly if it is ever dropped in there.
+
+    The dark values are the base; light overrides sit under the two light selectors.
+  */
+  #ms-overlay {
+    --ms-bg:      #0F2A36;
+    --ms-bg-deep: #0B1F2A;
+    --ms-card:    #133847;
+    --ms-bdr:     #1C5D6F;
+    --ms-text:    #D6EEF5;
+    --ms-bright:  #E6FCF9;
+    --ms-dim:     #7aacbe;
+    --ms-acc:     #6FE3D6;
+    --ms-scrim:   rgba(4, 12, 18, .68);
+  }
+  html.light #ms-overlay, html[data-theme='light'] #ms-overlay {
+    --ms-bg:      #ffffff;
+    --ms-bg-deep: #f0f6fc;
+    --ms-card:    #e3eef8;
+    --ms-bdr:     #b5cce0;
+    --ms-text:    #14313f;
+    --ms-bright:  #071828;
+    --ms-dim:     #4a7898;
+    --ms-acc:     #0d6b78;
+    --ms-scrim:   rgba(12, 32, 44, .38);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  #ms-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #1C5D6F; border-radius: 7px;
+    color: #a8ccd8; cursor: pointer;
+    padding: 5px 10px; font: inherit; font-size: 13px; line-height: 1.2;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  html.light #ms-trigger, html[data-theme='light'] #ms-trigger { background: rgba(0, 0, 0, .03); border-color: #b5cce0; color: #2e5c7c; }
+  #ms-trigger:hover { border-color: #6FE3D6; color: #D6EEF5; }
+  html.light #ms-trigger:hover, html[data-theme='light'] #ms-trigger:hover { border-color: #0d6b78; color: #071828; }
+  #ms-trigger kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(0, 0, 0, .25); border: 1px solid #1C5D6F; color: inherit;
+  }
+  html.light #ms-trigger kbd, html[data-theme='light'] #ms-trigger kbd { background: rgba(0, 0, 0, .05); border-color: #b5cce0; }
+  /* Opt-in wrapper for sidebar placement, where the trigger should fill the column. */
+  .ms-trigger-block #ms-trigger { width: 100%; }
+  .ms-trigger-block #ms-trigger kbd { margin-left: auto; }
+
+  /* On narrow screens the trigger collapses to a bare magnifier. */
+  @media (max-width: 720px) {
+    .ms-trigger-label, #ms-trigger kbd { display: none; }
+    #ms-trigger { padding: 6px; }
+  }
+
+  /* ── Overlay + modal shell ──────────────────────────────────────────────── */
+  #ms-overlay[hidden] { display: none; }
+  #ms-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ms-scrim);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: min(14vh, 110px) 16px 16px;
+  }
+  #ms-modal {
+    width: 640px; max-width: 100%; max-height: min(70vh, 620px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ms-bg); color: var(--ms-text);
+    border: 1px solid var(--ms-bdr); border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+
+  #ms-inputrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); flex-shrink: 0;
+  }
+  #ms-input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ms-text); font: inherit; font-size: 15px;
+  }
+  #ms-input::placeholder { color: var(--ms-dim); }
+  .ms-esc {
+    font: inherit; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr); color: var(--ms-dim);
+  }
+
+  /* ── Results ────────────────────────────────────────────────────────────── */
+  #ms-results { overflow-y: auto; padding: 8px; flex: 1; }
+  #ms-results::-webkit-scrollbar { width: 8px; }
+  #ms-results::-webkit-scrollbar-thumb { background: var(--ms-bdr); border-radius: 4px; }
+
+  .ms-empty { padding: 26px 16px; text-align: center; color: var(--ms-dim); font-size: 13px; }
+  .ms-empty a { color: var(--ms-acc); text-decoration: underline; }
+  .ms-empty code {
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+
+  /* ── Group headers ──────────────────────────────────────────────────────── */
+  .ms-group {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 10px 12px 5px;
+  }
+  #ms-results > .ms-group:first-child { padding-top: 4px; }
+
+  .ms-group { display: flex; align-items: center; }
+  .ms-clear {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ms-dim); padding: 0 2px; text-decoration: underline;
+  }
+  .ms-clear:hover { color: var(--ms-acc); }
+
+  /* ── Idle-panel suggestions (recent queries + starting points) ───────────── */
+  .ms-suggest {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
+    background: none; text-align: left; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--ms-text); text-decoration: none;
+  }
+  .ms-suggest:hover { text-decoration: none; }
+  .ms-suggest svg { color: var(--ms-dim); flex-shrink: 0; }
+  .ms-suggest.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-suggest.ms-sel svg { color: var(--ms-acc); }
+  .ms-suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-hint { text-align: left; padding: 14px 12px 6px; font-size: 12px; line-height: 1.6; }
+
+  /* ── Stdlib symbol rows ─────────────────────────────────────────────────── */
+  .ms-sym {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+    text-decoration: none; color: inherit; font-size: 13px;
+  }
+  .ms-sym:hover { text-decoration: none; }
+  .ms-sym.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-sym-name {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-bright); font-weight: 600; flex-shrink: 0;
+  }
+  .ms-sym-sig {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ms-dim); font-size: 11.5px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-sym-mod { color: var(--ms-dim); font-size: 11px; flex-shrink: 0; }
+  /* Kind badge colours mirror the stdlib API pages so the two stay recognisably
+     the same vocabulary (fn / type / interface / private). */
+  .ms-kind {
+    flex-shrink: 0; min-width: 34px; text-align: center;
+    font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .ms-k-fn        { background: color-mix(in oklab, #2fbf95 15%, transparent); color: #2fbf95; }
+  .ms-k-type      { background: color-mix(in oklab, #d59b3f 15%, transparent); color: #d59b3f; }
+  .ms-k-interface { background: color-mix(in oklab, #5aa9e6 15%, transparent); color: #5aa9e6; }
+  .ms-k-module    { background: color-mix(in oklab, var(--ms-acc) 15%, transparent); color: var(--ms-acc); }
+  .ms-k-pfn,
+  .ms-k-ptype     { background: color-mix(in oklab, #7d8fa0 18%, transparent); color: #7d8fa0; }
+
+  .ms-hit {
+    display: block; text-decoration: none; color: inherit;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .ms-hit:hover { text-decoration: none; }
+  .ms-hit.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+  }
+  .ms-hit-top { display: flex; align-items: baseline; gap: 9px; }
+  .ms-hit-title {
+    color: var(--ms-bright); font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-tag {
+    flex-shrink: 0; margin-left: auto;
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 100px;
+    background: color-mix(in srgb, var(--ms-acc) 13%, transparent);
+    color: var(--ms-acc);
+    border: 1px solid color-mix(in srgb, var(--ms-acc) 26%, transparent);
+  }
+  .ms-hit-excerpt {
+    color: var(--ms-dim); font-size: 12.5px; line-height: 1.55; margin-top: 3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ms-hit-excerpt mark {
+    background: color-mix(in srgb, var(--ms-acc) 22%, transparent);
+    color: var(--ms-bright); border-radius: 3px; padding: 0 2px;
+  }
+  /* Sub-results are heading-level anchors within a page — "related topics" links. */
+  .ms-sub {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none; color: var(--ms-dim); font-size: 12.5px;
+    padding: 5px 12px 5px 26px; border-radius: 7px; border: 1px solid transparent;
+    position: relative;
+  }
+  .ms-sub::before {
+    content: '↳'; position: absolute; left: 11px; color: var(--ms-bdr); font-size: 11px;
+  }
+  .ms-sub:hover { text-decoration: none; }
+  .ms-sub.ms-sel {
+    background: var(--ms-card);
+    border-color: color-mix(in srgb, var(--ms-acc) 45%, transparent);
+    color: var(--ms-text);
+  }
+  .ms-sub-title { color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 45%; }
+  .ms-sub-excerpt { color: var(--ms-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-sub-excerpt mark { background: none; color: var(--ms-acc); }
+
+  #ms-footer {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--ms-bdr);
+    color: var(--ms-dim); font-size: 11px; flex-shrink: 0;
+  }
+  #ms-footer kbd {
+    font: inherit; font-size: 10px; padding: 1px 5px; margin-right: 3px; border-radius: 4px;
+    background: var(--ms-bg-deep); border: 1px solid var(--ms-bdr);
+  }
+  #ms-footer .ms-credit { margin-left: auto; }
+  #ms-footer a { color: var(--ms-dim); text-decoration: underline; }
+  @media (max-width: 560px) { #ms-footer .ms-credit { display: none; } }
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('ms-overlay');
+  var modal    = document.getElementById('ms-modal');
+  var input    = document.getElementById('ms-input');
+  var resultsE = document.getElementById('ms-results');
+  if (!overlay || !input) return;
+
+  // Reparent the overlay to <body>.
+  //
+  // Layouts place this include inside their nav bar, and every nav here sets
+  // `backdrop-filter` (.d-nav, .m-nav) — which makes the nav a CONTAINING BLOCK for
+  // `position: fixed` descendants. Left in place, the full-screen scrim would be sized
+  // and clipped to the 60px-tall nav instead of the viewport. Moving it to <body>
+  // restores the viewport as the containing block regardless of where a layout put the
+  // include, so this can't silently regress when a nav gains a transform/filter later.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
+  // Absolute so they resolve identically from /, /docs/tour/, and /docs/stdlib/Array.html.
+  var PAGEFIND_URL = '/pagefind/pagefind.js';
+
+  // The stdlib symbol index, emitted by the external `march_doc` generator alongside the
+  // API pages. 2038 entries / ~57 KB gzipped, so it is cheap to pull in whole on the
+  // first keystroke.
+  //
+  // Why both indexes rather than just Pagefind: Pagefind indexes stdlib pages at PAGE
+  // granularity, so searching `push` lands you on Queue.html with no anchor and you then
+  // hunt for the function. This index resolves to Queue.html#fn-push directly, with the
+  // symbol's kind and signature. The two answer different questions — "where is this
+  // explained" vs "where is this defined" — so the modal serves both.
+  var SYMBOLS_URL = '/docs/stdlib/search-index.json';
+  var STDLIB_BASE = '/docs/stdlib/';
+
+  var MAX_SYMBOLS = 5;   // a hard cap: prose queries must never be buried under symbols
+  var MAX_PAGES   = 8;
+  var MAX_RECENT  = 5;
+  var RECENT_KEY  = 'march-docs-recent-searches';
+
+  // Shown on the empty modal. URLs come from the pages themselves via Liquid rather
+  // than being hardcoded here, so renaming a permalink can't leave a dead suggestion
+  // behind. Selected by nav_order: 3 Getting Started, 4 Language Tour,
+  // 5.2 Pattern Matching, 9 Actors.
+  var SUGGESTIONS = [
+    { title: "Getting Started", url: "/docs/getting-started/" },
+    { title: "Language Tour", url: "/docs/tour/" },
+    { title: "Pattern Matching", url: "/docs/pattern-matching/" },
+    { title: "Actors", url: "/docs/actors/" },
+    { title: 'Cookbook',         url: '/docs/cookbook/' },
+    { title: 'Standard Library', url: '/docs/stdlib/' }
+  ];
+
+  var pagefind   = null;   // resolved module, or the string 'unavailable'
+  var loading    = null;   // in-flight import promise, so concurrent opens share one load
+  var symbols    = null;   // array of stdlib symbol entries, or [] if unavailable
+  var symLoading = null;
+  var rows       = [];     // flat list of selectable anchors, in visual order
+  var selected   = -1;
+  var debounce   = null;
+  var queryToken = 0;      // guards against an older query resolving after a newer one
+
+  // Delegated rather than bound per-element: this script runs synchronously at its
+  // position in the document, so a static querySelectorAll would miss any trigger
+  // markup a layout places LATER in the DOM (e.g. a mobile drawer nested in a sidebar
+  // that comes after this include). Delegation binds once and matches triggers
+  // regardless of where — or when — they appear.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-open]')) open();
+  });
+
+  // Show the platform-correct hint rather than always claiming ⌘.
+  var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ms-trigger-kbd'), function (el) {
+      el.textContent = 'Ctrl K';
+    });
+  }
+
+  function isLocalhost() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var open_ = !overlay.hidden;
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      open_ ? close() : open();
+      return;
+    }
+    // Bare "/" is a convenience opener, but must not hijack typing — including
+    // typing into the playground/REPL editors that live on some pages.
+    if (e.key === '/' && !open_ && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      open();
+      return;
+    }
+    if (!open_) return;
+    if (e.key === 'Escape')    { e.preventDefault(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter')     {
+      if (selected >= 0 && rows[selected]) { e.preventDefault(); activate(rows[selected]); }
+    }
+  });
+
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
+  if (modal) modal.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+
+  function open() {
+    overlay.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    input.focus();
+    input.select();
+    load();                                   // lazy: nothing was fetched until now
+    if (!input.value) showIdle();
+  }
+
+  function close() {
+    overlay.hidden = true;
+    document.documentElement.style.overflow = '';
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  // Loads pagefind.js on first open. Resolves to 'unavailable' rather than rejecting so
+  // every caller can render a message instead of leaving a dead modal.
+  function load() {
+    if (pagefind) return Promise.resolve(pagefind);
+    if (loading)  return loading;
+    loading = import(PAGEFIND_URL).then(function (mod) {
+      return Promise.resolve(mod.options ? mod.options({ excerptLength: 24 }) : null)
+        .then(function () { pagefind = mod; return mod; });
+    }).catch(function () {
+      pagefind = 'unavailable';
+      return pagefind;
+    });
+    return loading;
+  }
+
+  // Resolves to [] rather than rejecting, so a missing/damaged index degrades to
+  // "full-text only" instead of breaking search entirely.
+  function loadSymbols() {
+    if (symbols) return Promise.resolve(symbols);
+    if (symLoading) return symLoading;
+    symLoading = fetch(SYMBOLS_URL)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { symbols = Array.isArray(j) ? j : []; return symbols; })
+      .catch(function () { symbols = []; return symbols; });
+    return symLoading;
+  }
+
+  // Entry shape (from march_doc): { m: module, k: kind, n: name, s: signature, d: doc }.
+  // Anchor scheme mirrors the generator's own: fn/pfn -> #fn-, type/ptype -> #type-,
+  // interface -> #iface-, module -> the page itself.
+  function symbolHref(e) {
+    var href = STDLIB_BASE + encodeURIComponent(e.m) + '.html';
+    if (e.k === 'fn' || e.k === 'pfn')          return href + '#fn-'    + encodeURIComponent(e.n);
+    if (e.k === 'type' || e.k === 'ptype')      return href + '#type-'  + encodeURIComponent(e.n);
+    if (e.k === 'interface')                    return href + '#iface-' + encodeURIComponent(e.n);
+    return href;
+  }
+
+  // Deliberately narrower than the stdlib page's own scorer, which also matches
+  // signatures, docstrings and fuzzy/Levenshtein neighbours. Here a symbol must match by
+  // NAME, exactly or by prefix. Descriptions are what the full-text half is for, and
+  // fuzzy matching on 2038 names would flood prose queries with near-misses.
+  function scoreName(q, name) {
+    if (!name) return 0;
+    var n = name.toLowerCase();
+    if (n === q) return 10000;
+    if (n.indexOf(q) === 0) return 5000 - n.length;
+    // Word-boundary prefix, so `string` finds `to_string` and `decode` finds
+    // `json_decode`, without `s` matching every name containing an s.
+    var parts = n.split('_');
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].indexOf(q) === 0) return 2000 - i * 100 - n.length;
+    }
+    return 0;
+  }
+
+  function searchSymbols(raw) {
+    if (!symbols || !symbols.length) return [];
+    var q = raw.toLowerCase().trim();
+    var scored = [];
+    var i, e, s;
+
+    // A dotted or spaced pair is read as Module + member ("List.map", "list map").
+    var pair = q.split(/[.\s]+/).filter(Boolean);
+    if (pair.length === 2) {
+      for (i = 0; i < symbols.length; i++) {
+        e = symbols[i];
+        var ms = scoreName(pair[0], e.m), ns = scoreName(pair[1], e.n);
+        if (ms > 0 && ns > 0) scored.push({ e: e, score: ms + ns });
+      }
+      return rank(scored);
+    }
+
+    // Any other multi-word query is prose; leave it entirely to the full-text half.
+    if (pair.length !== 1) return [];
+
+    for (i = 0; i < symbols.length; i++) {
+      e = symbols[i];
+      s = scoreName(q, e.n);
+      // A bare module name should surface the module page, but rank below members.
+      if (e.k === 'module') s = Math.max(s, scoreName(q, e.m) - 500);
+      if (s > 0) scored.push({ e: e, score: s });
+    }
+    return rank(scored);
+  }
+
+  function rank(scored) {
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      // Stable, meaningful tiebreak: public before private, then alphabetical, so the
+      // same query always yields the same order across loads.
+      var ap = (a.e.k === 'pfn' || a.e.k === 'ptype') ? 1 : 0;
+      var bp = (b.e.k === 'pfn' || b.e.k === 'ptype') ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (a.e.m + a.e.n).localeCompare(b.e.m + b.e.n);
+    });
+    return scored.slice(0, MAX_SYMBOLS);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(run, 120);
+  });
+
+  // ── Recent searches ────────────────────────────────────────────────────────
+  //
+  // Stored locally and only ever written when a query actually leads somewhere (a
+  // result is opened), so half-typed queries don't accumulate as noise. Wrapped
+  // because Safari private browsing throws on localStorage access.
+  function readRecent() {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function rememberRecent(q) {
+    q = (q || '').trim();
+    if (!q) return;
+    try {
+      var list = readRecent().filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); });
+      list.unshift(q);
+      window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+    } catch (e) { /* storage unavailable — recents are a nicety, not a requirement */ }
+  }
+
+  function clearRecent() {
+    try { window.localStorage.removeItem(RECENT_KEY); } catch (e) {}
+    showIdle();
+    input.focus();
+  }
+
+  function showIdle() {
+    var html = '';
+    var recent = readRecent();
+
+    if (recent.length) {
+      html += '<div class="ms-group">Recent' +
+              '<button type="button" class="ms-clear" data-ms-clear>Clear</button></div>';
+      recent.forEach(function (q) {
+        html +=
+          '<button type="button" class="ms-suggest" role="option" data-query="' + escapeAttr(q) + '">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                 'stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+                 '<path d="M12 7v5l3 2"/></svg>' +
+            '<span class="ms-suggest-label">' + escapeHtml(q) + '</span>' +
+          '</button>';
+      });
+    }
+
+    html += '<div class="ms-group">' + (recent.length ? 'Jump to' : 'Start here') + '</div>';
+    SUGGESTIONS.forEach(function (s) {
+      html +=
+        '<a class="ms-suggest" role="option" href="' + escapeAttr(s.url) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>' +
+               '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>' +
+          '<span class="ms-suggest-label">' + escapeHtml(s.title) + '</span>' +
+        '</a>';
+    });
+
+    html += '<div class="ms-empty ms-hint">Or type a function or type name — ' +
+            '<code>push</code>, <code>to_string</code>, <code>List.map</code> — ' +
+            'to jump straight to its API entry.</div>';
+
+    paintResults(html, false);
+  }
+
+  function run() {
+    var q = input.value.trim();
+    var token = ++queryToken;
+    if (!q) { showIdle(); return; }
+
+    // Both halves are fetched together; neither blocks the other, and a failure in
+    // either still renders whatever the other found.
+    Promise.all([load(), loadSymbols()]).then(function (both) {
+      if (token !== queryToken) return;        // a newer keystroke already superseded this
+      var pf   = both[0];
+      var syms = searchSymbols(q);
+
+      if (pf === 'unavailable') {
+        // Symbol lookup still works without Pagefind — show it, and only explain the
+        // missing half. Visitors get a plain apology; a local dev gets the actual cause,
+        // which is almost always "you ran `jekyll serve`, which builds no index".
+        var note = isLocalhost()
+          ? '<div class="ms-empty">No full-text index at <code>/pagefind/</code>.<br>' +
+            'Build one with <code>scripts/serve-docs.sh</code> — <code>jekyll serve</code> does not.</div>'
+          : '<div class="ms-empty">Full-text search is unavailable right now.<br>' +
+            'Try the navigation, or <a href="https://github.com/march-language/march">browse the docs on GitHub</a>.</div>';
+        paintResults(renderSymbols(syms) + note);
+        return;
+      }
+
+      return pf.search(q).then(function (search) {
+        if (token !== queryToken) return;
+        // Loading every result's data would be one fetch per hit; the top slice is
+        // all the modal can show anyway.
+        return Promise.all(search.results.slice(0, MAX_PAGES).map(function (r) { return r.data(); }))
+          .then(function (data) {
+            if (token === queryToken) render(syms, data, search.results.length);
+          });
+      });
+    });
+  }
+
+  function tagFor(d) {
+    var f = d.filters && d.filters.section;
+    if (f && f.length) return f[0];
+    return 'Docs';
+  }
+
+  function renderSymbols(syms) {
+    if (!syms.length) return '';
+    var html = '<div class="ms-group">Standard library</div>';
+    syms.forEach(function (r) {
+      var e = r.e;
+      html +=
+        '<a class="ms-sym" role="option" href="' + escapeAttr(symbolHref(e)) + '">' +
+          '<span class="ms-kind ms-k-' + escapeAttr(e.k) + '">' + escapeHtml(e.k) + '</span>' +
+          '<span class="ms-sym-name">' + escapeHtml(e.n) + '</span>' +
+          '<span class="ms-sym-sig">' + escapeHtml(e.s || e.d || '') + '</span>' +
+          // For a module entry the name IS the module, so the trailing module label
+          // would just repeat it ("Array  Array").
+          (e.k === 'module' ? '' : '<span class="ms-sym-mod">' + escapeHtml(e.m) + '</span>') +
+        '</a>';
+    });
+    return html;
+  }
+
+  // Single place that commits HTML to the DOM and rebuilds the keyboard row list, so
+  // symbol rows and page rows are always navigable as one sequence.
+  // `autoselect` is false for the idle panel: pre-highlighting a suggestion would make a
+  // bare ⌘K-then-Enter navigate somewhere the user never chose. With real results, the
+  // top hit is what Enter should mean.
+  function paintResults(html, autoselect) {
+    resultsE.innerHTML = html;
+    rows = Array.prototype.slice.call(
+      resultsE.querySelectorAll('.ms-sym, .ms-hit, .ms-sub, .ms-suggest'));
+    input.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+    selected = -1;
+    if (rows.length && autoselect !== false) move(1);
+    rows.forEach(function (row, i) {
+      row.addEventListener('mouseenter', function () { selected = i; paint(); });
+    });
+  }
+
+  // A row either re-runs a stored query (recent searches) or navigates (everything
+  // else). Both paths funnel through here so the mouse and the keyboard can't diverge.
+  function activate(row) {
+    if (!row) return;
+    var q = row.getAttribute('data-query');
+    if (q !== null) {
+      input.value = q;
+      input.focus();
+      clearTimeout(debounce);
+      run();
+      return;
+    }
+    rememberRecent(input.value);
+    window.location.href = row.href;
+  }
+
+  resultsE.addEventListener('click', function (e) {
+    if (e.target.closest('[data-ms-clear]')) { e.preventDefault(); clearRecent(); return; }
+    var row = e.target.closest('.ms-sym, .ms-hit, .ms-sub, .ms-suggest');
+    if (!row) return;
+    // Links navigate on their own; intercept only so the query is recorded first, and
+    // to drive the query-refill rows, which are buttons with no default action.
+    e.preventDefault();
+    activate(row);
+  });
+
+  function render(syms, data, total) {
+    if (!data.length && !syms.length) {
+      paintResults('<div class="ms-empty">No results for “' + escapeHtml(input.value.trim()) + '”.</div>');
+      return;
+    }
+
+    // Symbols first: when a query matches a symbol name exactly it is nearly always the
+    // thing being looked for, and the group is capped at MAX_SYMBOLS so it can never
+    // push the prose results off-screen.
+    var html = renderSymbols(syms);
+    if (data.length && syms.length) html += '<div class="ms-group">Documentation</div>';
+    data.forEach(function (d) {
+      html +=
+        '<a class="ms-hit" role="option" href="' + escapeAttr(d.url) + '">' +
+          '<div class="ms-hit-top">' +
+            '<span class="ms-hit-title">' + escapeHtml(d.meta && d.meta.title ? d.meta.title : d.url) + '</span>' +
+            '<span class="ms-tag">' + escapeHtml(tagFor(d)) + '</span>' +
+          '</div>' +
+          '<div class="ms-hit-excerpt">' + d.excerpt + '</div>' +   // Pagefind-generated, contains <mark>
+        '</a>';
+
+      // Sub-results are the in-page headings that matched — the "jump to the related
+      // section" affordance. The first one repeats the page itself, so drop it.
+      (d.sub_results || []).slice(1, 3).forEach(function (s) {
+        html +=
+          '<a class="ms-sub" role="option" href="' + escapeAttr(s.url) + '">' +
+            '<span class="ms-sub-title">' + escapeHtml(s.title || '') + '</span>' +
+            '<span class="ms-sub-excerpt">' + s.excerpt + '</span>' +
+          '</a>';
+      });
+    });
+
+    if (total > data.length) {
+      html += '<div class="ms-empty">' + (total - data.length) + ' more result' +
+              (total - data.length === 1 ? '' : 's') + ' — keep typing to narrow.</div>';
+    }
+
+    paintResults(html);
+  }
+
+  function move(delta) {
+    if (!rows.length) return;
+    selected = (selected + delta + rows.length) % rows.length;
+    paint();
+    rows[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  function paint() {
+    rows.forEach(function (row, i) { row.classList.toggle('ms-sel', i === selected); });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+
+      <a href="/" class="d-nav-link">Home</a>
+      <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-nav-link">GitHub</a>
+      <button class="d-theme-btn" id="d-theme-btn">☀ Light</button>
+      <button class="d-hamburger" id="d-hamburger" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-overlay" id="d-overlay"></div>
+
+<!-- LAYOUT -->
+<div class="d-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="d-sidebar" id="d-sidebar">
+    <div class="d-sidebar-inner">
+      <div class="d-mobile-extra">
+        <button type="button" class="d-mobile-search-btn" data-ms-open aria-label="Search docs (Command K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a href="/" class="d-sidebar-link" onclick="closeSidebar()">Home</a>
+        <a href="https://github.com/march-language/march" target="_blank" rel="noopener" class="d-sidebar-link" onclick="closeSidebar()">GitHub</a>
+        <button class="d-theme-btn" id="d-theme-btn-mobile">☀ Light</button>
+      </div>
+      
+
+      <p class="d-sidebar-section">Start Here</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/installation/" class="d-sidebar-link">Installation</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/getting-started/" class="d-sidebar-link">Getting Started</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Upgrading</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/upgrading-to-0-6-0/" class="d-sidebar-link">Upgrading to 0.6.0</a>
+        
+      
+        
+      <a href="/docs/playground/" class="d-sidebar-link">Try It Out</a>
+        
+      
+        
+      <a href="/docs/tetris-playground/" class="d-sidebar-link">Tetris Playground</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Language</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/tour/" class="d-sidebar-link">Language Tour</a>
+        
+      
+        
+      <a href="/docs/build-a-cli/" class="d-sidebar-link">Build a CLI Tool</a>
+        
+      
+        
+      <a href="/docs/error-messages/" class="d-sidebar-link active">Error Messages</a>
+        
+      
+        
+      <a href="/docs/modules/" class="d-sidebar-link">Module System</a>
+        
+      
+        
+      <a href="/docs/types/" class="d-sidebar-link">Type System</a>
+        
+      
+        
+      <a href="/docs/pattern-matching/" class="d-sidebar-link">Pattern Matching</a>
+        
+      
+        
+      <a href="/docs/interfaces/" class="d-sidebar-link">Interfaces</a>
+        
+      
+        
+      <a href="/docs/linear-types/" class="d-sidebar-link">Linear Types</a>
+        
+      
+        
+      <a href="/docs/refinement-types/" class="d-sidebar-link">Refinement Types</a>
+        
+      
+        
+      <a href="/docs/lemmas/" class="d-sidebar-link">Lemmas</a>
+        
+      
+        
+      <a href="/docs/capabilities/" class="d-sidebar-link">Capabilities</a>
+        
+      
+        
+      <a href="/docs/capability-enforcement/" class="d-sidebar-link">Capability Enforcement</a>
+        
+      
+        
+      <a href="/docs/safety-by-construction/" class="d-sidebar-link">Safety by Construction</a>
+        
+      
+        
+      <a href="/docs/memory-model/" class="d-sidebar-link">Memory Model</a>
+        
+      
+        
+      <a href="/docs/sigils/" class="d-sidebar-link">Sigils & Templating</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Concurrency</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/actors/" class="d-sidebar-link">Actors</a>
+        
+      
+        
+      <a href="/docs/parallel-collections/" class="d-sidebar-link">Parallel Collections</a>
+        
+      
+        
+      <a href="/docs/supervision/" class="d-sidebar-link">Supervision Trees</a>
+        
+      
+        
+      <a href="/docs/clustering/" class="d-sidebar-link">Clustering & RPC</a>
+        
+      
+        
+      <a href="/docs/cluster-certificates/" class="d-sidebar-link">Cluster Certificates</a>
+        
+      
+        
+      <a href="/docs/session-types/" class="d-sidebar-link">Session Types</a>
+        
+      
+        
+      <a href="/docs/choreography/" class="d-sidebar-link">Choreography</a>
+        
+      
+        
+      <a href="/docs/flow/" class="d-sidebar-link">Flow & Backpressure</a>
+        
+      
+        
+      <a href="/docs/hot-code-reload/" class="d-sidebar-link">Hot Code Reload</a>
+        
+      
+        
+      <a href="/docs/overload-resilience/" class="d-sidebar-link">Overload & Resilience</a>
+        
+      
+        
+      <a href="/docs/protocol-to-cluster/" class="d-sidebar-link">From a Protocol to a Cluster</a>
+        
+      
+        
+      <a href="/docs/deploy-authority/" class="d-sidebar-link">What a Deploy Is Allowed to Do</a>
+        
+      
+        
+      <a href="/docs/topology/" class="d-sidebar-link">Topology</a>
+        
+      
+        
+      <a href="/docs/lab/" class="d-sidebar-link">Multi-host Lab</a>
+        
+      
+        
+      <a href="/docs/one-owner/" class="d-sidebar-link">What One Owner Is Worth</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">SIMD</p>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/simd/" class="d-sidebar-link">SIMD & Native Arrays</a>
+        
+      
+        
+      <a href="/docs/simd-benchmarks/" class="d-sidebar-link">SIMD Benchmarks</a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+
+      <p class="d-sidebar-section">Reference</p>
+      <a href="/docs/stdlib/" class="d-sidebar-link">Standard Library</a>
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      <a href="/docs/stdlib-guide/" class="d-sidebar-link">Stdlib Guide</a>
+        
+      
+        
+      <a href="/docs/property-testing/" class="d-sidebar-link">Property Testing</a>
+        
+      
+        
+      <a href="/docs/repl/" class="d-sidebar-link">REPL</a>
+        
+      
+        
+      <a href="/docs/tooling/" class="d-sidebar-link">Tooling</a>
+        
+      
+        
+      <a href="/docs/observe/" class="d-sidebar-link">Observing a running node</a>
+        
+      
+        
+      <a href="/docs/capability-audit/" class="d-sidebar-link">Capability Audit</a>
+        
+      
+        
+      <a href="/docs/coding-standards/" class="d-sidebar-link">Coding Standards</a>
+        
+      
+        
+      <a href="/docs/lsp/" class="d-sidebar-link">LSP & Editors</a>
+        
+      
+        
+      <a href="/docs/examples/" class="d-sidebar-link">Examples</a>
+        
+      
+        
+      <a href="/docs/parsing/" class="d-sidebar-link">Parsing</a>
+        
+      
+        
+      <a href="/docs/ffi/" class="d-sidebar-link">Foreign Function Interface</a>
+        
+      
+        
+      <a href="/docs/compatibility/" class="d-sidebar-link">Compatibility & Deprecation</a>
+        
+      
+        
+      <a href="/docs/platforms/" class="d-sidebar-link">Supported Platforms</a>
+        
+      
+        
+      <a href="/docs/capability-threat-model/" class="d-sidebar-link">Capability Threat Model</a>
+        
+      
+        
+      <a href="/docs/value-representation/" class="d-sidebar-link">Value Representation (compiler internals)</a>
+        
+      
+
+      <p class="d-sidebar-section">Learn</p>
+      <a href="/docs/coming-from-python/" class="d-sidebar-link">From Python</a>
+      <a href="/docs/coming-from-typescript/" class="d-sidebar-link">From TypeScript</a>
+      <a href="/docs/coming-from-fp/" class="d-sidebar-link">From FP</a>
+      <a href="/docs/cookbook/" class="d-sidebar-link">Cookbook</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="d-main">
+    <div class="d-content" data-pagefind-body data-pagefind-filter="section:Guide">
+      
+      <!-- Hand-written page. The program and output inside each `error-tour` marker pair
+     are GENERATED by scripts/gen-error-tour.py from docs/assets/error-tour/*.march and
+     the real `march --check`: edit the .march file (or the prose outside the markers)
+     and rerun the script; never edit the generated blocks by hand. -->
+
+<h1 id="what-march-tells-you-when-something-is-wrong">What March tells you when something is wrong</h1>
+
+<p>A compiler error is the part of a language you read most. March tries to make each one
+answer three questions: <em>what</em> is wrong, <em>where</em> (the exact piece of code, not just the
+line), and <em>what to do about it</em>. This page walks through real errors, from the syntax
+slips of your first hour to a protocol that one role breaks. Every output below is what
+<code class="language-plaintext highlighter-rouge">march --check</code> prints for the program above it today, generated from the compiler
+rather than pasted by hand.</p>
+
+<p>The playground just below has most of them loaded. Pick one, edit it, and check it again
+to see how the message changes. It runs the real parser and typechecker in your
+browser.</p>
+
+<!--
+  March error playground
+  ======================
+  An editor pre-loaded with the programs from docs/assets/error-tour/, checked in the
+  browser by marchCheck (js/march_browser_compile.ml), which prints what
+  `march --check` prints. Loads docs/assets/march_stdlib.js and march_compile.js on
+  first use; both are built by scripts/build-browser-repl.sh (bot-owned).
+  Used by docs/error-messages.md. Logic in docs/assets/error-playground.js.
+-->
+
+<style>
+  .ep-wrap { margin: 2rem 0; }
+  .ep-bar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 8px;
+  }
+  .ep-bar label { font-size: 13px; color: var(--text-muted); }
+  .ep-select, .ep-btn {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    background: var(--bg-code); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px;
+  }
+  .ep-select { flex: 1 1 260px; min-width: 0; }
+  .ep-btn { cursor: pointer; color: var(--accent); }
+  .ep-btn:hover { border-color: var(--accent); }
+  .ep-btn-quiet { color: var(--text-muted); }
+  .ep-panes { display: flex; flex-wrap: wrap; gap: 12px; }
+  .ep-pane {
+    flex: 1 1 380px; min-width: 0;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    background: var(--bg-code);
+  }
+  .ep-pane-title {
+    font-size: 11px; letter-spacing: 0.04em; color: var(--text-faint);
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .ep-editor, .ep-output {
+    display: block; width: 100%; box-sizing: border-box; margin: 0;
+    font-family: "JetBrains Mono", "Menlo", monospace; font-size: 12.5px; line-height: 1.5;
+    background: transparent; color: var(--text); border: 0; outline: none;
+    padding: 12px; height: 420px; overflow: auto; white-space: pre; tab-size: 2;
+  }
+  /* The page's `.d-content pre` box (border, margin, 20px padding) would nest a
+     second box inside the pane. */
+  .d-content .ep-pane pre.ep-output {
+    margin: 0; border: 0; border-radius: 0; background: transparent;
+    padding: 12px; font-size: 12.5px; line-height: 1.5;
+  }
+  .ep-editor { resize: vertical; }
+  .ep-output .ep-head  { color: var(--accent); font-weight: 500; }
+  .ep-output .ep-caret { color: #f87171; }
+  .ep-output .ep-ok    { color: #4ade80; }
+  .ep-output .ep-info  { color: var(--text-muted); font-style: italic; white-space: pre-wrap; }
+  .ep-status { font-size: 12px; color: var(--text-muted); }
+  .ep-try {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; cursor: pointer;
+    background: transparent; color: var(--accent);
+    border: 1px solid var(--border); border-radius: 20px; padding: 2px 12px; margin-left: 4px;
+  }
+  .ep-try:hover { border-color: var(--accent); }
+  @media (max-width: 640px) {
+    .ep-editor, .ep-output { height: 300px; font-size: 12px; }
+  }
+</style>
+
+<div class="ep-wrap" id="ep-wrap" data-base="" data-ver="1794069426">
+  <div class="ep-bar">
+    <label for="ep-select">Example</label>
+    <select class="ep-select" id="ep-select">
+      <optgroup label="1 · Syntax">
+        <option value="01-then">then instead of do</option>
+        <option value="02-if-without-else">if without else</option>
+        <option value="03-else-if-chain">else if, one end short</option>
+        <option value="04-semicolon">semicolons</option>
+        <option value="05-curried-call">a curried call</option>
+      </optgroup>
+      <optgroup label="2 · Names">
+        <option value="07-field-by-type">misspelled record field</option>
+        <option value="08-constructor-by-type">misspelled constructor</option>
+      </optgroup>
+      <optgroup label="3 · Types">
+        <option value="09-string-plus-int">String ++ Int</option>
+        <option value="10-structural-diff">List(String) for List(Int)</option>
+        <option value="11-no-partial-application">too few arguments</option>
+        <option value="12-let-question">let? body is not a Result</option>
+        <option value="13-missing-impl">comparing a type with no Ord</option>
+      </optgroup>
+      <optgroup label="4 · Capabilities">
+        <option value="14-main-no-grant">main with no grant</option>
+        <option value="15-missing-needs">writing a file without needs</option>
+        <option value="16-wrong-capability">the wrong capability</option>
+      </optgroup>
+      <optgroup label="5 · Linearity">
+        <option value="17-linear-used-twice">used twice</option>
+        <option value="18-linear-some-branches">consumed on some branches</option>
+        <option value="19-linear-captured">captured by a closure</option>
+      </optgroup>
+      <optgroup label="6 · Actors">
+        <option value="20-misspelled-actor">misspelled actor</option>
+        <option value="21-message-argument">wrong message argument</option>
+        <option value="22-handler-returns-state">handler forgets the state</option>
+        <option value="23-send-wrong-actor">message to the wrong actor</option>
+      </optgroup>
+      <optgroup label="7 · Session channels">
+        <option value="24-channel-wrong-step">a step out of order</option>
+        <option value="25-offer-not-exhaustive">an offer left unhandled</option>
+      </optgroup>
+      <optgroup label="8 · Protocols">
+        <option value="26-step-after-loop">a step after a loop</option>
+        <option value="35-step-after-choose">a step after a looping branch</option>
+        <option value="27-may-crash">a crash nobody handles</option>
+      </optgroup>
+    </select>
+    <button class="ep-btn" type="button" id="ep-check" title="Check (Ctrl+Enter)">Check</button>
+    <button class="ep-btn ep-btn-quiet" type="button" id="ep-revert" title="Put the example back as it was">Revert</button>
+    <span class="ep-status" id="ep-status"></span>
+  </div>
+  <div class="ep-panes">
+    <div class="ep-pane">
+      <div class="ep-pane-title"><span>PROGRAM</span><span>edit, then Ctrl+Enter</span></div>
+      <textarea class="ep-editor" id="ep-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="March program"></textarea>
+    </div>
+    <div class="ep-pane">
+      <div class="ep-pane-title"><span>march --check</span></div>
+      <pre class="ep-output" id="ep-output" aria-live="polite"></pre>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/error-playground.js?v=1794069426"></script>
+
+<h2 id="how-to-read-a-march-error">How to read a March error</h2>
+
+<p>Here is the output for <a href="#a-string-where-an-int-is">a <code class="language-plaintext highlighter-rouge">String</code> where an <code class="language-plaintext highlighter-rouge">Int</code> is</a>, shortened
+and annotated:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH --------------------- string-plus-int.march    ← the kind of problem, and the file
+
+expected `String` but got `Int`. [type_mismatch]              ← the message, and its code
+
+5 |     "item " ++ n                                            ← the source, with a caret
+                   ^                                              on the exact subterm
+
+    This is argument #2 of a function call.                   ← notes: context, then a fix
+    Use `int_to_string(x)` to convert an Int to a String.
+
+    `n` was bound here as `Int`:                              ← labels: other code that matters
+
+4 |   fn label(n : Int) : String do
+               ^
+    run `march --explain type_mismatch`                       ← a longer page about this code
+</code></pre></div></div>
+
+<ul>
+  <li><strong>The code</strong> in brackets (<code class="language-plaintext highlighter-rouge">[type_mismatch]</code>) is stable. <code class="language-plaintext highlighter-rouge">march --explain &lt;code&gt;</code> prints a
+page about it: what causes it, a program that triggers it, and how to fix it. The same
+pages are on this site, listed under <a href="#error-reference">Error reference</a>.</li>
+  <li><strong>One mistake, one error.</strong> When a mistake would cause others downstream, March reports
+the mistake and holds back the errors that only follow from it.</li>
+  <li><strong>Fixes as edits.</strong> Many errors also carry a fix. <code class="language-plaintext highlighter-rouge">march --check</code> shows it under the
+error as the lines it changes (<code class="language-plaintext highlighter-rouge">4 - old</code>, <code class="language-plaintext highlighter-rouge">4 + new</code>), <code class="language-plaintext highlighter-rouge">march --check-json</code> includes it
+as a text edit, and the <a href="/docs/lsp/">language server</a> offers it as a quick fix. Each fix has
+a tier, the <code class="language-plaintext highlighter-rouge">applicability</code> field of the edit, and the heading <code class="language-plaintext highlighter-rouge">--check</code> gives it:
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">machine-applicable</code> (“fix (<code class="language-plaintext highlighter-rouge">forge fix</code> applies it)”): safe to apply unasked. Before
+showing one, <code class="language-plaintext highlighter-rouge">--check</code> and <code class="language-plaintext highlighter-rouge">--check-json</code> apply it to a copy of the file and check the
+copy, and the editor does the same before offering it. The fix keeps this tier only if
+its own error is gone and no new error or warning appeared. <code class="language-plaintext highlighter-rouge">forge fix</code> applies these,
+and the editor marks them as the preferred quick fix.</li>
+      <li><code class="language-plaintext highlighter-rouge">has-placeholders</code> (“fix, with a placeholder to fill in”): the right shape with a
+part to fill in, such as the missing <code class="language-plaintext highlighter-rouge">match</code> arm whose body is <code class="language-plaintext highlighter-rouge">todo("handle None")</code>.</li>
+      <li><code class="language-plaintext highlighter-rouge">maybe-incorrect</code> (“possible fix (a guess: check it before applying it)”): one
+plausible repair among several, such as a field name with another field spelled just
+as close. It is offered and never applied unasked.</li>
+    </ul>
+  </li>
+</ul>
+
+<hr />
+
+<h2 id="1-syntax">1. Syntax</h2>
+
+<p>The first errors most people meet come from habits other languages taught: <code class="language-plaintext highlighter-rouge">then</code>,
+<code class="language-plaintext highlighter-rouge">elif</code>, semicolons, curried calls. March names the habit and shows the March form.</p>
+
+<p><a id="then"></a></p>
+
+<h3 id="then-instead-of-do"><code class="language-plaintext highlighter-rouge">then</code> instead of <code class="language-plaintext highlighter-rouge">do</code></h3>
+
+<!-- error-tour: 01-then -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn sign(n : Int) : Int do
+    if n &gt; 0 then 1 else 0 end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(sign(3)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- SYNTAX ------------------------------------ then.march
+
+I don't recognize `then` here — March uses do/end blocks instead. [then_keyword]
+
+5 |     if n &gt; 0 then 1 else 0 end
+                 ^^^^
+
+    if cond do
+        expr1
+    else
+        expr2
+    end
+
+    fix (`forge fix` applies it):
+
+5 -     if n &gt; 0 then 1 else 0 end
+5 +     if n &gt; 0 do 1 else 0 end
+
+    run `march --explain then_keyword`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>It recognises the keyword from another language and shows the whole <code class="language-plaintext highlighter-rouge">if</code> shape to copy.
+<button class="ep-try" data-error-example="01-then">Try it</button></p>
+
+<p><a id="if-without-else"></a></p>
+
+<h3 id="an-if-without-an-else">An <code class="language-plaintext highlighter-rouge">if</code> without an <code class="language-plaintext highlighter-rouge">else</code></h3>
+
+<!-- error-tour: 02-if-without-else -->
+<pre><code class="language-march">mod Main do
+  fn clamp(x : Int) : Int do
+    if x &gt; 0 do
+      x
+    end
+  end
+
+  fn main() do
+    clamp(5)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- SYNTAX ------------------------- if-without-else.march
+
+March `if` expressions always need an `else` branch: [parse_error]
+
+5 |     end
+        ^^^
+
+    if cond do
+        expr1
+    else
+        expr2
+    end
+    run `march --explain parse_error`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">if</code> is an expression in March, so it always produces a value. The message states that
+rule rather than “unexpected token <code class="language-plaintext highlighter-rouge">end</code>”.
+<button class="ep-try" data-error-example="02-if-without-else">Try it</button></p>
+
+<p><a id="else-if-chain"></a></p>
+
+<h3 id="an-else-if-chain-one-end-short">An <code class="language-plaintext highlighter-rouge">else if</code> chain one <code class="language-plaintext highlighter-rouge">end</code> short</h3>
+
+<!-- error-tour: 03-else-if-chain -->
+<pre><code class="language-march">mod Main do
+  fn pick(a : Bool, b : Bool) : Int do
+    if a do 1 else if b do 2 else 3 end
+  end
+
+  fn main() do
+    pick(false, true)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- SYNTAX --------------------------- else-if-chain.march
+
+This `if` (line 3) needs its own `end`: the `end` on line 4 belongs to an outer block. [parse_error]
+
+3 |     if a do 1 else if b do 2 else 3 end
+        ^^
+
+    I only noticed at the end of the file.
+    `else if` is a nested `if` in the else position, so each `if` needs its own `end`: a two-branch chain ends `end end`, a three-branch chain `end end end`.
+
+    fix (`forge fix` applies it):
+
+3 |     if a do 1 else if b do 2 else 3 end
+4 +     end
+
+    run `march --explain parse_error`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>A missing <code class="language-plaintext highlighter-rouge">end</code> is usually noticed far from where it belongs. This message points at the
+<code class="language-plaintext highlighter-rouge">if</code> that is missing it, says it only noticed at the end of the file, and says how many
+<code class="language-plaintext highlighter-rouge">end</code>s a chain needs.
+<button class="ep-try" data-error-example="03-else-if-chain">Try it</button></p>
+
+<p><a id="semicolon"></a></p>
+
+<h3 id="semicolons">Semicolons</h3>
+
+<!-- error-tour: 04-semicolon -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn total() : Int do
+    let x = 1; let y = 2
+    x + y
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(total()))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- SYNTAX ------------------------------- semicolon.march
+
+Unexpected `;`: March separates expressions with newlines, not semicolons. [semicolon_separator]
+
+5 |     let x = 1; let y = 2
+                 ^
+
+    Put each expression on its own line.
+
+    fix (`forge fix` applies it):
+
+5 -     let x = 1; let y = 2
+5 +     let x = 1
+6 +     let y = 2
+
+    run `march --explain semicolon_separator`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The caret is on the <code class="language-plaintext highlighter-rouge">;</code> itself, and the note says what to write instead.
+<button class="ep-try" data-error-example="04-semicolon">Try it</button></p>
+
+<p><a id="curried-call"></a></p>
+
+<h3 id="a-curried-call">A curried call</h3>
+
+<!-- error-tour: 05-curried-call -->
+<pre><code class="language-march">mod Main do
+  fn adder(x : Int) do
+    fn (y) -&gt; x + y
+  end
+
+  fn main() do
+    adder(1)(2)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- SYNTAX ---------------------------- curried-call.march
+
+`f(...)(...)` is not a chained call — March functions are not curried. [parse_error]
+
+7 |     adder(1)(2)
+                ^
+
+    Write `f(a, b)` for a multi-argument call, or put the second call on its own line if you meant two separate statements.
+    run `march --explain parse_error`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">adder(1)(2)</code> parses in many languages. March explains why it isn’t a chained call here,
+and gives the two things you probably meant.
+<button class="ep-try" data-error-example="05-curried-call">Try it</button></p>
+
+<hr />
+
+<h2 id="2-names-and-did-you-mean">2. Names and “did you mean”</h2>
+
+<p>A misspelling gets a suggestion, and the suggestion is chosen by what fits, not only by
+spelling.</p>
+
+<p><a id="misspelled-module"></a></p>
+
+<h3 id="a-misspelled-module">A misspelled module</h3>
+
+<!-- error-tour: 06-misspelled-module -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn count() : Int do
+    Lsit.length([1, 2])
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(count()))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- NAMING ----------------------- misspelled-module.march
+
+Unknown module `Lsit`. Did you mean `List`? [unknown_qualified_name]
+
+5 |     Lsit.length([1, 2])
+        ^^^^^^^^^^^
+
+
+    fix (`forge fix` applies it):
+
+5 -     Lsit.length([1, 2])
+5 +     List.length([1, 2])
+
+    run `march --explain unknown_qualified_name`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The suggestion comes from the standard library’s modules. (The playground can’t show
+this one: it suggests from the module files on disk, which a browser doesn’t have.)</p>
+
+<p><a id="field-by-type"></a></p>
+
+<h3 id="a-misspelled-record-field">A misspelled record field</h3>
+
+<!-- error-tour: 07-field-by-type -->
+<pre><code class="language-march">mod Main do
+  fn main() do
+    let r = { count: 1, cont: "x" }
+    let n : Int = r.conut
+    n
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- NAMING --------------------------- field-by-type.march
+
+This record does not have a field called `conut`. Did you mean `count`? [unknown_record_field]
+The fields I see are: cont, count
+
+4 |     let n : Int = r.conut
+                      ^^^^^^^
+
+
+    possible fix (a guess: check it before applying it):
+
+4 -     let n : Int = r.conut
+4 +     let n : Int = r.count
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">cont</code> is the closer spelling, but it holds a <code class="language-plaintext highlighter-rouge">String</code> and the annotation wants an <code class="language-plaintext highlighter-rouge">Int</code>,
+so March suggests <code class="language-plaintext highlighter-rouge">count</code>. It also lists the fields the record does have.
+<button class="ep-try" data-error-example="07-field-by-type">Try it</button></p>
+
+<p><a id="constructor-by-type"></a></p>
+
+<h3 id="a-misspelled-constructor">A misspelled constructor</h3>
+
+<!-- error-tour: 08-constructor-by-type -->
+<pre><code class="language-march">mod Main do
+  type Mail = Postal(Int) | Email(String)
+  type Tag = Poss(Int)
+
+  fn main() do
+    let m : Mail = Posts(1)
+    m
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- NAMING --------------------- constructor-by-type.march
+
+I don't know a constructor called `Posts`. [unknown_constructor]
+Did you mean `Postal` (from type `Mail`)?
+
+6 |     let m : Mail = Posts(1)
+                       ^^^^^^^^
+
+
+    fix (`forge fix` applies it):
+
+6 -     let m : Mail = Posts(1)
+6 +     let m : Mail = Postal(1)
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">Poss</code> and the standard library’s <code class="language-plaintext highlighter-rouge">Post</code> are each one letter from <code class="language-plaintext highlighter-rouge">Posts</code>, but only
+<code class="language-plaintext highlighter-rouge">Postal</code> builds a <code class="language-plaintext highlighter-rouge">Mail</code>, which the annotation asks for. The suggestion says which type it
+comes from.
+<button class="ep-try" data-error-example="08-constructor-by-type">Try it</button></p>
+
+<hr />
+
+<h2 id="3-types">3. Types</h2>
+
+<p>A type error puts its caret on the subterm whose type is wrong, says where the expected
+type came from, and, when the two types share a structure, shows only the part that
+differs.</p>
+
+<p><a id="string-plus-int"></a></p>
+
+<h3 id="a-string-where-an-int-is">A <code class="language-plaintext highlighter-rouge">String</code> where an <code class="language-plaintext highlighter-rouge">Int</code> is</h3>
+
+<!-- error-tour: 09-string-plus-int -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn label(n : Int) : String do
+    "item " ++ n
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(label(3))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH ------------------ string-plus-int.march
+
+expected `String` but got `Int`. [type_mismatch]
+
+5 |     "item " ++ n
+                   ^
+
+    This is the right side of `++`, which joins two `String`s.
+    Use `int_to_string(x)` to convert an Int to a String.
+
+    the expected type comes from here:
+
+5 |     "item " ++ n
+        ^^^^^^^
+
+    `n` was bound here as `Int`:
+
+4 |   fn label(n : Int) : String do
+               ^
+    run `march --explain type_mismatch`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The caret is on <code class="language-plaintext highlighter-rouge">n</code>, not on the whole <code class="language-plaintext highlighter-rouge">++</code>. Two labels show where <code class="language-plaintext highlighter-rouge">String</code> is required
+and where <code class="language-plaintext highlighter-rouge">n</code> got its type, and the note names the conversion function.
+<button class="ep-try" data-error-example="09-string-plus-int">Try it</button></p>
+
+<p><a id="structural-diff"></a></p>
+
+<h3 id="two-types-that-differ-in-one-place">Two types that differ in one place</h3>
+
+<!-- error-tour: 10-structural-diff -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn count(xs : List(Int)) : Int do
+    List.length(xs)
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let names = ["a", "b"]
+    println(int_to_string(count(names)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH ------------------ structural-diff.march
+
+expected `List(Int)` but got `List(String)`. [type_mismatch]
+
+10 |     println(int_to_string(count(names)))
+                                     ^^^^^
+
+    This is argument #1 of a function call.
+    The types differ here:
+        List(String)
+             ^^^^^^ expected `Int`
+
+    the expected type comes from here:
+
+10 |     println(int_to_string(count(names)))
+                               ^^^^^^^^^^^^
+
+    `names` was bound here as `List(String)`:
+
+9 |     let names = ["a", "b"]
+            ^^^^^
+    run `march --explain type_mismatch`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">List(String)</code> and <code class="language-plaintext highlighter-rouge">List(Int)</code> share everything but the element type, so the diff
+underlines just <code class="language-plaintext highlighter-rouge">String</code>. With a large record or nested type, this saves comparing both in
+full.
+<button class="ep-try" data-error-example="10-structural-diff">Try it</button></p>
+
+<p><a id="no-partial-application"></a></p>
+
+<h3 id="too-few-arguments">Too few arguments</h3>
+
+<!-- error-tour: 11-no-partial-application -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn main(_console : Cap(IO.Console)) do
+    let add = fn (a, b) -&gt; a + b
+    println(int_to_string(add(1)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH ----------- no-partial-application.march
+
+`add` is a lambda with 2 parameters, but is called with 1 argument. [arity_mismatch]
+March has no partial application — a call must supply all arguments.
+
+6 |     println(int_to_string(add(1)))
+                              ^^^^^^
+
+
+    bound here with 2 parameters:
+
+5 |     let add = fn (a, b) -&gt; a + b
+                  ^^^^^^^^^^^^^^^^^^
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Coming from a curried language, <code class="language-plaintext highlighter-rouge">add(1)</code> looks like partial application. The message says
+March has none, and shows where <code class="language-plaintext highlighter-rouge">add</code> got its two parameters.
+<button class="ep-try" data-error-example="11-no-partial-application">Try it</button></p>
+
+<p><a id="let-question"></a></p>
+
+<h3 id="a-let-whose-body-is-not-a-result">A <code class="language-plaintext highlighter-rouge">let?</code> whose body is not a <code class="language-plaintext highlighter-rouge">Result</code></h3>
+
+<!-- error-tour: 12-let-question -->
+<pre><code class="language-march">mod Main do
+  fn parse() : Result(Int, String) do Ok(1) end
+
+  fn next() : Result(Int, String) do
+    let? x = parse()
+    x + 1
+  end
+
+  fn main() do
+    next()
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH --------------------- let-question.march
+
+expected `Result(Int, String)` but got `Int`. [type_mismatch]
+
+5 |     let? x = parse()
+        ^^^^^^^^^^^^^^^^
+
+    This is the declared return type of `next`.
+    The code after `let?` must produce a Result with the same error type.
+
+    the expected type comes from here:
+
+4 |   fn next() : Result(Int, String) do
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    run `march --explain type_mismatch`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">let?</code> returns early on <code class="language-plaintext highlighter-rouge">Err</code>, so the rest of the function must produce a <code class="language-plaintext highlighter-rouge">Result</code> too.
+The note explains that rule instead of reporting a bare <code class="language-plaintext highlighter-rouge">Int</code> vs <code class="language-plaintext highlighter-rouge">Result</code> clash.
+<button class="ep-try" data-error-example="12-let-question">Try it</button></p>
+
+<p><a id="missing-impl"></a></p>
+
+<h3 id="comparing-a-type-that-has-no-ordering">Comparing a type that has no ordering</h3>
+
+<!-- error-tour: 13-missing-impl -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  type Hue = Red | Blue
+
+  fn main(_console : Cap(IO.Console)) do
+    let a = Red
+    let b = Blue
+    println(if a &lt; b do "less" else "not less" end)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- INTERFACE ------------------------- missing-impl.march
+
+`Hue` does not implement interface `Ord`. [missing_impl]
+`&lt;` needs it here.
+
+9 |     println(if a &lt; b do "less" else "not less" end)
+                   ^^^^^
+
+    Add `derive Ord for Hue` after the type to get the structural one, or write `impl Ord(Hue) do ... end`.
+
+    fix (`forge fix` applies it):
+
+4 |   type Hue = Red | Blue
+5 +   derive Ord for Hue
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The message names the operator that needs <code class="language-plaintext highlighter-rouge">Ord</code> and gives both fixes: derive the
+structural ordering in one line, or write your own <code class="language-plaintext highlighter-rouge">impl</code>.
+<button class="ep-try" data-error-example="13-missing-impl">Try it</button></p>
+
+<hr />
+
+<h2 id="4-capabilities">4. Capabilities</h2>
+
+<p>In March, a program can only do the IO it was granted. <code class="language-plaintext highlighter-rouge">main</code> receives its capabilities
+as parameters, and each module declares the ones it uses with <code class="language-plaintext highlighter-rouge">needs</code> (see
+<a href="/docs/capabilities/">Capabilities</a>). The errors talk about access in plain terms: “writes a
+file”, “the console capability”.</p>
+
+<p><a id="main-no-grant"></a></p>
+
+<h3 id="main-with-no-grant"><code class="language-plaintext highlighter-rouge">main</code> with no grant</h3>
+
+<!-- error-tour: 14-main-no-grant -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn main() do
+    println("hello")
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- CAPABILITY ----------------------- main-no-grant.march
+
+`main` performs IO but declares no grant. The program reaches `IO.Console`; a `main` with no capability parameter is granted nothing. [cap_grant]
+help: declare the grant `main` actually needs —
+        fn main(_cap_console : Cap(IO.Console)) : ()
+or grant everything with `fn main(cap : Cap(IO))`.
+`forge fix` can apply this.
+
+4 |   fn main() do
+      ^^^^^^^^^^^^
+
+
+    fix (`forge fix` applies it):
+
+4 -   fn main() do
+4 +   fn main(_cap_console : Cap(IO.Console)) do
+
+    run `march --explain cap_grant`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>It works out which capability the program actually reaches and writes the narrowest
+signature for <code class="language-plaintext highlighter-rouge">main</code>. <code class="language-plaintext highlighter-rouge">forge fix</code> applies it.
+<button class="ep-try" data-error-example="14-main-no-grant">Try it</button></p>
+
+<p><a id="missing-needs"></a></p>
+
+<h3 id="writing-a-file-without-saying-so">Writing a file without saying so</h3>
+
+<!-- error-tour: 15-missing-needs -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn save(n : Int) : () do
+    let _ = file_write("/tmp/n", int_to_string(n))
+    ()
+  end
+
+  fn main(c : Cap(IO.Console)) do
+    save(1)
+    println("saved")
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- CAPABILITY ----------------------- missing-needs.march
+
+`save` writes a file, but module `Main` declares no `needs IO.FileWrite`, and `main` is granted only `Cap(IO.Console)`. [cap_needs]
+hint: add this to the module body —
+        needs IO.FileWrite
+and give `main` a `Cap(IO.FileWrite)` parameter: `fn main(…, _cap_filewrite : Cap(IO.FileWrite))`.
+
+5 |     let _ = file_write("/tmp/n", int_to_string(n))
+                ^^^^^^^^^^
+
+
+    `main` calls `save` here:
+
+10 |     save(1)
+         ^^^^
+
+    `main` is granted only `Cap(IO.Console)` here:
+
+9 |   fn main(c : Cap(IO.Console)) do
+             ^^^^^^^^^^^^^^^^^^^^^
+
+    fix (`forge fix` applies it):
+
+1 | mod Main do
+2 +   needs IO.FileWrite
+9 -   fn main(c : Cap(IO.Console)) do
+9 +   fn main(c : Cap(IO.Console), _cap_filewrite : Cap(IO.FileWrite)) do
+
+    run `march --explain cap_needs`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Two things are missing: the module’s <code class="language-plaintext highlighter-rouge">needs IO.FileWrite</code> line, and a grant on <code class="language-plaintext highlighter-rouge">main</code>.
+They are reported as one error, with the call chain from <code class="language-plaintext highlighter-rouge">main</code> and both edits in the
+hint.
+<button class="ep-try" data-error-example="15-missing-needs">Try it</button></p>
+
+<p><a id="wrong-capability"></a></p>
+
+<h3 id="passing-the-wrong-capability">Passing the wrong capability</h3>
+
+<!-- error-tour: 16-wrong-capability -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn read(c : Cap(IO.FileRead)) : String do "x" end
+
+  fn main(c : Cap(IO.Console)) do println(read(c)) end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- CAPABILITY -------------------- wrong-capability.march
+
+`read` needs file-read access, but `c` is the console capability. [cap_mismatch]
+
+6 |   fn main(c : Cap(IO.Console)) do println(read(c)) end
+                                                   ^
+
+    `IO.Console` and `IO.FileRead` are both parts of `IO`; neither contains the other.
+    help: give `main` a `Cap(IO.FileRead)` parameter and pass it to `read`.
+    and add `needs IO.FileRead` to the module.
+
+    `read` needs `Cap(IO.FileRead)`:
+
+6 |   fn main(c : Cap(IO.Console)) do println(read(c)) end
+                                              ^^^^^^^
+
+    `c` was bound here as `Cap(IO.Console)`:
+
+6 |   fn main(c : Cap(IO.Console)) do println(read(c)) end
+              ^
+
+    `Cap(IO.FileRead)` is named here, and the module declares no `needs IO.FileRead`:
+
+4 |   fn read(c : Cap(IO.FileRead)) : String do "x" end
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    `main` is granted only `Cap(IO.Console)` here:
+
+6 |   fn main(c : Cap(IO.Console)) do println(read(c)) end
+             ^^^^^^^^^^^^^^^^^^^^^
+
+    fix (`forge fix` applies it):
+
+1 | mod Main do
+2 +   needs IO.FileRead
+6 -   fn main(c : Cap(IO.Console)) do println(read(c)) end
+6 +   fn main(c : Cap(IO.Console), _cap_fileread : Cap(IO.FileRead)) do println(read(c)) end
+6 -   fn main(c : Cap(IO.Console)) do println(read(c)) end
+6 +   fn main(c : Cap(IO.Console)) do println(read(_cap_fileread)) end
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Underneath this is a type mismatch, but the message says what it means: <code class="language-plaintext highlighter-rouge">read</code> needs
+file-read access, and <code class="language-plaintext highlighter-rouge">c</code> is the console. It explains why neither capability covers the
+other, then shows every place the fix touches.
+<button class="ep-try" data-error-example="16-wrong-capability">Try it</button></p>
+
+<hr />
+
+<h2 id="5-linearity">5. Linearity</h2>
+
+<p>A linear value must be used exactly once: not copied, not dropped (see
+<a href="/docs/linear-types/">Linear types</a>). Each error points at both uses, or at the place the
+value was lost.</p>
+
+<p><a id="linear-used-twice"></a></p>
+
+<h3 id="used-twice">Used twice</h3>
+
+<!-- error-tour: 17-linear-used-twice -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  always_linear type Token = Token(Int)
+
+  fn consume(t : Token) : Int do
+    match t do Token(n) -&gt; n end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let t = Token(1)
+    println(int_to_string(consume(t) + consume(t)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- LINEARITY -------------------- linear-used-twice.march
+
+The linear value `t` is used more than once here. [linear_used_twice]
+Linear values must be consumed exactly once — they cannot be copied or ignored.
+
+12 |     println(int_to_string(consume(t) + consume(t)))
+                                                    ^
+
+
+    `t` was already consumed here:
+
+12 |     println(int_to_string(consume(t) + consume(t)))
+                                       ^
+    run `march --explain linear_used_twice`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The caret is on the second use and a label marks the first, even though both are on the
+same line.
+<button class="ep-try" data-error-example="17-linear-used-twice">Try it</button></p>
+
+<p><a id="linear-some-branches"></a></p>
+
+<h3 id="consumed-on-some-branches-only">Consumed on some branches only</h3>
+
+<!-- error-tour: 18-linear-some-branches -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  always_linear type Token = Token(Int)
+
+  fn consume(t : Token) : Int do
+    match t do Token(n) -&gt; n end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let t = Token(1)
+    let n = match 2 do
+      1 -&gt; consume(t)
+      2 -&gt; consume(t) + 1
+      _ -&gt; 0
+    end
+    println(int_to_string(n))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- LINEARITY ----------------- linear-some-branches.march
+
+The linear value `t` is consumed on some branches but not others. [linear_mixed_consumption]
+On a branch that doesn't consume it, the value is dropped. Consume it on every branch, or end that branch with `panic(…)` if it never returns.
+
+12 |     let n = match 2 do
+                       ^^^^
+
+
+    `t` is consumed on this branch:
+
+13 |       1 -&gt; consume(t)
+                        ^
+
+    but not on this one, where it is dropped:
+
+15 |       _ -&gt; 0
+                ^
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>It names a branch that consumes the token and one that silently drops it, and suggests
+<code class="language-plaintext highlighter-rouge">panic(…)</code> for a branch that never returns.
+<button class="ep-try" data-error-example="18-linear-some-branches">Try it</button></p>
+
+<p><a id="linear-captured"></a></p>
+
+<h3 id="captured-by-a-closure">Captured by a closure</h3>
+
+<!-- error-tour: 19-linear-captured -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  always_linear type Token = Token(Int)
+
+  fn consume(t : Token) : Int do
+    match t do Token(n) -&gt; n end
+  end
+
+  fn twice(k : () -&gt; Int) : Int do k() + k() end
+
+  fn main(_console : Cap(IO.Console)) do
+    let t = Token(1)
+    println(int_to_string(twice(fn () -&gt; consume(t))))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- LINEARITY ---------------------- linear-captured.march
+
+The linear value `t` cannot be captured by a closure. [linear_captured]
+A closure may be called multiple times, which would violate the exactly-once guarantee.
+Pass `t` as a parameter to the closure instead.
+
+14 |     println(int_to_string(twice(fn () -&gt; consume(t))))
+                                     ^^^^^^^^^^^^^^^^^^^
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The message gives the reason (a closure can be called more than once) and the fix (take
+the value as a parameter).
+<button class="ep-try" data-error-example="19-linear-captured">Try it</button></p>
+
+<hr />
+
+<h2 id="6-actors">6. Actors</h2>
+
+<p>Actor errors use the actor’s own words: its messages, its state, the pid you spawned (see
+<a href="/docs/actors/">Actors</a>).</p>
+
+<p><a id="misspelled-actor"></a></p>
+
+<h3 id="a-misspelled-actor">A misspelled actor</h3>
+
+<!-- error-tour: 20-misspelled-actor -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  actor Counter do
+    state { n : Int }
+    init { n: 0 }
+    on Bump(k : Int) do { state with n: state.n + k } end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let p = spawn(Countr)
+    send(p, Bump(1))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- NAMING ------------------------ misspelled-actor.march
+
+I don't know an actor called `Countr`. [unknown_constructor]
+Did you mean `Counter`?
+
+11 |     let p = spawn(Countr)
+                       ^^^^^^
+
+
+    fix (`forge fix` applies it):
+
+11 -     let p = spawn(Countr)
+11 +     let p = spawn(Counter)
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Inside <code class="language-plaintext highlighter-rouge">spawn(…)</code> March is looking for an actor, so it calls <code class="language-plaintext highlighter-rouge">Countr</code> an actor and
+suggests one.
+<button class="ep-try" data-error-example="20-misspelled-actor">Try it</button></p>
+
+<p><a id="message-argument"></a></p>
+
+<h3 id="the-wrong-argument-in-a-message">The wrong argument in a message</h3>
+
+<!-- error-tour: 21-message-argument -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  actor Counter do
+    state { n : Int }
+    init { n: 0 }
+    on Bump(k : Int) do { state with n: state.n + k } end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let c = spawn(Counter)
+    send(c, Bump("one"))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- TYPE MISMATCH ----------------- message-argument.march
+
+expected `Int` but got `String`. [type_mismatch]
+
+12 |     send(c, Bump("one"))
+                      ^^^^^
+
+    `Bump` is a message of actor `Counter`, and its handler declares this argument's type.
+
+    the expected type comes from here:
+
+7 |     on Bump(k : Int) do { state with n: state.n + k } end
+                ^
+    run `march --explain type_mismatch`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The expected type comes from the handler’s parameter, so the label points into the actor
+at <code class="language-plaintext highlighter-rouge">k : Int</code>, not at a generated message type.
+<button class="ep-try" data-error-example="21-message-argument">Try it</button></p>
+
+<p><a id="handler-returns-state"></a></p>
+
+<h3 id="a-handler-that-forgets-to-return-the-state">A handler that forgets to return the state</h3>
+
+<!-- error-tour: 22-handler-returns-state -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  actor Counter do
+    state { n : Int }
+    init { n: 0 }
+    on Bump(k : Int) do state.n + k end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let c = spawn(Counter)
+    send(c, Bump(1))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- ACTOR -------------------- handler-returns-state.march
+
+The handler for `Bump` must return `Counter`'s new state, a `{ n : Int }`, but it returns an `Int`. [actor_handler_state_type]
+A handler's result replaces the actor's state for the next message.
+
+7 |     on Bump(k : Int) do state.n + k end
+           ^^^^
+
+    If this is the new value of `n`, return `{ state with n: … }` with it.
+
+    this is an `Int`:
+
+7 |     on Bump(k : Int) do state.n + k end
+                            ^^^^^^^^^^^
+    run `march --explain actor_handler_state_type`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>A handler’s result becomes the actor’s next state. The message says so, and since the
+handler returns an <code class="language-plaintext highlighter-rouge">Int</code> and the state has one <code class="language-plaintext highlighter-rouge">Int</code> field, it suggests
+<code class="language-plaintext highlighter-rouge">{ state with n: … }</code>.
+<button class="ep-try" data-error-example="22-handler-returns-state">Try it</button></p>
+
+<p><a id="send-wrong-actor"></a></p>
+
+<h3 id="a-message-sent-to-the-wrong-actor">A message sent to the wrong actor</h3>
+
+<!-- error-tour: 23-send-wrong-actor -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  actor Counter do
+    state { n : Int }
+    init { n: 0 }
+    on Bump(k : Int) do { state with n: state.n + k } end
+  end
+
+  actor Log do
+    state { last : String }
+    init { last: "" }
+    on Note(t : String) do { state with last: t } end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    let log = spawn(Log)
+    send(log, Bump(1))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- ACTOR ------------------------- send-wrong-actor.march
+
+`Bump` is a message for `Counter`, but this pid is an actor `Log` (spawned on line 17), so the message would be dropped. [send_wrong_actor]
+Send it to a pid spawned from `Counter`, or send this actor one of its own messages.
+
+18 |     send(log, Bump(1))
+                   ^^^^^^^
+
+    `Log` handles `Note`.
+
+    `log` is spawned from `Log` here:
+
+17 |     let log = spawn(Log)
+                   ^^^^^^^^^^
+    run `march --explain send_wrong_actor`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Without this check, the message would be dropped at run time. The error says which actor
+the message belongs to, which actor the pid is and where it was spawned, and what that
+actor does handle.
+<button class="ep-try" data-error-example="23-send-wrong-actor">Try it</button></p>
+
+<hr />
+
+<h2 id="7-session-channels">7. Session channels</h2>
+
+<p>A <code class="language-plaintext highlighter-rouge">protocol</code> gives each end of a channel a script of sends and receives (see
+<a href="/docs/session-types/">Session types</a>). The errors are phrased in terms of that script, not
+the session-type notation the checker uses internally.</p>
+
+<p><a id="channel-wrong-step"></a></p>
+
+<h3 id="a-step-out-of-order">A step out of order</h3>
+
+<!-- error-tour: 24-channel-wrong-step -->
+<pre><code class="language-march">mod Main do
+  type Client = Client
+  type Server = Server
+
+  protocol Echo do
+    Client -&gt; Server : Int
+    Server -&gt; Client : Int
+  end
+
+  fn main() do
+    let (cc, sc) = Chan.new(Echo)
+    let cc2 = Chan.send(cc, 42)
+    let cc3 = Chan.send(cc2, 43)
+    Chan.close(cc3)
+    Chan.close(sc)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL -------------------- channel-wrong-step.march
+
+`Chan.send` can't send here: at this point the channel must receive an `Int`. [session_state_mismatch]
+
+13 |     let cc3 = Chan.send(cc2, 43)
+                   ^^^^^^^^^^^^^^^^^^
+
+    What is left on this channel: receive an `Int`, then close.
+
+    the channel is `Client`'s end of protocol `Echo`, declared here:
+
+5 |   protocol Echo do
+      ^^^^^^^^^^^^^^^^
+    run `march --explain session_state_mismatch`
+
+
+-- PROTOCOL -------------------- channel-wrong-step.march
+
+`Chan.close` can't close this channel here: at this point the channel must receive an `Int`. [session_state_mismatch]
+
+15 |     Chan.close(sc)
+         ^^^^^^^^^^^^^^
+
+    What is left on this channel: receive an `Int`, then send an `Int`, then close.
+
+    the channel is `Server`'s end of protocol `Echo`, declared here:
+
+5 |   protocol Echo do
+      ^^^^^^^^^^^^^^^^
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Each error says what the channel must do next and spells out the rest of its script
+(“receive an <code class="language-plaintext highlighter-rouge">Int</code>, then close”). The second error is about the server’s end, which never
+received anything.
+<button class="ep-try" data-error-example="24-channel-wrong-step">Try it</button></p>
+
+<p><a id="channel-close-early"></a></p>
+
+<h3 id="a-channel-closed-before-its-last-step">A channel closed before its last step</h3>
+
+<!-- error-tour: 35-channel-close-early -->
+<pre><code class="language-march">mod Main do
+  type Client = Client
+  type Server = Server
+
+  protocol Order do
+    Client -&gt; Server : Int
+    choose by Server:
+      ok  -&gt; Server -&gt; Client : Bool
+      err -&gt; Server -&gt; Client : String
+    end
+    Client -&gt; Server : String
+  end
+
+  fn main() do
+    let (cc, sc) = Chan.new(Order)
+    let cc2 = Chan.send(cc, 1)
+    let (_n, sc2) = Chan.recv(sc)
+    let sc3 = Chan.send(Chan.choose(sc2, :ok), true)
+    let (label, cc3) = Chan.offer(cc2)
+    match label do
+      :ok -&gt;
+        let (_b, cc4) = Chan.recv(cc3)
+        Chan.close(cc4)
+      :err -&gt;
+        let (_s, cc4) = Chan.recv(cc3)
+        Chan.close(Chan.send(cc4, "thanks"))
+    end
+    let (_t, sc4) = Chan.recv(sc3)
+    Chan.close(sc4)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL ------------------- channel-close-early.march
+
+`Chan.close` can't close this channel here: at this point the channel must send a `String`. [session_state_mismatch]
+
+23 |         Chan.close(cc4)
+             ^^^^^^^^^^^^^^^
+
+    What is left on this channel: send a `String`, then close.
+    The conversation so far, in protocol `Order`:
+
+      Client -&gt; Server : Int       done
+      choose by Server: ok | err   done
+      Client -&gt; Server : String    &lt;- `Client` must do this next
+
+    the channel is `Client`'s end of protocol `Order`, declared here:
+
+ 5 |   protocol Order do
+       ^^^^^^^^^^^^^^^^^
+    run `march --explain session_state_mismatch`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>When the protocol has more than two steps, the error also draws the conversation so far,
+one step per line in the order the protocol declares them. <code class="language-plaintext highlighter-rouge">done</code> marks the steps this end
+has already taken; a <code class="language-plaintext highlighter-rouge">choose</code> is drawn with all its branches when the channel has gone
+past it. The arrow on the right (<code class="language-plaintext highlighter-rouge">&lt;- `Client` must do this next</code>) is where the channel is
+now, and the headline says what the call tried instead. Here the <code class="language-plaintext highlighter-rouge">ok</code> branch closes the
+client’s end, but every branch of the <code class="language-plaintext highlighter-rouge">choose</code> leads to the client’s last <code class="language-plaintext highlighter-rouge">String</code>. A
+two-step protocol like <code class="language-plaintext highlighter-rouge">Echo</code> above gets no diagram, because the headline already says
+everything it would.</p>
+
+<p><a id="offer-not-exhaustive"></a></p>
+
+<h3 id="an-offer-left-unhandled">An offer left unhandled</h3>
+
+<!-- error-tour: 25-offer-not-exhaustive -->
+<pre><code class="language-march">mod Main do
+  type C = C
+  type S = S
+
+  protocol Lookup do
+    choose by S:
+      ok  -&gt; S -&gt; C : Int
+      err -&gt; S -&gt; C : String
+    end
+  end
+
+  fn main() do
+    let (cc, sc) = Chan.new(Lookup)
+    let sc2 = Chan.choose(sc, :ok)
+    Chan.close(Chan.send(sc2, 7))
+    let (label, cc2) = Chan.offer(cc)
+    match label do
+      :ok -&gt;
+        let (_n, cc3) = Chan.recv(cc2)
+        Chan.close(cc3)
+    end
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL ------------------ offer-not-exhaustive.march
+
+This `match` doesn't handle every branch the peer can choose — missing: :err. [session_offer_nonexhaustive]
+The protocol's `offer` branches are: :ok, :err.
+
+17 |     match label do
+               ^^^^^^^^
+
+    run `march --explain session_offer_nonexhaustive`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The protocol fixes which branches the other side can choose, so a <code class="language-plaintext highlighter-rouge">match</code> that skips one
+is an error, and the message names the branch you missed.
+<button class="ep-try" data-error-example="25-offer-not-exhaustive">Try it</button></p>
+
+<hr />
+
+<h2 id="8-protocols-and-choreography">8. Protocols and choreography</h2>
+
+<p>A protocol is checked when you declare it, before any code runs it. With <code class="language-plaintext highlighter-rouge">@[endpoints]</code>,
+March generates each role’s API and checks that the role’s code follows the protocol (see
+<a href="/docs/choreography/">Choreography</a>).</p>
+
+<p><a id="step-after-loop"></a></p>
+
+<h3 id="a-step-that-can-never-run">A step that can never run</h3>
+
+<!-- error-tour: 26-step-after-loop -->
+<pre><code class="language-march">mod Main do
+  type A = A
+  type B = B
+
+  protocol Ticker do
+    loop do
+      A -&gt; B : Int
+    end
+    B -&gt; A : Bool
+  end
+
+  fn main() do
+    ()
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL ----------------------- step-after-loop.march
+
+Protocol `Ticker`: this step can never run — it comes after a `loop`, and a `loop` block repeats forever, so it must be the last step. [protocol_invalid]
+
+9 |     B -&gt; A : Bool
+        ^
+
+
+    this `loop` repeats forever:
+
+7 |       A -&gt; B : Int
+          ^
+    run `march --explain protocol_invalid`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The message explains why the step is unreachable, and a label points at the loop that
+never ends.
+<button class="ep-try" data-error-example="26-step-after-loop">Try it</button></p>
+
+<p><a id="step-after-choose"></a></p>
+
+<h3 id="a-step-after-a-branch-that-loops-forever">A step after a branch that loops forever</h3>
+
+<!-- error-tour: 35-step-after-choose -->
+<pre><code class="language-march">mod Main do
+  type A = A
+  type B = B
+
+  protocol Batch do
+    choose by A:
+      more -&gt; loop do A -&gt; B : Int end
+      done -&gt; A -&gt; B : Bool
+    end
+    B -&gt; A : Bool
+  end
+
+  fn main() do
+    ()
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL --------------------- step-after-choose.march
+
+Protocol `Batch`: this step can never run in the `choose` branch that ends in a `loop` — the steps after a `choose` are projected into EVERY branch. Move it into the `done` branch, after its last step. A branch with several steps lists them on the lines after `done -&gt;`, one per line, indented under the label (no `do`/`end`). [protocol_invalid]
+
+10 |     B -&gt; A : Bool
+         ^
+
+
+    this `loop` repeats forever:
+
+7 |       more -&gt; loop do A -&gt; B : Int end
+                          ^
+    run `march --explain protocol_invalid`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The steps after a <code class="language-plaintext highlighter-rouge">choose</code> run at the end of every branch, so the <code class="language-plaintext highlighter-rouge">more</code> branch, which
+loops forever, can never reach <code class="language-plaintext highlighter-rouge">B -&gt; A : Bool</code>. The message names the branch that can
+(<code class="language-plaintext highlighter-rouge">done</code>) and shows how a branch with several steps is written: one step per line under
+<code class="language-plaintext highlighter-rouge">done -&gt;</code>, with no <code class="language-plaintext highlighter-rouge">do</code>/<code class="language-plaintext highlighter-rouge">end</code>.
+<button class="ep-try" data-error-example="35-step-after-choose">Try it</button></p>
+
+<p><a id="may-crash"></a></p>
+
+<h3 id="a-crash-nobody-handles">A crash nobody handles</h3>
+
+<!-- error-tour: 27-may-crash -->
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs Session.Live
+
+  @[endpoints]
+  protocol Logging do
+    may crash C
+    L -&gt; I : Int
+    C -&gt; I : String
+    I -&gt; L : String
+  end
+
+  fn main(_c : Cap(IO)) do () end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL ----------------------------- may-crash.march
+
+Protocol `Logging`: `C` may crash, so `C -&gt; I : ...` needs `or crash do ... end`: what does `I` do if `C` crashes before sending? [role_needs_invalid]
+
+9 |     C -&gt; I : String
+        ^
+
+    The crash branch is the rest of the conversation when `C` is gone. It must begin, for `L`, with a message from `I`; the fix sends one each, for you to change to what the conversation should do.
+
+    fix (`forge fix` applies it):
+
+ 9 |     C -&gt; I : String
+10 +       or crash do
+11 +         I -&gt; L : String
+12 +       end
+
+    run `march --explain role_needs_invalid`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Once a role <code class="language-plaintext highlighter-rouge">may crash</code>, every message from it needs a plan for when it doesn’t arrive.
+The error asks the question the protocol must answer: what does <code class="language-plaintext highlighter-rouge">I</code> do if <code class="language-plaintext highlighter-rouge">C</code> crashes
+before sending? The machine fix adds an <code class="language-plaintext highlighter-rouge">or crash</code> branch for you to fill in.
+<button class="ep-try" data-error-example="27-may-crash">Try it</button></p>
+
+<p><a id="role-skips-a-step"></a></p>
+
+<h3 id="a-role-that-skips-a-step">A role that skips a step</h3>
+
+<!-- error-tour: 28-role-skips-a-step -->
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs Session.Live
+
+  @[endpoints]
+  protocol Stream do
+    loop do
+      Prod -&gt; Cons : Int
+      choose by Cons:
+        more -&gt; Cons -&gt; Prod : Bool
+        done -&gt; Cons -&gt; Prod : Bool
+                stop
+      end
+    end
+  end
+
+  pfn cons(s : Cap(Session.Live), st : Stream_Cons.S_recv_Msg_Prod_Cons_1) : Stream_Cons.Yield do
+    Stream_Cons.close(s, Stream_Cons.choose_done(s, st, true))
+  end
+
+  fn main(_c : Cap(IO)) do () end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL --------------------- role-skips-a-step.march
+
+Role `Cons` tries to choose `more` or `done` here, but at this point protocol `Stream` says it must receive an `Int` from `Prod`. [protocol_step_order]
+
+18 |     Stream_Cons.close(s, Stream_Cons.choose_done(s, st, true))
+                                                         ^^
+
+    Take that step with `Stream_Cons.recv_Msg_Prod_Cons_1` first.
+    The conversation so far, in protocol `Stream`:
+
+      loop do                         (repeats)
+        Prod -&gt; Cons : Int            &lt;- `Cons` must do this next
+        choose by Cons: more | done   &lt;- `Cons` tried this
+
+    `Cons` is here: it must receive an `Int` from `Prod`:
+
+8 |       Prod -&gt; Cons : Int
+          ^^^^
+
+    `st` is the state bound here:
+
+17 |   pfn cons(s : Cap(Session.Live), st : Stream_Cons.S_recv_Msg_Prod_Cons_1) : Stream_Cons.Yield do
+                                       ^^
+    run `march --explain protocol_step_order`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The role’s code calls a generated function, but the error is about the protocol: what
+<code class="language-plaintext highlighter-rouge">Cons</code> tried to do, the step it skipped (with a “you are here” label on the protocol
+line), and which function takes that step. (The playground can’t load the session
+runtime this one needs.)</p>
+
+<p>The diagram draws the whole conversation, not only <code class="language-plaintext highlighter-rouge">Cons</code>’s side, up to the step that
+went wrong. Read it top to bottom. A <code class="language-plaintext highlighter-rouge">loop</code> is drawn as one round, marked <code class="language-plaintext highlighter-rouge">(repeats)</code>, with
+its steps indented under it. Two arrows sit in the right-hand column: one on the step
+<code class="language-plaintext highlighter-rouge">Cons</code> must take next and one on the step it tried, so the gap between them is what
+<code class="language-plaintext highlighter-rouge">Cons</code> skipped. A <code class="language-plaintext highlighter-rouge">choose</code> that <code class="language-plaintext highlighter-rouge">Cons</code> has not reached yet is drawn on one line with its
+branches (<code class="language-plaintext highlighter-rouge">more | done</code>).</p>
+
+<p><a id="role-repeats-a-step"></a></p>
+
+<h3 id="a-role-that-repeats-a-step">A role that repeats a step</h3>
+
+<!-- error-tour: 36-role-repeats-a-step -->
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs Session.Live
+
+  @[endpoints]
+  protocol Pump do
+    hello: A -&gt; B : String
+    loop do
+      tick: A -&gt; B : Int
+      tock: B -&gt; A : Int
+      choose by A:
+        go   -&gt; A -&gt; B : Bool
+        quit -&gt; A -&gt; B : Bool
+                stop
+      end
+    end
+  end
+
+  pfn role_a(s : Cap(Session.Live), st : Pump_A.Entry) : Pump_A.Yield do
+    let st1 = Pump_A.send_Hello(s, st, "hi")
+    let st2 = Pump_A.send_Tick(s, st1, 1)
+    Pump_A.recv_Tock(s, st2, fn (_n, st3) -&gt;
+      Pump_A.recv_Tock(s, Pump_A.send_Tick(s, st3, 2), fn (_m, st4) -&gt;
+        Pump_A.close(s, Pump_A.choose_quit(s, st4, true))))
+  end
+
+  fn main(_c : Cap(IO)) do () end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- PROTOCOL ------------------- role-repeats-a-step.march
+
+Role `A` tries to send an `Int` to `B` here, but at this point protocol `Pump` says it must choose `go` or `quit`. [protocol_step_order]
+
+23 |       Pump_A.recv_Tock(s, Pump_A.send_Tick(s, st3, 2), fn (_m, st4) -&gt;
+                                                   ^^^
+
+    Take that step with `Pump_A.choose_go` first.
+    The conversation so far, in protocol `Pump`:
+
+      hello: A -&gt; B : String     done
+      loop do                    (repeats)
+        tick:  A -&gt; B : Int      done   &lt;- `A` tried this again
+        tock:  B -&gt; A : Int      done
+        choose by A: go | quit   &lt;- `A` must do this next
+
+    `A` is here: it must choose `go` or `quit`:
+
+11 |       choose by A:
+                     ^
+
+    `st3` is the state bound here:
+
+22 |     Pump_A.recv_Tock(s, st2, fn (_n, st3) -&gt;
+                                          ^^^
+    run `march --explain protocol_step_order`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Inside a loop, a role’s next step can come earlier in the protocol than the one it just
+took. Here <code class="language-plaintext highlighter-rouge">A</code> went round again without choosing whether to go on. The diagram marks the
+steps of this round as <code class="language-plaintext highlighter-rouge">done</code> and the one <code class="language-plaintext highlighter-rouge">A</code> tried as <code class="language-plaintext highlighter-rouge">tried this again</code>. The <code class="language-plaintext highlighter-rouge">choose</code> it
+must make next is drawn on one line with its branches, since <code class="language-plaintext highlighter-rouge">A</code> has not picked one. Once
+a role is inside a branch, the diagram shows the branch it took and names the others in
+the right-hand column (<code class="language-plaintext highlighter-rouge">other branch: `more`</code>). A long conversation keeps three steps of
+context and shortens the rest to <code class="language-plaintext highlighter-rouge">… N earlier steps</code>. (The playground can’t load the
+session runtime this one needs.)</p>
+
+<p><a id="role-grant"></a></p>
+
+<h3 id="a-role-reaching-past-its-grant">A role reaching past its grant</h3>
+
+<!-- error-tour: 29-role-grant -->
+<pre><code class="language-march">mod Main do
+  needs IO
+  needs IO.Console
+  needs IO.FileWrite
+  needs Session.Live
+
+  @[endpoints]
+  protocol Stream do
+    role Cons needs IO.Console
+    loop do
+      Prod -&gt; Cons : Int
+      choose by Cons:
+        more -&gt; Cons -&gt; Prod : Bool
+        done -&gt; Cons -&gt; Prod : Bool
+                stop
+      end
+    end
+  end
+
+  pfn save(n : Int) : () do
+    let _ = file_write("/tmp/n", int_to_string(n))
+    ()
+  end
+
+  pfn cons(s : Cap(Session.Live), con : Cap(IO.Console), st : Stream_Cons.Entry) : Stream_Cons.Yield do
+    Stream_Cons.recv_Msg_Prod_Cons_1(s, st, fn (n, st1) -&gt;
+      save(n)
+      Stream_Cons.close(s, Stream_Cons.choose_done(s, st1, true)))
+  end
+
+  fn main(c : Cap(IO)) do
+    let _ = Stream_Run.run_Cons(c, "cons", "secret", Stream_Run.addrs_from_env(),
+      fn (s, con, st) -&gt; cons(s, con, st))
+    ()
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- CAPABILITY -------------------------- role-grant.march
+
+The body of role `Cons` writes a file, but the role is granted only `Cap(IO.Console)` (`role Cons needs IO.Console`). A role's grant bounds everything its code reaches, as `main`'s grant bounds the program. [role_grant_exceeded]
+help: add `IO.FileWrite` to the grant in protocol `Stream`: `role Cons needs IO.Console, IO.FileWrite`. The body then takes one `Cap` per granted capability, in the grant's order, between the session capability and the state, so it gains a parameter: `fn (s, cap_console, cap_file_write, st) -&gt; ...`. Pass `cap_file_write` on to any function the body hands its capabilities to. Or remove the use.
+
+21 |     let _ = file_write("/tmp/n", int_to_string(n))
+                 ^^^^^^^^^^
+
+
+    the body calls `cons` here:
+
+33 |       fn (s, con, st) -&gt; cons(s, con, st))
+                              ^^^^
+
+    `cons` calls `save` here:
+
+27 |       save(n)
+           ^^^^
+
+    the body of role `Cons`, passed to `Stream_Run.run_Cons`:
+
+33 |       fn (s, con, st) -&gt; cons(s, con, st))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    role `Cons` is granted only `Cap(IO.Console)` here:
+
+9 |     role Cons needs IO.Console
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    run `march --explain role_grant_exceeded`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>A role can carry its own capability grant. The file write is two calls deep, and the
+error traces the path from the role’s body to <code class="language-plaintext highlighter-rouge">file_write</code>, then shows the grant it
+breaks. The help writes out the widened <code class="language-plaintext highlighter-rouge">role Cons needs</code> line. It also gives the body’s
+new parameter list: the body takes one <code class="language-plaintext highlighter-rouge">Cap</code> for each capability in the grant, so
+widening the grant adds a parameter too.</p>
+
+<hr />
+
+<h2 id="9-refinements">9. Refinements</h2>
+
+<p>A refinement type adds a condition to a type, like <code class="language-plaintext highlighter-rouge">{Int | _ &gt;= 0}</code> or
+<code class="language-plaintext highlighter-rouge">{List(Int) | len(_) &gt; 0}</code>, and March proves those conditions at compile time with the z3
+solver (see <a href="/docs/refinement-types/">Refinement types</a>). When a proof fails, the error gives
+a concrete counterexample, points at where the failing value came from, and writes the
+guard over your own names. When every argument of the failing call is a known value and
+the function does no I/O, the compiler also runs that call once in its interpreter and
+says what happens. These need z3, so the playground can’t run them; install March to try
+them.</p>
+
+<p><a id="index-out-of-range"></a></p>
+
+<h3 id="an-index-that-is-out-of-range">An index that is out of range</h3>
+
+<!-- error-tour: 30-index-out-of-range -->
+<pre><code class="language-march">mod Main do
+  fn third() : Int do
+    List.nth([1, 2, 3], 7)
+  end
+
+  fn main() : Int do
+    third()
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- REFINEMENT ------------------ index-out-of-range.march
+
+refinement violation: index must be less than the list's length [refinement_violated]
+argument `n` of `List.nth` does not satisfy precondition `_ &lt; len(xs)`
+note: `7` can never satisfy `n &lt; len(xs)`; pass a value that does
+
+3 |     List.nth([1, 2, 3], 7)
+        ^^^^^^^^^^^^^^^^^^^^^^
+
+    running `List.nth([1, 2, 3], 7)` panics: "List.nth: index out of bounds"
+    `List.nth_opt` is `List.nth` without the requirement: it returns `Option` instead of panicking.
+        match List.nth_opt([1, 2, 3], 7) do
+          Some(v) -&gt; …
+          None -&gt; …
+        end
+
+    `n` is `7` here:
+
+3 |     List.nth([1, 2, 3], 7)
+                            ^
+    run `march --explain refinement_violated`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">List.nth</code> requires an index below the list’s length. The solver knows the literal list
+has three elements, so this call can never succeed, and the note says so. Every argument is
+a value, so the compiler also runs the call once in its interpreter and reports what
+happens: <code class="language-plaintext highlighter-rouge">List.nth</code> panics.</p>
+
+<p><a id="counterexample"></a></p>
+
+<h3 id="a-guard-that-proves-the-opposite">A guard that proves the opposite</h3>
+
+<!-- error-tour: 31-counterexample -->
+<pre><code class="language-march">mod Main do
+  fn head_of(xs : {List(Int) | len(_) &gt; 0}) : Int do
+    match xs do
+      Cons(h, _) -&gt; h
+      Nil        -&gt; panic("empty")
+    end
+  end
+
+  fn first_or_zero(ys : List(Int)) : Int do
+    if List.length(ys) == 0 do
+      head_of(ys)
+    else
+      0
+    end
+  end
+
+  fn main() : Int do
+    first_or_zero([1, 2, 3])
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- REFINEMENT ---------------------- counterexample.march
+
+refinement violation: argument `xs` of `head_of` does not satisfy precondition `len(_) &gt; 0` [refinement_violated]
+for example, when `ys` is `[]`
+note: guard the call (e.g. `if len(ys) &gt; 0 do head_of(ys) else … end`) or pass a value known to satisfy it
+
+11 |       head_of(ys)
+           ^^^^^^^^^^^
+
+    running `head_of([])` panics: "empty"
+
+    this argument must satisfy `len(ys) &gt; 0`:
+
+11 |       head_of(ys)
+                   ^^
+
+    `ys` comes from here:
+
+9 |   fn first_or_zero(ys : List(Int)) : Int do
+                       ^^
+
+    the call is reached only when this is true:
+
+10 |     if List.length(ys) == 0 do
+            ^^^^^^^^^^^^^^^^^^^^
+    run `march --explain refinement_violated`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Inside this branch <code class="language-plaintext highlighter-rouge">ys</code> is known to be empty, so the call fails whenever it runs. The
+counterexample (<code class="language-plaintext highlighter-rouge">ys</code> is <code class="language-plaintext highlighter-rouge">[]</code>) shows when, the labels point at where <code class="language-plaintext highlighter-rouge">ys</code> comes from and at
+the condition that leads here, and the note suggests the guard that would make the call
+safe. Running <code class="language-plaintext highlighter-rouge">head_of([])</code> shows the panic the guard prevents.</p>
+
+<p><a id="return-refinement"></a></p>
+
+<h3 id="a-return-type-that-isnt-met">A return type that isn’t met</h3>
+
+<!-- error-tour: 32-return-refinement -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn magnitude(n : Int) : {Int | _ &gt;= 0} do
+    if n &lt; 0 do n else 0 end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(magnitude(-3)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- REFINEMENT ------------------- return-refinement.march
+
+`magnitude` does not satisfy its return type constraint on all code paths. [return_refinement_violated]
+
+The return type requires:
+
+    _ &gt;= 0
+
+but magnitude(-1) returns -1.
+
+4 |   fn magnitude(n : Int) : {Int | _ &gt;= 0} do
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Every branch must produce a return value satisfying `_ &gt;= 0`.
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>The function body is checked against its own return type, and the counterexample is
+run: <code class="language-plaintext highlighter-rouge">magnitude(-1)</code> returns <code class="language-plaintext highlighter-rouge">-1</code>, a negative number.</p>
+
+<p><a id="termination"></a></p>
+
+<h3 id="a-recursion-that-may-not-stop">A recursion that may not stop</h3>
+
+<!-- error-tour: 33-termination -->
+<pre><code class="language-march">mod Main do
+  @[decreases(n)]
+  fn down(n : Int) : Int do
+    if n == 0 do 0 else down(n - 1) end
+  end
+
+  fn main() do
+    down(3)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- WARNING: RECURSION ----------------- termination.march
+
+`down` is not shown to terminate: the recursive call `down(n - 1)` is not shown to decrease `n`: e.g. n = -1 [termination_unproved]
+note: the exit `n == 0` misses a negative `n`; `n &lt;= 0` covers it.
+note: a metric must stay at least 0 and fall at every recursive call (left to right, for several components). Otherwise refine the parameter (`{Int | _ &gt;= 0}`), or write a metric that does fall.
+
+4 |     if n == 0 do 0 else down(n - 1) end
+                            ^^^^^^^^^^^
+
+    run `march --explain termination_unproved`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>This one is a warning (the program still compiles). It finds the input that never
+reaches the base case (<code class="language-plaintext highlighter-rouge">n = -1</code>) and suggests the one-character fix, <code class="language-plaintext highlighter-rouge">n &lt;= 0</code>.</p>
+
+<p><a id="division-no-panic"></a></p>
+
+<h3 id="division-in-a-module-that-promised-not-to-panic">Division in a module that promised not to panic</h3>
+
+<!-- error-tour: 34-division-no-panic -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+  cap no_panic
+
+  fn scale(d : {v : Int | v * v &gt;= 0}) : Int do
+    10 / d
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(scale(2)))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- REFINEMENT ------------------- division-no-panic.march
+
+division by `d` in `cap no_panic` module: refinement does not rule out zero (e.g. d = 0). [division_by_zero]
+
+Use `Math.checked_div` or `Math.checked_mod` to return `Option(Int)` instead of panicking, or annotate the divisor parameter with `{v : Int | v != 0}` (or `v &gt; 0`) to prove it is safe.
+
+6 |     10 / d
+        ^^^^^^
+
+    run `march --explain division_by_zero`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">cap no_panic</code> is a promise the module makes, so a divisor that might be zero is an error.
+The refinement on <code class="language-plaintext highlighter-rouge">d</code> holds for every integer, zero included, so it proves nothing. The
+message offers two ways out.</p>
+
+<p><a id="division-pattern"></a></p>
+
+<h3 id="dividing-by-a-value-from-a-pattern">Dividing by a value from a pattern</h3>
+
+<!-- error-tour: 36-division-pattern -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+  cap no_panic
+
+  type Stats = Stats(Int, Int)
+
+  fn average(s : Stats) : Int do
+    match s do
+      Stats(total, count) -&gt; total / count
+    end
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(average(Stats(10, 2))))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- REFINEMENT -------------------- division-pattern.march
+
+division by `count` in `cap no_panic` module may be by zero — no refinement proves `count ≠ 0`. [division_by_zero]
+
+`count` is not a function parameter, so no refinement annotation reaches it. Guard the division instead, which the checker reads as proof: `if count == 0 do &lt;fallback&gt; else ... / count end`. Or use `Math.checked_div` or `Math.checked_mod`, which return `Option(Int)` instead of panicking.
+
+9 |       Stats(total, count) -&gt; total / count
+                                 ^^^^^^^^^^^^^
+
+    run `march --explain division_by_zero`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Here the divisor comes out of a pattern, not a parameter, so there is no annotation to
+add. The message says so and gives the fix that always works: a guard. The checker reads
+<code class="language-plaintext highlighter-rouge">if count == 0 do ... else ... end</code>, so the division in the <code class="language-plaintext highlighter-rouge">else</code> branch is proved.</p>
+
+<hr />
+
+<h2 id="10-performance-why-a-copy-happens">10. Performance: why a copy happens</h2>
+
+<p>March updates a list or a tree in place when the function rebuilding it holds the only
+reference to it. When something else still holds the value, the function allocates a new
+copy instead: the program is still correct, only slower. Nothing in an ordinary check
+says so, because nothing is wrong. <code class="language-plaintext highlighter-rouge">march --why-copies</code> is the report you ask for when
+you want to know. The playground only checks programs, so it can’t show this one.</p>
+
+<p><a id="copy-shared"></a></p>
+
+<h3 id="a-list-that-is-used-again-after-listmap">A list that is used again after <code class="language-plaintext highlighter-rouge">List.map</code></h3>
+
+<!-- error-tour: 35-copy-shared --why-copies -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn inc_all(xs : List(Int)) : List(Int) do
+    let ys = List.map(xs, fn x -&gt; x + 1)
+    let n = List.length(xs)
+    List.append(ys, [n])
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(List.length(inc_all([1, 2, 3]))))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- WARNING: COPY ---------------------- copy-shared.march
+
+`List.map` builds a new copy instead of reusing `xs` in place, because `xs` is used again afterwards. [copy_shared]
+A function can update a value in place only when it holds the only reference to it; make this call the last use of `xs` and `List.map` reuses its memory instead of allocating.
+help: move `let n = List.length(xs)` above the call.
+
+5 |     let ys = List.map(xs, fn x -&gt; x + 1)
+                          ^^
+
+
+    `xs` is used again here, so it is still shared when `List.map` runs:
+
+6 |     let n = List.length(xs)
+                            ^^
+
+    fix (`forge fix` applies it):
+
+4 |   fn inc_all(xs : List(Int)) : List(Int) do
+5 +     let n = List.length(xs)
+6 -     let n = List.length(xs)
+
+    run `march --explain copy_shared`
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">List.map</code> could have rewritten <code class="language-plaintext highlighter-rouge">xs</code>’s cells in place, but <code class="language-plaintext highlighter-rouge">List.length(xs)</code> on the next
+line still needs the old list, so it built a new one. The warning points at both lines and
+offers the fix: take the length first. The fix appears only when moving the later line is
+safe (it is the value’s only later use and has no side effects); <code class="language-plaintext highlighter-rouge">forge fix</code> can apply it.
+The same report names two other reasons a value stays shared: it is also passed to the
+enclosing call, or a closure captured it. See the
+<a href="/docs/memory-model/#when-reuse-fires-vs-falls-back">memory model</a>.</p>
+
+<hr />
+
+<h2 id="11-run-time-failures">11. Run-time failures</h2>
+
+<p>Some mistakes only show when the program runs. <code class="language-plaintext highlighter-rouge">march FILE</code> reports them the way it
+reports a compile error: what happened, the line with a caret, and then each call that
+led there, innermost first. The playground only checks programs, so it can’t show these.</p>
+
+<p><a id="runtime-panic"></a></p>
+
+<h3 id="a-panic-two-calls-deep">A panic two calls deep</h3>
+
+<!-- error-tour: 36-panic --run -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+
+  fn price(code : String) : Int do
+    match code do
+    "a" -&gt; 1
+    _ -&gt; panic("unknown product code: " ++ code)
+    end
+  end
+
+  fn total(codes : List(String)) : Int do
+    List.fold_left(codes, 0, fn (acc, c) -&gt; acc + price(c))
+  end
+
+  fn main(_console : Cap(IO.Console)) do
+    println(int_to_string(total(["a", "zz"])))
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- RUNTIME ---------------------------------- panic.march
+
+The program panicked: unknown product code: zz [panic]
+
+7 |     _ -&gt; panic("unknown product code: " ++ code)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Calls inside the standard library are left out; set MARCH_BACKTRACE=full to see them.
+
+    `price` was called here:
+
+12 |     List.fold_left(codes, 0, fn (acc, c) -&gt; acc + price(c))
+                                                       ^^^^^^^^
+
+    `List.fold_left` was called here:
+
+12 |     List.fold_left(codes, 0, fn (acc, c) -&gt; acc + price(c))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    `total` was called here:
+
+16 |     println(int_to_string(total(["a", "zz"])))
+                               ^^^^^^^^^^^^^^^^^^
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>A compiled program prints the same header, headline and <code class="language-plaintext highlighter-rouge">panic</code> line. Below that it lists
+the functions the panic was reached through, each by its first line, because a compiled
+program doesn’t record the line of each call.</p>
+
+<p>The first excerpt is the <code class="language-plaintext highlighter-rouge">panic</code> itself. Each one after it is a call on the way there:
+<code class="language-plaintext highlighter-rouge">price</code> was called from the function passed to <code class="language-plaintext highlighter-rouge">List.fold_left</code>, which <code class="language-plaintext highlighter-rouge">total</code> called,
+which <code class="language-plaintext highlighter-rouge">main</code> called. Calls inside the standard library are left out unless you set
+<code class="language-plaintext highlighter-rouge">MARCH_BACKTRACE=full</code>.</p>
+
+<p><a id="runtime-actor-crash"></a></p>
+
+<h3 id="an-actor-that-crashes">An actor that crashes</h3>
+
+<!-- error-tour: 37-actor-crash --run -->
+<pre><code class="language-march">mod Main do
+  needs IO.Console
+  needs IO.Spawn
+
+  actor Counter do
+    state { n : Int }
+    init { n: 0 }
+    on Bump(k : Int) do
+      if k &lt; 0 do panic("negative bump") else { state with n: state.n + k } end
+    end
+  end
+
+  fn main(_console : Cap(IO.Console), _spawn : Cap(IO.Spawn)) do
+    let pid = spawn(Counter)
+    send(pid, Bump(1))
+    send(pid, Bump(-5))
+    run_until_idle()
+    println("done")
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-- RUNTIME ---------------------------- actor-crash.march
+
+Actor `Counter` crashed while handling `Bump(-5)`: negative bump [actor_crashed]
+
+9 |       if k &lt; 0 do panic("negative bump") else { state with n: state.n + k } end
+                      ^^^^^^^^^^^^^^^^^^^^^^
+
+    Its state when it crashed: { n: 1 }
+    Nothing supervises this `Counter`, so it stays dead and later messages to it are dropped. The rest of the program keeps running.
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>An actor’s crash doesn’t stop the program, so it would be easy to miss. The report names
+the actor, the message it was handling (with its arguments), where the handler failed, and
+the actor’s state at the time. It also says what happens next: nobody supervises this
+<code class="language-plaintext highlighter-rouge">Counter</code>, so it stays dead. A supervised actor is restarted by its supervisor instead, and
+no report is printed.</p>
+
+<hr />
+
+<h2 id="12-test-failures">12. Test failures</h2>
+
+<p>A failing test is reported the same way, by <code class="language-plaintext highlighter-rouge">march test</code> and by <code class="language-plaintext highlighter-rouge">forge test</code> (which runs
+the tests compiled; both print the same report). These are run-time failures, not compiler
+errors, so the playground can’t show them: it only checks programs. Install March and run
+<code class="language-plaintext highlighter-rouge">march test</code> on the examples to try them.</p>
+
+<p><a id="assert-diff"></a></p>
+
+<h3 id="an-assert--that-fails">An <code class="language-plaintext highlighter-rouge">assert ==</code> that fails</h3>
+
+<!-- error-tour: 35-assert-diff --test -->
+<pre><code class="language-march">mod Main do
+  type Role = Admin | Guest | Owner(Int)
+  type User = { name : String, tags : List(Role) }
+  derive Eq, Show for Role
+  derive Eq, Show for User
+
+  pfn load_user() : User do
+    { name: "ann", tags: [Admin, Owner(1), Guest] }
+  end
+
+  test "the loaded user" do
+    let user = load_user()
+    let expected = { name: "ann", tags: [Admin, Owner(2), Guest] }
+    assert (user == expected)
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAIL: "the loaded user"
+-- TEST FAILURE ----------------------- assert-diff.march
+
+The two sides of this `==` are not equal. [assert_failed]
+
+14 |     assert (user == expected)
+                 ^^^^^^^^^^^^^^^^
+
+    left `user`
+        User { name = ann, tags = [Admin, Owner(1), Guest] }
+                                                ^
+    right `expected`
+        User { name = ann, tags = [Admin, Owner(2), Guest] }
+                                                ^
+
+    They first differ at `.tags[1]`.
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p>Each side is labelled with the expression that produced it, and the carets mark where the
+two values first differ, not just that they differ. A value too long for one line is
+shown only along the path to the difference, with everything else as <code class="language-plaintext highlighter-rouge">…</code>; a list of the
+wrong length and a string that differs partway through are pointed at the same way.</p>
+
+<p><a id="property-counterexample"></a></p>
+
+<h3 id="a-property-that-fails">A property that fails</h3>
+
+<!-- error-tour: 36-property-counterexample --test -->
+<pre><code class="language-march">mod Main do
+  needs IO.Process, IO.Clock
+
+  pfn total(a : Int, b : Int) : Int do
+    a + b
+  end
+
+  test "sums stay under 50" do
+    Check.all(Gen.tuple2(Gen.int(0, 100), Gen.int(0, 100)), fn pair -&gt;
+      match pair do
+      (a, b) -&gt;
+        assert (total(a, b) &lt; 50)
+        true
+      end
+    )
+  end
+end
+</code></pre>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAIL: "sums stay under 50"
+-- TEST FAILURE ----------- property-counterexample.march
+
+This property does not hold. [property_failed]
+
+ 9 |     Check.all(Gen.tuple2(Gen.int(0, 100), Gen.int(0, 100)), fn pair -&gt;
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    It failed on run 1 of 100.
+
+    Smallest failing input (shrunk in 3 steps from `(98, 11)`):
+
+        a = 39
+        b = 11
+
+    It failed this assertion:
+
+    This `&lt;` comparison is false. [assert_failed]
+
+    12 |         assert (total(a, b) &lt; 50)
+                         ^^^^^^^^^^^^^^^^
+
+        left `total(a, b)`
+            50
+        right
+            50
+
+    Seed 42: replay it with `forge test --seed=42`.
+</code></pre></div></div>
+<!-- /error-tour -->
+
+<p><code class="language-plaintext highlighter-rouge">Check.all</code> tries the property on 100 generated inputs. When one fails, it shrinks it to a
+smallest input that still fails and names each part by the property’s own parameters
+(<code class="language-plaintext highlighter-rouge">a</code> and <code class="language-plaintext highlighter-rouge">b</code>, which the <code class="language-plaintext highlighter-rouge">match</code> takes apart). Then it shows the failed assertion inside
+it. The seed reproduces the run: <code class="language-plaintext highlighter-rouge">forge test --seed=42</code>.</p>
+
+<hr />
+
+<h2 id="error-reference">Error reference</h2>
+
+<p>Every code that has a <code class="language-plaintext highlighter-rouge">march --explain</code> page also has one on this site:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Area</th>
+      <th>Codes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Syntax</td>
+      <td><a href="/docs/errors/parse_error/"><code class="language-plaintext highlighter-rouge">parse_error</code></a> · <a href="/docs/errors/then_keyword/"><code class="language-plaintext highlighter-rouge">then_keyword</code></a> · <a href="/docs/errors/elif_keyword/"><code class="language-plaintext highlighter-rouge">elif_keyword</code></a> · <a href="/docs/errors/semicolon_separator/"><code class="language-plaintext highlighter-rouge">semicolon_separator</code></a> · <a href="/docs/errors/module_keyword/"><code class="language-plaintext highlighter-rouge">module_keyword</code></a></td>
+    </tr>
+    <tr>
+      <td>Names</td>
+      <td><a href="/docs/errors/unknown_qualified_name/"><code class="language-plaintext highlighter-rouge">unknown_qualified_name</code></a> · <a href="/docs/errors/duplicate_binder/"><code class="language-plaintext highlighter-rouge">duplicate_binder</code></a> · <a href="/docs/errors/unknown_attribute/"><code class="language-plaintext highlighter-rouge">unknown_attribute</code></a></td>
+    </tr>
+    <tr>
+      <td>Types</td>
+      <td><a href="/docs/errors/type_mismatch/"><code class="language-plaintext highlighter-rouge">type_mismatch</code></a> · <a href="/docs/errors/int_overflow/"><code class="language-plaintext highlighter-rouge">int_overflow</code></a></td>
+    </tr>
+    <tr>
+      <td>Capabilities</td>
+      <td><a href="/docs/errors/cap_grant/"><code class="language-plaintext highlighter-rouge">cap_grant</code></a> · <a href="/docs/errors/cap_needs/"><code class="language-plaintext highlighter-rouge">cap_needs</code></a> · <a href="/docs/errors/cap_ceiling/"><code class="language-plaintext highlighter-rouge">cap_ceiling</code></a> · <a href="/docs/errors/cap_grant_exceeded/"><code class="language-plaintext highlighter-rouge">cap_grant_exceeded</code></a> · <a href="/docs/errors/cap_widen/"><code class="language-plaintext highlighter-rouge">cap_widen</code></a> · <a href="/docs/errors/cap_deserialize/"><code class="language-plaintext highlighter-rouge">cap_deserialize</code></a> · <a href="/docs/errors/io_not_allowed/"><code class="language-plaintext highlighter-rouge">io_not_allowed</code></a> · <a href="/docs/errors/proof_cap_mint_private/"><code class="language-plaintext highlighter-rouge">proof_cap_mint_private</code></a> · <a href="/docs/errors/proof_cap_return/"><code class="language-plaintext highlighter-rouge">proof_cap_return</code></a></td>
+    </tr>
+    <tr>
+      <td>Linearity</td>
+      <td><a href="/docs/errors/linear_used_twice/"><code class="language-plaintext highlighter-rouge">linear_used_twice</code></a> · <a href="/docs/errors/linear_never_used/"><code class="language-plaintext highlighter-rouge">linear_never_used</code></a> · <a href="/docs/errors/linear_discarded/"><code class="language-plaintext highlighter-rouge">linear_discarded</code></a> · <a href="/docs/errors/linear_generic_param/"><code class="language-plaintext highlighter-rouge">linear_generic_param</code></a></td>
+    </tr>
+    <tr>
+      <td>Actors</td>
+      <td><a href="/docs/errors/spawn_not_actor/"><code class="language-plaintext highlighter-rouge">spawn_not_actor</code></a> · <a href="/docs/errors/send_wrong_actor/"><code class="language-plaintext highlighter-rouge">send_wrong_actor</code></a> · <a href="/docs/errors/actor_handler_state_type/"><code class="language-plaintext highlighter-rouge">actor_handler_state_type</code></a> · <a href="/docs/errors/supervise_field_missing/"><code class="language-plaintext highlighter-rouge">supervise_field_missing</code></a> · <a href="/docs/errors/codec_missing/"><code class="language-plaintext highlighter-rouge">codec_missing</code></a></td>
+    </tr>
+    <tr>
+      <td>Sessions and protocols</td>
+      <td><a href="/docs/errors/session_state_mismatch/"><code class="language-plaintext highlighter-rouge">session_state_mismatch</code></a> · <a href="/docs/errors/protocol_step_order/"><code class="language-plaintext highlighter-rouge">protocol_step_order</code></a></td>
+    </tr>
+    <tr>
+      <td>Refinements and proofs</td>
+      <td><a href="/docs/errors/refinement_violated/"><code class="language-plaintext highlighter-rouge">refinement_violated</code></a> · <a href="/docs/errors/termination_unproved/"><code class="language-plaintext highlighter-rouge">termination_unproved</code></a> · <a href="/docs/errors/invalid_decreases/"><code class="language-plaintext highlighter-rouge">invalid_decreases</code></a> · <a href="/docs/errors/predicate_eq_structural/"><code class="language-plaintext highlighter-rouge">predicate_eq_structural</code></a> · <a href="/docs/errors/invalid_reflect/"><code class="language-plaintext highlighter-rouge">invalid_reflect</code></a> · <a href="/docs/errors/invalid_lemma/"><code class="language-plaintext highlighter-rouge">invalid_lemma</code></a> · <a href="/docs/errors/lemma_unproved/"><code class="language-plaintext highlighter-rouge">lemma_unproved</code></a> · <a href="/docs/errors/lemma_unproved_call/"><code class="language-plaintext highlighter-rouge">lemma_unproved_call</code></a> · <a href="/docs/errors/lemma_argument_impure/"><code class="language-plaintext highlighter-rouge">lemma_argument_impure</code></a> · <a href="/docs/errors/diverges_conflict/"><code class="language-plaintext highlighter-rouge">diverges_conflict</code></a> · <a href="/docs/errors/solver_unavailable/"><code class="language-plaintext highlighter-rouge">solver_unavailable</code></a> · <a href="/docs/errors/solver_version_mismatch/"><code class="language-plaintext highlighter-rouge">solver_version_mismatch</code></a></td>
+    </tr>
+    <tr>
+      <td>Performance</td>
+      <td><a href="/docs/errors/copy_shared/"><code class="language-plaintext highlighter-rouge">copy_shared</code></a></td>
+    </tr>
+    <tr>
+      <td>Sessions and protocols</td>
+      <td><a href="/docs/errors/session_state_mismatch/"><code class="language-plaintext highlighter-rouge">session_state_mismatch</code></a> · <a href="/docs/errors/protocol_step_order/"><code class="language-plaintext highlighter-rouge">protocol_step_order</code></a> · <a href="/docs/errors/protocol_invalid/"><code class="language-plaintext highlighter-rouge">protocol_invalid</code></a> · <a href="/docs/errors/protocol_same_participants/"><code class="language-plaintext highlighter-rouge">protocol_same_participants</code></a> · <a href="/docs/errors/role_grant_exceeded/"><code class="language-plaintext highlighter-rouge">role_grant_exceeded</code></a></td>
+    </tr>
+    <tr>
+      <td>Refinements and proofs</td>
+      <td><a href="/docs/errors/refinement_violated/"><code class="language-plaintext highlighter-rouge">refinement_violated</code></a> · <a href="/docs/errors/division_by_zero/"><code class="language-plaintext highlighter-rouge">division_by_zero</code></a> · <a href="/docs/errors/termination_unproved/"><code class="language-plaintext highlighter-rouge">termination_unproved</code></a> · <a href="/docs/errors/invalid_decreases/"><code class="language-plaintext highlighter-rouge">invalid_decreases</code></a> · <a href="/docs/errors/predicate_eq_structural/"><code class="language-plaintext highlighter-rouge">predicate_eq_structural</code></a> · <a href="/docs/errors/invalid_reflect/"><code class="language-plaintext highlighter-rouge">invalid_reflect</code></a> · <a href="/docs/errors/invalid_lemma/"><code class="language-plaintext highlighter-rouge">invalid_lemma</code></a> · <a href="/docs/errors/lemma_unproved/"><code class="language-plaintext highlighter-rouge">lemma_unproved</code></a> · <a href="/docs/errors/lemma_unproved_call/"><code class="language-plaintext highlighter-rouge">lemma_unproved_call</code></a> · <a href="/docs/errors/lemma_argument_impure/"><code class="language-plaintext highlighter-rouge">lemma_argument_impure</code></a> · <a href="/docs/errors/diverges_conflict/"><code class="language-plaintext highlighter-rouge">diverges_conflict</code></a> · <a href="/docs/errors/solver_unavailable/"><code class="language-plaintext highlighter-rouge">solver_unavailable</code></a> · <a href="/docs/errors/solver_version_mismatch/"><code class="language-plaintext highlighter-rouge">solver_version_mismatch</code></a></td>
+    </tr>
+  </tbody>
+</table>
+
+    </div>
+  </main>
+
+</div>
+
+<script src="/assets/march-hl.js?v=1794069426"></script>
+<script>
+let dark = true;
+
+function initTheme() {
+  const saved = localStorage.getItem('march-theme');
+  dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !dark);
+  const label = dark ? '☀ Light' : '☾ Dark';
+  const btn = document.getElementById('d-theme-btn');
+  const btnMobile = document.getElementById('d-theme-btn-mobile');
+  if (btn) btn.textContent = label;
+  if (btnMobile) btnMobile.textContent = label;
+}
+
+function toggleTheme() {
+  dark = !dark;
+  localStorage.setItem('march-theme', dark ? 'dark' : 'light');
+  applyTheme();
+}
+
+document.getElementById('d-theme-btn').addEventListener('click', toggleTheme);
+document.getElementById('d-theme-btn-mobile').addEventListener('click', toggleTheme);
+
+const sidebar  = document.getElementById('d-sidebar');
+const overlay  = document.getElementById('d-overlay');
+const hamburger = document.getElementById('d-hamburger');
+
+function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+
+hamburger.addEventListener('click', () =>
+  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+);
+overlay.addEventListener('click', closeSidebar);
+
+// Permalink anchors on every section heading with an id (kramdown auto-ids).
+document.querySelectorAll('.d-content h2[id], .d-content h3[id], .d-content h4[id]').forEach(function (h) {
+  var a = document.createElement('a');
+  a.href = '#' + h.id;
+  a.className = 'd-anchor';
+  a.textContent = '#';
+  a.setAttribute('aria-label', 'Permalink to this section');
+  h.insertBefore(a, h.firstChild);
+});
+
+initTheme();
+</script>
+</body>
+</html>
